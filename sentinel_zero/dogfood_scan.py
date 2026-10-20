@@ -32,6 +32,7 @@ Still bounded, still stated plainly:
 """
 from __future__ import annotations
 
+import ast
 import json
 import sys
 from pathlib import Path
@@ -50,6 +51,7 @@ from sentinel_zero.callgraph import (
 )
 from sentinel_zero.graph import ProjectGraph, Symbol
 from sentinel_zero.ledger_writer import safe_write_text
+from sentinel_zero.probes.process_exec_probe import run_process_exec_probe
 from sentinel_zero.resolvers.python_resolver import build_project_graph, mutually_exclusive
 
 SINK_ATTACK_IDS = {
@@ -71,7 +73,37 @@ _SINK_KIND_BY_NAME = {
 }
 
 
-def find_finding_plans(graph: ProjectGraph, repo_name: str, catalog, plan_counter: list[int]) -> list:
+def _zero_arg_top_level_function(file_path: str, module_qualname: str, caller_qualname: str) -> str | None:
+    """Returns the bare function name if `caller_qualname` names a plain
+    module-level function (not a class method, not nested) in this module
+    taking no required arguments -- the only shape Milestone 6's dynamic
+    probe is allowed to call with no inputs. Returns None for anything else
+    (a class method, a function needing real arguments, an unparseable
+    file) -- the probe is simply not attempted for those, never guessed at."""
+    prefix = module_qualname + "."
+    if not caller_qualname.startswith(prefix):
+        return None
+    name = caller_qualname[len(prefix):]
+    if "." in name:
+        return None  # "Class.method" -- out of scope for this probe
+    try:
+        tree = ast.parse(Path(file_path).read_text(encoding="utf-8"))
+    except (SyntaxError, UnicodeDecodeError, OSError):
+        return None
+    for node in tree.body:  # top-level only -- a nested def is a different scope
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == name:
+            args = node.args
+            required_positional = len(args.posonlyargs) + len(args.args) - len(args.defaults)
+            required_kwonly = sum(1 for default in args.kw_defaults if default is None)
+            if required_positional > 0 or required_kwonly > 0:
+                return None
+            return name
+    return None
+
+
+def find_finding_plans(
+    graph: ProjectGraph, repo_name: str, catalog, plan_counter: list[int], repo_root: Path
+) -> list:
     plans = []
     callee_index = build_direct_callee_index(graph)
     external_index = build_direct_external_index(graph)
@@ -141,9 +173,43 @@ def find_finding_plans(graph: ProjectGraph, repo_name: str, catalog, plan_counte
                         plan,
                         "UNRESOLVED_INCONCLUSIVE",
                         reason="no resolved, guard-shaped call precedes this sink in the same function. "
-                               "No sandbox probe has run in v0.",
+                               "No sandbox probe has run yet for this finding.",
                         residual_uncertainty="Medium: no in-function guard resolved, no dynamic check run.",
                     )
+
+                # Milestone 6: a bounded dynamic reachability probe, PROCESS_EXEC
+                # only, zero-argument top-level functions only, never attempting
+                # adversarial inputs. It can only ever argue FOR VERIFIED_TRUE
+                # ("this path is live, confirmed by a real call") -- a sink not
+                # reached on this one run proves nothing about other inputs, so
+                # "not_reached" and "call_failed" leave the disposition exactly
+                # as the static analysis above already set it. See
+                # probes/_process_exec_harness.py for the full scope statement.
+                if sink_kind == "PROCESS_EXEC" and caller:
+                    fn_name = _zero_arg_top_level_function(module.file_path, module.module_qualname, caller)
+                    if fn_name:
+                        probe_result = run_process_exec_probe(repo_root, module.module_qualname, fn_name)
+                        if probe_result.get("status") == "sink_reached":
+                            guard_note = (
+                                f" A guard-shaped call ({guard_hit}) was detected statically on this path, "
+                                "but the dynamic probe still reached the sink -- this does not mean the guard "
+                                "is bypassable by attacker-controlled input, only that it did not block this "
+                                "specific zero-argument call."
+                                if guard_hit else ""
+                            )
+                            set_disposition(
+                                plan,
+                                "VERIFIED_TRUE",
+                                reason=(
+                                    f"a bounded dynamic probe called {caller}() with zero arguments in an "
+                                    f"isolated subprocess and observed {probe_result.get('symbol')} invoked "
+                                    f"(args={probe_result.get('args')}) before the real sink could execute "
+                                    "(monkeypatched, never actually run). This confirms the call path is live "
+                                    "and reachable under at least one real invocation." + guard_note
+                                ),
+                                residual_uncertainty="Low: dynamic reachability confirmed under one benign "
+                                "call; no adversarial inputs were attempted (explicitly out of scope for this probe).",
+                            )
                 plans.append(plan)
     return plans
 
@@ -172,7 +238,7 @@ def run(repo_root: Path, catalog_path: str, out_dir: Path) -> int:
         raise ToolFailure(f"ISBG resolver failed on {repo_root}: {exc}") from exc
 
     plan_counter = [0]
-    plans = find_finding_plans(graph, repo_root.name, catalog, plan_counter)
+    plans = find_finding_plans(graph, repo_root.name, catalog, plan_counter, repo_root)
 
     unresolved_calls = sum(
         1 for c in graph.all_calls() if not isinstance(c.target, Symbol)
