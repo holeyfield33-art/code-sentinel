@@ -39,9 +39,22 @@ class ToolFailure(Exception):
 @dataclass
 class Catalog:
     """A loaded, indexed view of the live ASI catalog. Build once per run
-    with load_catalog() -- never hardcode a class name/label pair."""
+    with load_catalog() -- never hardcode a class name/label pair.
+
+    `source_path` and `meta` exist so staleness is always visible rather
+    than silently assumed: a scan run against the packaged snapshot
+    catalog (see catalog_loader.bundled_snapshot_path) must say so in its
+    output, and `meta` (the catalog export's own version/generatedAt/
+    status block, when present) is carried through to the ledger so a
+    reader can see exactly which taxonomy version a run was checked
+    against -- this is what keeps "live catalog" from quietly becoming
+    "whatever catalog happened to be bundled a year ago."
+    """
 
     classes_by_id: dict[str, dict]
+    source_path: str = ""
+    meta: dict = field(default_factory=dict)
+    is_bundled_snapshot: bool = False
 
     def resolve(self, attack_id: str) -> dict:
         cls = self.classes_by_id.get(attack_id)
@@ -54,10 +67,17 @@ class Catalog:
         return cls
 
 
-def load_catalog(catalog_path: str) -> Catalog:
+def load_catalog(catalog_path: str, *, is_bundled_snapshot: bool = False) -> Catalog:
     """Load the assembled ASI export and index every class by its id and by
     any declared aliases/legacyId, so a plan can cite either form and still
-    resolve against the one live source of truth."""
+    resolve against the one live source of truth.
+
+    `is_bundled_snapshot` is set by callers (the CLI) only when they fell
+    back to the catalog shipped inside this package because the caller
+    gave no `--catalog` of their own -- it never changes resolution
+    behavior, only what gets recorded in `Catalog.is_bundled_snapshot` so
+    a reader of the resulting ledger can see that this run was checked
+    against a point-in-time snapshot, not a catalog they fetched fresh."""
     data = load_asi_catalog(catalog_path, fallback=None)
     if data is None or "attackClasses" not in data:
         raise ToolFailure(
@@ -72,7 +92,12 @@ def load_catalog(catalog_path: str) -> Catalog:
         legacy = cls.get("legacyId")
         if legacy:
             by_id.setdefault(legacy, cls)
-    return Catalog(classes_by_id=by_id)
+    return Catalog(
+        classes_by_id=by_id,
+        source_path=catalog_path,
+        meta=dict(data.get("catalog", {})),
+        is_bundled_snapshot=is_bundled_snapshot,
+    )
 
 
 @dataclass

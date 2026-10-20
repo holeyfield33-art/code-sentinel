@@ -292,10 +292,28 @@ def _dependency_summary(graph: ProjectGraph) -> dict:
     return dict(sorted(by_package.items(), key=lambda kv: -kv[1]))
 
 
-def run(repo_root: Path, catalog_path: str, out_dir: Path, language: str = "python") -> int:
+def run(
+    repo_root: Path,
+    catalog_path: str,
+    out_dir: Path,
+    language: str = "python",
+    *,
+    is_bundled_snapshot_catalog: bool = False,
+) -> int:
     if language not in _RESOLVERS:
         raise ToolFailure(f"unknown language {language!r} -- expected one of {sorted(_RESOLVERS)}")
-    catalog = load_catalog(catalog_path)
+    catalog = load_catalog(catalog_path, is_bundled_snapshot=is_bundled_snapshot_catalog)
+    if catalog.is_bundled_snapshot:
+        # Never silent: a run checked against the catalog shipped inside
+        # this package, not one the caller fetched fresh, must say so
+        # loudly enough to notice before trusting the taxonomy labels.
+        meta = catalog.meta
+        print(
+            "NOTICE: no --catalog given -- using the ASI catalog snapshot bundled with this "
+            f"install (version {meta.get('version', 'unknown')}, generated {meta.get('generatedAt', 'unknown')}, "
+            f"status={meta.get('status', 'unknown')}). Pass --catalog PATH for a freshly-fetched export.",
+            file=sys.stderr,
+        )
     try:
         graph = _RESOLVERS[language](repo_root)
     except Exception as exc:  # resolver-level failure halts, never silently returns partial
@@ -332,6 +350,11 @@ def run(repo_root: Path, catalog_path: str, out_dir: Path, language: str = "pyth
         ],
         "external_dependencies": _dependency_summary(graph),
         "parse_errors": graph.parse_errors,
+        "catalog": {
+            "path": catalog.source_path,
+            "is_bundled_snapshot": catalog.is_bundled_snapshot,
+            "metadata": catalog.meta,
+        },
     }
     safe_write_text(str(out_dir), "verification_ledger.json", json.dumps(ledger, indent=2), 5_000_000)
     print(

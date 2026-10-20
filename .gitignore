@@ -2,3 +2,5 @@ sentinel_zero/resolvers/js/node_modules/
 __pycache__/
 *.pyc
 .pytest_cache/
+build/
+*.egg-info/

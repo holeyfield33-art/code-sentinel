@@ -15,8 +15,9 @@ modes from that pipeline, not just avoid them by convention:
   against a *live* Agent Security Index catalog export; an unknown ID is
   a hard error (`UnknownAttackClass`), never a silent pass-through.
 
-This document is a **Phase 1 checkpoint** — it describes the project as of
-Milestone 11, locked in with a full passing test suite and dogfooding
+This document is a **Phase 2 checkpoint** — it describes the project as of
+Milestone 13 (packaging), on top of the correctness fixes landed in
+Milestone 12, locked in with a full passing test suite and dogfooding
 evidence against real, unrelated repositories for every capability below.
 It is not a promise of future scope; see **Known bounds** for what is
 explicitly not done.
@@ -55,7 +56,11 @@ specific bugs found in the earlier pipeline:
 | `sentinel_zero/schema_check.py` | Validates a Finding Plan has every required field before it can be trusted downstream. |
 | `sentinel_zero/ledger_writer.py` | Path-confined, size-capped file writer (`resolve_inside` rejects any write that escapes the target root via `..` or a symlink) — what actually puts a ledger on disk. |
 | `sentinel_zero/probes/` | Milestone 6's bounded dynamic reachability probe. Python-only, subprocess-isolated (`python -I`), PROCESS_EXEC-only, zero-argument-function-only, and can only ever promote to `VERIFIED_TRUE` — never demotes to `VERIFIED_FALSE`, since it never attempts adversarial inputs. |
-| `sentinel_zero/dogfood_scan.py` | The orchestrator and CLI entry point. Wires a resolver + its sink table + the disposition engine + (for Python) the dynamic probe + the ledger writer together into one run. |
+| `sentinel_zero/dogfood_scan.py` | The orchestrator. Wires a resolver + its sink table + the disposition engine + (for Python) the dynamic probe + the ledger writer together into one run. |
+| `sentinel_zero/cli.py` | The `sentinel-zero` command (installed via `pyproject.toml`'s `[project.scripts]`). A thin wrapper over `dogfood_scan.run()` — language auto-detection, the bundled-catalog fallback, and `--format md` rendering live here; no analysis logic. |
+| `sentinel_zero/mcp_server.py` | The `sentinel-zero-mcp` command — same `run()` call, exposed as one MCP tool (`analyze_repository`) so an agent can call this engine as a disposition authority instead of guessing. |
+| `sentinel_zero/repo_detect.py` | Shared by `cli.py` and `mcp_server.py`: language auto-detection by file-extension count, and the JS/TS `node_modules` presence check. |
+| `sentinel_zero/data/asi-catalog-snapshot.json` | A point-in-time ASI catalog export bundled into the package so a fresh install has a taxonomy to check findings against with zero setup. Used only when the caller passes no `--catalog`/`catalog_path`, and every ledger produced this way says so explicitly (`catalog.is_bundled_snapshot: true`, plus the snapshot's own version/generatedAt) — this is a default *path* into the same live-catalog mechanism, never a second, hardcoded taxonomy. |
 
 ## Milestones (Phase 1: 1 through 11)
 
@@ -71,6 +76,8 @@ specific bugs found in the earlier pipeline:
 | 9 | Wrapper-middleware detection for JS, generalized beyond Python's `__call__` convention (JS has none — detects any forwarding method by shape) | JS |
 | 10 | TypeScript support (`.ts`, not `.tsx`) via `@typescript-eslint/typescript-estree` alongside acorn | TS |
 | 11 | Class method bodies walked for call-site recording — closed a gap where a sink call inside *any* Python method was entirely invisible, not even `UNRESOLVED_INCONCLUSIVE` | Python |
+| 12 | Closed the correctness gaps Milestone 11 deferred: Python `cls.foo()` dispatch resolves (not just `self`); JS/TS class method *and constructor* bodies are now walked for call-site recording the same way Python's are; TS parameter-property constructor sugar is detected directly from the constructor's param list; the guard-presence check now requires an actual `raise` for the cross-function delegation case (a bare `return` in a delegate doesn't protect the caller) | Python, JS, TS |
+| 13 | Packaging: `pip install`-able with a `sentinel-zero` console command and a `sentinel-zero-mcp` MCP server, a bundled ASI catalog snapshot so a fresh install needs no external file to get started, and explicit regression tests for the three invariants below | — |
 
 Every milestone above was dogfooded against ≥2–3 real, unrelated
 repositories before being trusted, and every surprising result was
@@ -80,28 +87,45 @@ used across this phase: `block-wise`, `vibe-explainer`, `horos/mcp`,
 `packages/cli` (the real TS stress test — 2,194 modules), and this
 author's own `js-tutorial` (a genuinely small, JS-only sanity check).
 
+## The three invariants
+
+Everything in `cli.py` and `mcp_server.py` is a transport over
+`dogfood_scan.run()` and must never weaken these (see
+`tests/test_invariants.py` and `tests/test_tool_failure.py` for the
+regression coverage):
+
+1. **No silent tool failure.** A bad repo path, a missing/unreadable/
+   malformed catalog, a resolver crash, `node`/`npm` missing for a JS/TS
+   target, an unknown attack-class ID — every one of these is a hard
+   exception (`ToolFailure` or `UnknownAttackClass`) that halts the run
+   with a nonzero exit, never a quiet empty or partial ledger.
+2. **Live ASI catalog only.** There is no hardcoded attack-class name/
+   label table anywhere in this codebase — only ever an `attack_id` key
+   resolved against whatever `Catalog` `disposition.load_catalog()`
+   returns. The catalog snapshot bundled with the package (used only when
+   you don't pass `--catalog`) goes through that exact same
+   `load_catalog()` path and is always labeled as a snapshot, with its
+   own version/date, in the resulting ledger — see `catalog.is_bundled_
+   snapshot` and `catalog.metadata` in the output shape below.
+3. **Finding Plan required.** Every reported hypothesis is a `FindingPlan`
+   built by `disposition.build_finding_plan()`, which forces the
+   attack-class resolution and the required-field check
+   (`schema_check.require_finding_plan_fields`) to happen before anything
+   can be reported — never a bare dict assembled ad hoc by a caller.
+
 ## Known bounds — explicitly deferred, not silently missing
 
 These are stated limits, not bugs waiting to be noticed:
 
-- **Python `cls.foo()` (classmethod dispatch) is not resolved.** Only
-  `self` is bound to the owning class; a call through `cls` falls to an
-  unresolved bare symbol. (Milestone 11)
-- **JS/TS class method *bodies* are still not walked for call-site
-  recording** — only Python closed this (Milestone 11). A JS wrapper's
-  dispatch method is detected structurally (by its forwarding shape)
-  without needing its own calls in the graph, so wrapper detection itself
-  isn't blocked by this, but a plain sink call inside any JS/TS method is
-  still invisible.
-- **TS parameter-property constructor sugar is not detected** by
-  wrapper-middleware detection: `constructor(private inner: Foo) {}`
-  auto-assigns with no statement in the body for the detector to find.
-  (Milestone 10)
 - **`.tsx` (JSX-in-TS) is out of scope.** A `.tsx` file is silently not
   collected, not attempted and reported as a parse error. (Milestone 10)
 - **"Guard precedes sink" is same-function call order, an approximation of
   control dependency — not full CFG dominance.** A guard that runs but
-  whose result is ignored still reads as "guard present."
+  whose result is ignored still reads as "guard present," and whether the
+  condition that triggers the guard's `raise` corresponds to
+  attacker-controlled input is not evaluated. (Tightened in Milestone 12
+  to require an actual `raise`, not a `return`, for the cross-function
+  delegation case — see `callgraph.transitively_guard_shaped`.)
 - **Loop bodies are not given their own branch tag** in either resolver;
   calls inside a loop are recorded at the enclosing branch path.
 - **Python's `import a.b.c` without an alias** binds only the top-level
@@ -110,83 +134,108 @@ These are stated limits, not bugs waiting to be noticed:
 - **The dynamic probe (Milestone 6) is Python-only, PROCESS_EXEC-only, and
   zero-argument-function-only.** It is gated off entirely for JS/TS scans
   and for anything it can't safely construct/call (a class method, a
-  function requiring arguments).
+  function requiring arguments). This means a JS/TS scan can never produce
+  `VERIFIED_TRUE` — every finding it reports tops out at
+  `UNRESOLVED_INCONCLUSIVE`, which is the correct, honest ceiling for
+  what static analysis alone can claim, not a bug.
+- **The sink tables are a starting set, not exhaustive.** Python's table
+  covers `open`/`json.load(s)`/the `subprocess.*` family; the JS/TS table
+  covers `child_process.*`/`eval`/`Function`/`fs.*`/`JSON.parse`. Neither
+  covers, e.g., `pickle`, `yaml.load`, or Node's `vm` module yet.
+- **The MCP server (`sentinel-zero-mcp`) is a single tool** —
+  `analyze_repository`, a synchronous wrapper over one full scan. It has
+  no incremental/partial-rescan mode and no resource endpoints yet.
 
-## Setup
+## Install
 
-Requires Python 3.10+ and Node.js 18+.
-
-```bash
-# Python test/runtime deps
-pip install pytest
-
-# JS/TS resolver's own subprocess deps (acorn, typescript-estree)
-cd sentinel_zero/resolvers/js && npm install && cd -
-```
-
-Running anything under `sentinel_zero/` as a module needs the repo root on
-`PYTHONPATH` (there is no installed package / `pyproject.toml` yet):
-
-```bash
-export PYTHONPATH="$(pwd)"
-```
-
-A scan also needs a live Agent Security Index catalog export (the
-`asi-catalog.json` from the `agent-security-index` repo) — `disposition.py`
-refuses to run without one.
-
-## Running the test suite
+Requires Python 3.10+. Node.js 18+ is only needed if you'll scan a JS/TS
+target.
 
 ```bash
-export PYTHONPATH="$(pwd)"
-pytest tests/ -v
+pip install .
+# or, for development (editable install + test deps):
+pip install -e ".[dev]"
 ```
 
-As of this checkpoint: **38 tests, all passing**, covering both resolvers,
-the shared `callgraph.py` delegation walk, the dynamic probe, external-
-dependency mapping, wrapper-middleware detection, and every documented
-gap above (each one has a test asserting the real, current — not
-aspirational — behavior).
+This installs two commands: `sentinel-zero` (the CLI) and
+`sentinel-zero-mcp` (the MCP server). Nothing here needs `PYTHONPATH`
+set — that was only ever a workaround for running the module tree
+directly out of a git checkout without installing it (still works, see
+"Running without installing" below, and still what the test suite uses).
+
+If you're going to scan a JS/TS repository, install the JS/TS resolver's
+own subprocess dependencies once:
+
+```bash
+sentinel-zero install-js-deps
+```
+
+A scan needs a taxonomy to check findings against. If you have a live
+Agent Security Index catalog export, pass it with `--catalog`; if you
+don't, the CLI falls back to the snapshot bundled with the package and
+says so explicitly, both on the console and in the output ledger (see
+**The three invariants** above) — never silently.
 
 ## Running a scan
 
 ```bash
-python3 -m sentinel_zero.dogfood_scan REPO_ROOT ASI_CATALOG_JSON OUT_DIR [python|javascript]
+sentinel-zero analyze /path/to/some/repo
+sentinel-zero analyze /path/to/some/repo --format md          # also renders report.md
+sentinel-zero analyze /path/to/some/repo --language javascript # skip auto-detection
+sentinel-zero analyze /path/to/some/repo --catalog /path/to/asi-catalog.json
+sentinel-zero analyze /path/to/some/repo --out /tmp/some-repo-scan
 ```
 
-- `REPO_ROOT` — the target repository to scan (not this one).
-- `ASI_CATALOG_JSON` — path to a live `asi-catalog.json` export.
-- `OUT_DIR` — where `verification_ledger.json` is written.
-- Fourth argument is optional, `python` (default) or `javascript` — the
-  JS/TS resolver handles `.js`/`.mjs`/`.cjs`/`.ts` in one pass.
+Language is auto-detected by counting `.py` files against
+`.js`/`.mjs`/`.cjs`/`.ts` files under the target — pass `--language`
+explicitly if that guess would be wrong for an unusual layout. Output
+defaults to `<repo-name>.sentinel-zero` next to the target repo.
+
+See **[`USAGE.md`](USAGE.md)** for a one-page walkthrough of actually
+using the output for bug hunting — install, run, and how to read
+`VERIFIED_TRUE` vs. `UNRESOLVED_INCONCLUSIVE` vs. `TOOL_FAILURE`.
+
+### As an MCP server
 
 ```bash
-# Python target
-python3 -m sentinel_zero.dogfood_scan \
-  /path/to/some/python/repo \
-  /path/to/agent-security-index/public/export/asi-catalog.json \
-  /tmp/out/some-repo \
-  python
-
-# JS/TS target
-python3 -m sentinel_zero.dogfood_scan \
-  /path/to/some/js-or-ts/repo \
-  /path/to/agent-security-index/public/export/asi-catalog.json \
-  /tmp/out/some-repo \
-  javascript
+sentinel-zero-mcp
 ```
+
+Runs over stdio, exposing one tool, `analyze_repository(repo_path,
+language=None, catalog_path=None)`, returning the same ledger dict the
+CLI writes to disk. Point an MCP-capable agent's client config at this
+command to let it call Sentinel-Zero as a disposition authority instead
+of eyeballing a call graph and guessing.
+
+### Running without installing
+
+Still works, and is what `tests/` uses:
+
+```bash
+export PYTHONPATH="$(pwd)"
+pytest tests/ -v
+python3 -m sentinel_zero.cli analyze /path/to/some/repo
+```
+
+As of this checkpoint: **57 tests, all passing**, covering both
+resolvers, the shared `callgraph.py` delegation walk, the dynamic probe,
+external-dependency mapping, wrapper-middleware detection, every
+documented gap above, the `cli.py`/`mcp_server.py` transports, and the
+three invariants end-to-end.
 
 ### Output shape
 
-`OUT_DIR/verification_ledger.json` contains:
+`verification_ledger.json` contains:
 
 ```
 target_repository, modules_scanned, functions_indexed, unresolved_call_sites,
 plan_count, plans, wrapper_middleware_detected, wrapper_construction_sites,
-external_dependencies, parse_errors
+external_dependencies, parse_errors, catalog
 ```
 
 Every entry in `plans` is a Finding Plan with a `disposition.status` of
 exactly one of `VERIFIED_TRUE`, `VERIFIED_FALSE`, `UNRESOLVED_INCONCLUSIVE`,
 or `TOOL_FAILURE` — never anything else, and never silently absent for a
-finding that exists.
+finding that exists. `catalog` records exactly which ASI catalog this run
+checked attack-class IDs against: `path`, `is_bundled_snapshot`, and
+`metadata` (the catalog export's own `version`/`generatedAt`/`status`).
