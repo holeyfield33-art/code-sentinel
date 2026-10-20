@@ -33,10 +33,10 @@
       },
       "disposition": {
         "status": "UNRESOLVED_INCONCLUSIVE",
-        "reason": "a resolved call to blockwise.probes.review_record precedes this sink in the same function, in a non-exclusive branch, and blockwise.probes.review_record is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
-        "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
+        "reason": "a resolved call to blockwise.probes.review_record precedes this sink in the same function, in a non-exclusive branch, and blockwise.probes.review_record raises (directly, or through a bounded delegation chain) on an early-exit condition -- Milestone 12 tightened this check to require an actual `raise`, not a plain `return`, specifically because a return-shaped delegate's early exit only ends ITS OWN body and does nothing to stop this function's next statement. Same-function call order is still only an approximation of control dependency, not full CFG dominance, and this resolver still does not know whether the condition that triggers the raise corresponds to attacker-controlled input -- never promoted to VERIFIED_FALSE.",
+        "residual_uncertainty": "Medium: a raise-shaped guard call precedes the sink, but neither full CFG dominance nor the triggering condition's relationship to attacker input is verified."
       },
-      "generated_at": "2026-10-20T17:06:46.541383+00:00"
+      "generated_at": "2026-10-20T18:57:09.492754+00:00"
     },
     {
       "plan_id": "fp_sz_0002",
@@ -67,7 +67,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.541494+00:00"
+      "generated_at": "2026-10-20T18:57:09.492915+00:00"
     },
     {
       "plan_id": "fp_sz_0003",
@@ -98,7 +98,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.541550+00:00"
+      "generated_at": "2026-10-20T18:57:09.492985+00:00"
     },
     {
       "plan_id": "fp_sz_0004",
@@ -129,7 +129,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.541602+00:00"
+      "generated_at": "2026-10-20T18:57:09.493003+00:00"
     },
     {
       "plan_id": "fp_sz_0005",
@@ -160,7 +160,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.541659+00:00"
+      "generated_at": "2026-10-20T18:57:09.493075+00:00"
     },
     {
       "plan_id": "fp_sz_0006",
@@ -191,7 +191,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.545666+00:00"
+      "generated_at": "2026-10-20T18:57:09.499970+00:00"
     },
     {
       "plan_id": "fp_sz_0007",
@@ -219,10 +219,10 @@
       },
       "disposition": {
         "status": "UNRESOLVED_INCONCLUSIVE",
-        "reason": "a resolved call to blockwise.schema.validate_score precedes this sink in the same function, in a non-exclusive branch, and blockwise.schema.validate_score is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
-        "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
+        "reason": "a resolved call to blockwise.schema.validate_score precedes this sink in the same function, in a non-exclusive branch, and blockwise.schema.validate_score raises (directly, or through a bounded delegation chain) on an early-exit condition -- Milestone 12 tightened this check to require an actual `raise`, not a plain `return`, specifically because a return-shaped delegate's early exit only ends ITS OWN body and does nothing to stop this function's next statement. Same-function call order is still only an approximation of control dependency, not full CFG dominance, and this resolver still does not know whether the condition that triggers the raise corresponds to attacker-controlled input -- never promoted to VERIFIED_FALSE.",
+        "residual_uncertainty": "Medium: a raise-shaped guard call precedes the sink, but neither full CFG dominance nor the triggering condition's relationship to attacker input is verified."
       },
-      "generated_at": "2026-10-20T17:06:46.545733+00:00"
+      "generated_at": "2026-10-20T18:57:09.500094+00:00"
     },
     {
       "plan_id": "fp_sz_0008",
@@ -250,10 +250,10 @@
       },
       "disposition": {
         "status": "UNRESOLVED_INCONCLUSIVE",
-        "reason": "a resolved call to blockwise.schema.validate_score precedes this sink in the same function, in a non-exclusive branch, and blockwise.schema.validate_score is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
-        "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
+        "reason": "a resolved call to blockwise.schema.validate_score precedes this sink in the same function, in a non-exclusive branch, and blockwise.schema.validate_score raises (directly, or through a bounded delegation chain) on an early-exit condition -- Milestone 12 tightened this check to require an actual `raise`, not a plain `return`, specifically because a return-shaped delegate's early exit only ends ITS OWN body and does nothing to stop this function's next statement. Same-function call order is still only an approximation of control dependency, not full CFG dominance, and this resolver still does not know whether the condition that triggers the raise corresponds to attacker-controlled input -- never promoted to VERIFIED_FALSE.",
+        "residual_uncertainty": "Medium: a raise-shaped guard call precedes the sink, but neither full CFG dominance nor the triggering condition's relationship to attacker input is verified."
       },
-      "generated_at": "2026-10-20T17:06:46.545799+00:00"
+      "generated_at": "2026-10-20T18:57:09.500192+00:00"
     },
     {
       "plan_id": "fp_sz_0009",
@@ -284,7 +284,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.545817+00:00"
+      "generated_at": "2026-10-20T18:57:09.500219+00:00"
     },
     {
       "plan_id": "fp_sz_0010",
@@ -315,7 +315,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.545842+00:00"
+      "generated_at": "2026-10-20T18:57:09.500255+00:00"
     },
     {
       "plan_id": "fp_sz_0011",
@@ -346,7 +346,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.545879+00:00"
+      "generated_at": "2026-10-20T18:57:09.500316+00:00"
     },
     {
       "plan_id": "fp_sz_0012",
@@ -377,7 +377,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.546815+00:00"
+      "generated_at": "2026-10-20T18:57:09.501873+00:00"
     },
     {
       "plan_id": "fp_sz_0013",
@@ -408,7 +408,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.551681+00:00"
+      "generated_at": "2026-10-20T18:57:09.506967+00:00"
     },
     {
       "plan_id": "fp_sz_0014",
@@ -436,10 +436,10 @@
       },
       "disposition": {
         "status": "VERIFIED_TRUE",
-        "reason": "a bounded dynamic probe called experiments.agent-cache-003.run003.build() with zero arguments in an isolated subprocess and observed subprocess.run invoked (args=(['/tmp/bw-venv/bin/python', '-m', 'blockwise', 'list', '--category', 'blueprint'],)) before the real sink could execute (monkeypatched, never actually run). This confirms the call path is live and reachable under at least one real invocation.",
+        "reason": "a bounded dynamic probe called experiments.agent-cache-003.run003.build() with zero arguments in an isolated subprocess and observed subprocess.run invoked (args=(['/usr/bin/python3', '-m', 'blockwise', 'list', '--category', 'blueprint'],)) before the real sink could execute (monkeypatched, never actually run). This confirms the call path is live and reachable under at least one real invocation.",
         "residual_uncertainty": "Low: dynamic reachability confirmed under one benign call; no adversarial inputs were attempted (explicitly out of scope for this probe)."
       },
-      "generated_at": "2026-10-20T17:06:46.551707+00:00"
+      "generated_at": "2026-10-20T18:57:09.506998+00:00"
     },
     {
       "plan_id": "fp_sz_0015",
@@ -470,7 +470,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.619917+00:00"
+      "generated_at": "2026-10-20T18:57:09.590217+00:00"
     },
     {
       "plan_id": "fp_sz_0016",
@@ -501,7 +501,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.625167+00:00"
+      "generated_at": "2026-10-20T18:57:09.597037+00:00"
     },
     {
       "plan_id": "fp_sz_0017",
@@ -529,10 +529,10 @@
       },
       "disposition": {
         "status": "VERIFIED_TRUE",
-        "reason": "a bounded dynamic probe called experiments.agent-cache-003.run003.version_change() with zero arguments in an isolated subprocess and observed subprocess.run invoked (args=(['/tmp/bw-venv/bin/python', '/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/bwcache.py', 'verify'],)) before the real sink could execute (monkeypatched, never actually run). This confirms the call path is live and reachable under at least one real invocation.",
+        "reason": "a bounded dynamic probe called experiments.agent-cache-003.run003.version_change() with zero arguments in an isolated subprocess and observed subprocess.run invoked (args=(['/usr/bin/python3', '/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/bwcache.py', 'verify'],)) before the real sink could execute (monkeypatched, never actually run). This confirms the call path is live and reachable under at least one real invocation.",
         "residual_uncertainty": "Low: dynamic reachability confirmed under one benign call; no adversarial inputs were attempted (explicitly out of scope for this probe)."
       },
-      "generated_at": "2026-10-20T17:06:46.625205+00:00"
+      "generated_at": "2026-10-20T18:57:09.597073+00:00"
     },
     {
       "plan_id": "fp_sz_0018",
@@ -563,7 +563,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.680709+00:00"
+      "generated_at": "2026-10-20T18:57:09.662373+00:00"
     },
     {
       "plan_id": "fp_sz_0019",
@@ -594,7 +594,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.680752+00:00"
+      "generated_at": "2026-10-20T18:57:09.662430+00:00"
     },
     {
       "plan_id": "fp_sz_0020",
@@ -625,7 +625,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.680782+00:00"
+      "generated_at": "2026-10-20T18:57:09.662542+00:00"
     },
     {
       "plan_id": "fp_sz_0021",
@@ -656,7 +656,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.680795+00:00"
+      "generated_at": "2026-10-20T18:57:09.662575+00:00"
     },
     {
       "plan_id": "fp_sz_0022",
@@ -687,7 +687,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.680807+00:00"
+      "generated_at": "2026-10-20T18:57:09.662595+00:00"
     },
     {
       "plan_id": "fp_sz_0023",
@@ -718,7 +718,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.680818+00:00"
+      "generated_at": "2026-10-20T18:57:09.662613+00:00"
     },
     {
       "plan_id": "fp_sz_0024",
@@ -749,7 +749,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.680845+00:00"
+      "generated_at": "2026-10-20T18:57:09.662650+00:00"
     },
     {
       "plan_id": "fp_sz_0025",
@@ -780,7 +780,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.680860+00:00"
+      "generated_at": "2026-10-20T18:57:09.662671+00:00"
     },
     {
       "plan_id": "fp_sz_0026",
@@ -811,7 +811,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.680900+00:00"
+      "generated_at": "2026-10-20T18:57:09.662781+00:00"
     },
     {
       "plan_id": "fp_sz_0027",
@@ -842,7 +842,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.680917+00:00"
+      "generated_at": "2026-10-20T18:57:09.662823+00:00"
     },
     {
       "plan_id": "fp_sz_0028",
@@ -873,7 +873,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.680944+00:00"
+      "generated_at": "2026-10-20T18:57:09.662870+00:00"
     },
     {
       "plan_id": "fp_sz_0029",
@@ -904,7 +904,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.680960+00:00"
+      "generated_at": "2026-10-20T18:57:09.662893+00:00"
     },
     {
       "plan_id": "fp_sz_0030",
@@ -935,7 +935,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.680989+00:00"
+      "generated_at": "2026-10-20T18:57:09.662941+00:00"
     },
     {
       "plan_id": "fp_sz_0031",
@@ -966,7 +966,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.681006+00:00"
+      "generated_at": "2026-10-20T18:57:09.662964+00:00"
     },
     {
       "plan_id": "fp_sz_0032",
@@ -997,7 +997,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.681043+00:00"
+      "generated_at": "2026-10-20T18:57:09.663006+00:00"
     },
     {
       "plan_id": "fp_sz_0033",
@@ -1028,7 +1028,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.681061+00:00"
+      "generated_at": "2026-10-20T18:57:09.663028+00:00"
     },
     {
       "plan_id": "fp_sz_0034",
@@ -1059,7 +1059,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.681088+00:00"
+      "generated_at": "2026-10-20T18:57:09.663073+00:00"
     },
     {
       "plan_id": "fp_sz_0035",
@@ -1090,7 +1090,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.681101+00:00"
+      "generated_at": "2026-10-20T18:57:09.663098+00:00"
     },
     {
       "plan_id": "fp_sz_0036",
@@ -1121,7 +1121,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.681125+00:00"
+      "generated_at": "2026-10-20T18:57:09.663144+00:00"
     },
     {
       "plan_id": "fp_sz_0037",
@@ -1152,7 +1152,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.681140+00:00"
+      "generated_at": "2026-10-20T18:57:09.663166+00:00"
     },
     {
       "plan_id": "fp_sz_0038",
@@ -1183,7 +1183,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.681164+00:00"
+      "generated_at": "2026-10-20T18:57:09.663208+00:00"
     },
     {
       "plan_id": "fp_sz_0039",
@@ -1214,7 +1214,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.681177+00:00"
+      "generated_at": "2026-10-20T18:57:09.663230+00:00"
     },
     {
       "plan_id": "fp_sz_0040",
@@ -1245,7 +1245,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.681200+00:00"
+      "generated_at": "2026-10-20T18:57:09.663269+00:00"
     },
     {
       "plan_id": "fp_sz_0041",
@@ -1276,7 +1276,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.681212+00:00"
+      "generated_at": "2026-10-20T18:57:09.663292+00:00"
     },
     {
       "plan_id": "fp_sz_0042",
@@ -1307,7 +1307,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.681229+00:00"
+      "generated_at": "2026-10-20T18:57:09.663317+00:00"
     },
     {
       "plan_id": "fp_sz_0043",
@@ -1338,7 +1338,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.681251+00:00"
+      "generated_at": "2026-10-20T18:57:09.663352+00:00"
     },
     {
       "plan_id": "fp_sz_0044",
@@ -1369,7 +1369,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.681262+00:00"
+      "generated_at": "2026-10-20T18:57:09.663370+00:00"
     },
     {
       "plan_id": "fp_sz_0045",
@@ -1400,7 +1400,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.681272+00:00"
+      "generated_at": "2026-10-20T18:57:09.663391+00:00"
     },
     {
       "plan_id": "fp_sz_0046",
@@ -1431,7 +1431,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.681285+00:00"
+      "generated_at": "2026-10-20T18:57:09.663410+00:00"
     },
     {
       "plan_id": "fp_sz_0047",
@@ -1462,7 +1462,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.684543+00:00"
+      "generated_at": "2026-10-20T18:57:09.666623+00:00"
     },
     {
       "plan_id": "fp_sz_0048",
@@ -1493,7 +1493,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.686081+00:00"
+      "generated_at": "2026-10-20T18:57:09.668939+00:00"
     },
     {
       "plan_id": "fp_sz_0049",
@@ -1524,7 +1524,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.686131+00:00"
+      "generated_at": "2026-10-20T18:57:09.669019+00:00"
     },
     {
       "plan_id": "fp_sz_0050",
@@ -1555,7 +1555,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.686152+00:00"
+      "generated_at": "2026-10-20T18:57:09.669053+00:00"
     },
     {
       "plan_id": "fp_sz_0051",
@@ -1583,10 +1583,10 @@
       },
       "disposition": {
         "status": "UNRESOLVED_INCONCLUSIVE",
-        "reason": "a resolved call to blockwise.presets.render_blueprint precedes this sink in the same function, in a non-exclusive branch, and blockwise.presets.render_blueprint is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
-        "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
+        "reason": "a resolved call to blockwise.presets.render_blueprint precedes this sink in the same function, in a non-exclusive branch, and blockwise.presets.render_blueprint raises (directly, or through a bounded delegation chain) on an early-exit condition -- Milestone 12 tightened this check to require an actual `raise`, not a plain `return`, specifically because a return-shaped delegate's early exit only ends ITS OWN body and does nothing to stop this function's next statement. Same-function call order is still only an approximation of control dependency, not full CFG dominance, and this resolver still does not know whether the condition that triggers the raise corresponds to attacker-controlled input -- never promoted to VERIFIED_FALSE.",
+        "residual_uncertainty": "Medium: a raise-shaped guard call precedes the sink, but neither full CFG dominance nor the triggering condition's relationship to attacker input is verified."
       },
-      "generated_at": "2026-10-20T17:06:46.690845+00:00"
+      "generated_at": "2026-10-20T18:57:09.676790+00:00"
     },
     {
       "plan_id": "fp_sz_0052",
@@ -1617,7 +1617,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.690872+00:00"
+      "generated_at": "2026-10-20T18:57:09.676835+00:00"
     },
     {
       "plan_id": "fp_sz_0053",
@@ -1648,7 +1648,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.690896+00:00"
+      "generated_at": "2026-10-20T18:57:09.676868+00:00"
     },
     {
       "plan_id": "fp_sz_0054",
@@ -1679,7 +1679,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.690911+00:00"
+      "generated_at": "2026-10-20T18:57:09.676892+00:00"
     },
     {
       "plan_id": "fp_sz_0055",
@@ -1710,7 +1710,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.690921+00:00"
+      "generated_at": "2026-10-20T18:57:09.676908+00:00"
     },
     {
       "plan_id": "fp_sz_0056",
@@ -1741,7 +1741,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.690930+00:00"
+      "generated_at": "2026-10-20T18:57:09.676924+00:00"
     },
     {
       "plan_id": "fp_sz_0057",
@@ -1772,7 +1772,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691040+00:00"
+      "generated_at": "2026-10-20T18:57:09.677095+00:00"
     },
     {
       "plan_id": "fp_sz_0058",
@@ -1803,7 +1803,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691055+00:00"
+      "generated_at": "2026-10-20T18:57:09.677121+00:00"
     },
     {
       "plan_id": "fp_sz_0059",
@@ -1834,7 +1834,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691068+00:00"
+      "generated_at": "2026-10-20T18:57:09.677144+00:00"
     },
     {
       "plan_id": "fp_sz_0060",
@@ -1865,7 +1865,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691081+00:00"
+      "generated_at": "2026-10-20T18:57:09.677168+00:00"
     },
     {
       "plan_id": "fp_sz_0061",
@@ -1896,7 +1896,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691093+00:00"
+      "generated_at": "2026-10-20T18:57:09.677192+00:00"
     },
     {
       "plan_id": "fp_sz_0062",
@@ -1927,7 +1927,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691104+00:00"
+      "generated_at": "2026-10-20T18:57:09.677215+00:00"
     },
     {
       "plan_id": "fp_sz_0063",
@@ -1958,7 +1958,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691115+00:00"
+      "generated_at": "2026-10-20T18:57:09.677241+00:00"
     },
     {
       "plan_id": "fp_sz_0064",
@@ -1989,7 +1989,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691128+00:00"
+      "generated_at": "2026-10-20T18:57:09.677266+00:00"
     },
     {
       "plan_id": "fp_sz_0065",
@@ -2020,7 +2020,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691141+00:00"
+      "generated_at": "2026-10-20T18:57:09.677289+00:00"
     },
     {
       "plan_id": "fp_sz_0066",
@@ -2051,7 +2051,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691155+00:00"
+      "generated_at": "2026-10-20T18:57:09.677314+00:00"
     },
     {
       "plan_id": "fp_sz_0067",
@@ -2082,7 +2082,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691167+00:00"
+      "generated_at": "2026-10-20T18:57:09.677336+00:00"
     },
     {
       "plan_id": "fp_sz_0068",
@@ -2113,7 +2113,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691179+00:00"
+      "generated_at": "2026-10-20T18:57:09.677364+00:00"
     },
     {
       "plan_id": "fp_sz_0069",
@@ -2144,7 +2144,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691191+00:00"
+      "generated_at": "2026-10-20T18:57:09.677387+00:00"
     },
     {
       "plan_id": "fp_sz_0070",
@@ -2175,7 +2175,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691201+00:00"
+      "generated_at": "2026-10-20T18:57:09.677407+00:00"
     },
     {
       "plan_id": "fp_sz_0071",
@@ -2206,7 +2206,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691212+00:00"
+      "generated_at": "2026-10-20T18:57:09.677425+00:00"
     },
     {
       "plan_id": "fp_sz_0072",
@@ -2237,7 +2237,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691223+00:00"
+      "generated_at": "2026-10-20T18:57:09.677446+00:00"
     },
     {
       "plan_id": "fp_sz_0073",
@@ -2268,7 +2268,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691235+00:00"
+      "generated_at": "2026-10-20T18:57:09.677468+00:00"
     },
     {
       "plan_id": "fp_sz_0074",
@@ -2299,7 +2299,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691246+00:00"
+      "generated_at": "2026-10-20T18:57:09.677491+00:00"
     },
     {
       "plan_id": "fp_sz_0075",
@@ -2330,7 +2330,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691257+00:00"
+      "generated_at": "2026-10-20T18:57:09.677512+00:00"
     },
     {
       "plan_id": "fp_sz_0076",
@@ -2361,7 +2361,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691268+00:00"
+      "generated_at": "2026-10-20T18:57:09.677535+00:00"
     },
     {
       "plan_id": "fp_sz_0077",
@@ -2392,7 +2392,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691279+00:00"
+      "generated_at": "2026-10-20T18:57:09.677565+00:00"
     },
     {
       "plan_id": "fp_sz_0078",
@@ -2423,7 +2423,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691290+00:00"
+      "generated_at": "2026-10-20T18:57:09.677589+00:00"
     },
     {
       "plan_id": "fp_sz_0079",
@@ -2454,7 +2454,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691302+00:00"
+      "generated_at": "2026-10-20T18:57:09.677610+00:00"
     },
     {
       "plan_id": "fp_sz_0080",
@@ -2485,7 +2485,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691314+00:00"
+      "generated_at": "2026-10-20T18:57:09.677634+00:00"
     },
     {
       "plan_id": "fp_sz_0081",
@@ -2516,7 +2516,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691371+00:00"
+      "generated_at": "2026-10-20T18:57:09.677794+00:00"
     },
     {
       "plan_id": "fp_sz_0082",
@@ -2547,7 +2547,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691385+00:00"
+      "generated_at": "2026-10-20T18:57:09.677823+00:00"
     },
     {
       "plan_id": "fp_sz_0083",
@@ -2578,7 +2578,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691399+00:00"
+      "generated_at": "2026-10-20T18:57:09.677846+00:00"
     },
     {
       "plan_id": "fp_sz_0084",
@@ -2609,7 +2609,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691413+00:00"
+      "generated_at": "2026-10-20T18:57:09.677872+00:00"
     },
     {
       "plan_id": "fp_sz_0085",
@@ -2640,7 +2640,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691428+00:00"
+      "generated_at": "2026-10-20T18:57:09.677900+00:00"
     },
     {
       "plan_id": "fp_sz_0086",
@@ -2671,7 +2671,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691442+00:00"
+      "generated_at": "2026-10-20T18:57:09.677928+00:00"
     },
     {
       "plan_id": "fp_sz_0087",
@@ -2702,7 +2702,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691457+00:00"
+      "generated_at": "2026-10-20T18:57:09.677956+00:00"
     },
     {
       "plan_id": "fp_sz_0088",
@@ -2733,7 +2733,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691470+00:00"
+      "generated_at": "2026-10-20T18:57:09.677983+00:00"
     },
     {
       "plan_id": "fp_sz_0089",
@@ -2764,7 +2764,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691488+00:00"
+      "generated_at": "2026-10-20T18:57:09.678007+00:00"
     },
     {
       "plan_id": "fp_sz_0090",
@@ -2795,7 +2795,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691524+00:00"
+      "generated_at": "2026-10-20T18:57:09.678070+00:00"
     },
     {
       "plan_id": "fp_sz_0091",
@@ -2826,7 +2826,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691539+00:00"
+      "generated_at": "2026-10-20T18:57:09.678099+00:00"
     },
     {
       "plan_id": "fp_sz_0092",
@@ -2857,7 +2857,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.691553+00:00"
+      "generated_at": "2026-10-20T18:57:09.678124+00:00"
     },
     {
       "plan_id": "fp_sz_0093",
@@ -2888,7 +2888,7 @@
         "reason": "a bounded dynamic probe called experiments.trusted-blueprint-002.run002.generator_commit() with zero arguments in an isolated subprocess and observed subprocess.run invoked (args=(['git', '-C', '/home/claude/holeyfield33-art/block-wise', 'log', '-1', '--format=%H', '--', 'blockwise'],)) before the real sink could execute (monkeypatched, never actually run). This confirms the call path is live and reachable under at least one real invocation.",
         "residual_uncertainty": "Low: dynamic reachability confirmed under one benign call; no adversarial inputs were attempted (explicitly out of scope for this probe)."
       },
-      "generated_at": "2026-10-20T17:06:46.691609+00:00"
+      "generated_at": "2026-10-20T18:57:09.678162+00:00"
     },
     {
       "plan_id": "fp_sz_0094",
@@ -2919,7 +2919,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.740622+00:00"
+      "generated_at": "2026-10-20T18:57:09.730336+00:00"
     },
     {
       "plan_id": "fp_sz_0095",
@@ -2950,7 +2950,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.744267+00:00"
+      "generated_at": "2026-10-20T18:57:09.733753+00:00"
     },
     {
       "plan_id": "fp_sz_0096",
@@ -2981,7 +2981,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.744298+00:00"
+      "generated_at": "2026-10-20T18:57:09.733789+00:00"
     },
     {
       "plan_id": "fp_sz_0097",
@@ -3012,7 +3012,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.744322+00:00"
+      "generated_at": "2026-10-20T18:57:09.733816+00:00"
     },
     {
       "plan_id": "fp_sz_0098",
@@ -3043,7 +3043,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.744334+00:00"
+      "generated_at": "2026-10-20T18:57:09.733827+00:00"
     },
     {
       "plan_id": "fp_sz_0099",
@@ -3074,7 +3074,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.744344+00:00"
+      "generated_at": "2026-10-20T18:57:09.733834+00:00"
     },
     {
       "plan_id": "fp_sz_0100",
@@ -3105,7 +3105,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.744359+00:00"
+      "generated_at": "2026-10-20T18:57:09.733845+00:00"
     },
     {
       "plan_id": "fp_sz_0101",
@@ -3136,7 +3136,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.744445+00:00"
+      "generated_at": "2026-10-20T18:57:09.733854+00:00"
     },
     {
       "plan_id": "fp_sz_0102",
@@ -3167,7 +3167,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.744466+00:00"
+      "generated_at": "2026-10-20T18:57:09.733869+00:00"
     },
     {
       "plan_id": "fp_sz_0103",
@@ -3198,7 +3198,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.744528+00:00"
+      "generated_at": "2026-10-20T18:57:09.733897+00:00"
     },
     {
       "plan_id": "fp_sz_0104",
@@ -3229,7 +3229,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.744551+00:00"
+      "generated_at": "2026-10-20T18:57:09.733913+00:00"
     },
     {
       "plan_id": "fp_sz_0105",
@@ -3260,7 +3260,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.744649+00:00"
+      "generated_at": "2026-10-20T18:57:09.733941+00:00"
     },
     {
       "plan_id": "fp_sz_0106",
@@ -3290,10 +3290,10 @@
       },
       "disposition": {
         "status": "UNRESOLVED_INCONCLUSIVE",
-        "reason": "a resolved call to blockwise.presets.render_blueprint precedes this sink in the same function, in a non-exclusive branch, and blockwise.presets.render_blueprint is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
-        "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
+        "reason": "a resolved call to blockwise.presets.render_blueprint precedes this sink in the same function, in a non-exclusive branch, and blockwise.presets.render_blueprint raises (directly, or through a bounded delegation chain) on an early-exit condition -- Milestone 12 tightened this check to require an actual `raise`, not a plain `return`, specifically because a return-shaped delegate's early exit only ends ITS OWN body and does nothing to stop this function's next statement. Same-function call order is still only an approximation of control dependency, not full CFG dominance, and this resolver still does not know whether the condition that triggers the raise corresponds to attacker-controlled input -- never promoted to VERIFIED_FALSE.",
+        "residual_uncertainty": "Medium: a raise-shaped guard call precedes the sink, but neither full CFG dominance nor the triggering condition's relationship to attacker input is verified."
       },
-      "generated_at": "2026-10-20T17:06:46.746928+00:00"
+      "generated_at": "2026-10-20T18:57:09.735739+00:00"
     },
     {
       "plan_id": "fp_sz_0107",
@@ -3323,10 +3323,10 @@
       },
       "disposition": {
         "status": "UNRESOLVED_INCONCLUSIVE",
-        "reason": "a resolved call to blockwise.cli.main precedes this sink in the same function, in a non-exclusive branch, and blockwise.cli.main is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
-        "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
+        "reason": "a resolved call to blockwise.cli.main precedes this sink in the same function, in a non-exclusive branch, and blockwise.cli.main raises (directly, or through a bounded delegation chain) on an early-exit condition -- Milestone 12 tightened this check to require an actual `raise`, not a plain `return`, specifically because a return-shaped delegate's early exit only ends ITS OWN body and does nothing to stop this function's next statement. Same-function call order is still only an approximation of control dependency, not full CFG dominance, and this resolver still does not know whether the condition that triggers the raise corresponds to attacker-controlled input -- never promoted to VERIFIED_FALSE.",
+        "residual_uncertainty": "Medium: a raise-shaped guard call precedes the sink, but neither full CFG dominance nor the triggering condition's relationship to attacker input is verified."
       },
-      "generated_at": "2026-10-20T17:06:46.747303+00:00"
+      "generated_at": "2026-10-20T18:57:09.736109+00:00"
     },
     {
       "plan_id": "fp_sz_0108",
@@ -3357,7 +3357,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.747344+00:00"
+      "generated_at": "2026-10-20T18:57:09.736157+00:00"
     },
     {
       "plan_id": "fp_sz_0109",
@@ -3385,10 +3385,10 @@
       },
       "disposition": {
         "status": "UNRESOLVED_INCONCLUSIVE",
-        "reason": "a resolved call to blockwise.presets.render precedes this sink in the same function, in a non-exclusive branch, and blockwise.presets.render is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
-        "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
+        "reason": "a resolved call to blockwise.presets.render precedes this sink in the same function, in a non-exclusive branch, and blockwise.presets.render raises (directly, or through a bounded delegation chain) on an early-exit condition -- Milestone 12 tightened this check to require an actual `raise`, not a plain `return`, specifically because a return-shaped delegate's early exit only ends ITS OWN body and does nothing to stop this function's next statement. Same-function call order is still only an approximation of control dependency, not full CFG dominance, and this resolver still does not know whether the condition that triggers the raise corresponds to attacker-controlled input -- never promoted to VERIFIED_FALSE.",
+        "residual_uncertainty": "Medium: a raise-shaped guard call precedes the sink, but neither full CFG dominance nor the triggering condition's relationship to attacker input is verified."
       },
-      "generated_at": "2026-10-20T17:06:46.747464+00:00"
+      "generated_at": "2026-10-20T18:57:09.736239+00:00"
     },
     {
       "plan_id": "fp_sz_0110",
@@ -3418,10 +3418,10 @@
       },
       "disposition": {
         "status": "UNRESOLVED_INCONCLUSIVE",
-        "reason": "a resolved call to blockwise.cli.main precedes this sink in the same function, in a non-exclusive branch, and blockwise.cli.main is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
-        "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
+        "reason": "a resolved call to blockwise.cli.main precedes this sink in the same function, in a non-exclusive branch, and blockwise.cli.main raises (directly, or through a bounded delegation chain) on an early-exit condition -- Milestone 12 tightened this check to require an actual `raise`, not a plain `return`, specifically because a return-shaped delegate's early exit only ends ITS OWN body and does nothing to stop this function's next statement. Same-function call order is still only an approximation of control dependency, not full CFG dominance, and this resolver still does not know whether the condition that triggers the raise corresponds to attacker-controlled input -- never promoted to VERIFIED_FALSE.",
+        "residual_uncertainty": "Medium: a raise-shaped guard call precedes the sink, but neither full CFG dominance nor the triggering condition's relationship to attacker input is verified."
       },
-      "generated_at": "2026-10-20T17:06:46.747832+00:00"
+      "generated_at": "2026-10-20T18:57:09.736529+00:00"
     },
     {
       "plan_id": "fp_sz_0111",
@@ -3451,10 +3451,10 @@
       },
       "disposition": {
         "status": "UNRESOLVED_INCONCLUSIVE",
-        "reason": "a resolved call to blockwise.cli.main precedes this sink in the same function, in a non-exclusive branch, and blockwise.cli.main is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
-        "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
+        "reason": "a resolved call to blockwise.cli.main precedes this sink in the same function, in a non-exclusive branch, and blockwise.cli.main raises (directly, or through a bounded delegation chain) on an early-exit condition -- Milestone 12 tightened this check to require an actual `raise`, not a plain `return`, specifically because a return-shaped delegate's early exit only ends ITS OWN body and does nothing to stop this function's next statement. Same-function call order is still only an approximation of control dependency, not full CFG dominance, and this resolver still does not know whether the condition that triggers the raise corresponds to attacker-controlled input -- never promoted to VERIFIED_FALSE.",
+        "residual_uncertainty": "Medium: a raise-shaped guard call precedes the sink, but neither full CFG dominance nor the triggering condition's relationship to attacker input is verified."
       },
-      "generated_at": "2026-10-20T17:06:46.748176+00:00"
+      "generated_at": "2026-10-20T18:57:09.736847+00:00"
     },
     {
       "plan_id": "fp_sz_0112",
@@ -3484,10 +3484,10 @@
       },
       "disposition": {
         "status": "UNRESOLVED_INCONCLUSIVE",
-        "reason": "a resolved call to blockwise.cli.main precedes this sink in the same function, in a non-exclusive branch, and blockwise.cli.main is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
-        "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
+        "reason": "a resolved call to blockwise.cli.main precedes this sink in the same function, in a non-exclusive branch, and blockwise.cli.main raises (directly, or through a bounded delegation chain) on an early-exit condition -- Milestone 12 tightened this check to require an actual `raise`, not a plain `return`, specifically because a return-shaped delegate's early exit only ends ITS OWN body and does nothing to stop this function's next statement. Same-function call order is still only an approximation of control dependency, not full CFG dominance, and this resolver still does not know whether the condition that triggers the raise corresponds to attacker-controlled input -- never promoted to VERIFIED_FALSE.",
+        "residual_uncertainty": "Medium: a raise-shaped guard call precedes the sink, but neither full CFG dominance nor the triggering condition's relationship to attacker input is verified."
       },
-      "generated_at": "2026-10-20T17:06:46.748467+00:00"
+      "generated_at": "2026-10-20T18:57:09.737127+00:00"
     },
     {
       "plan_id": "fp_sz_0113",
@@ -3517,10 +3517,10 @@
       },
       "disposition": {
         "status": "UNRESOLVED_INCONCLUSIVE",
-        "reason": "a resolved call to blockwise.cli.main precedes this sink in the same function, in a non-exclusive branch, and blockwise.cli.main is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
-        "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
+        "reason": "a resolved call to blockwise.cli.main precedes this sink in the same function, in a non-exclusive branch, and blockwise.cli.main raises (directly, or through a bounded delegation chain) on an early-exit condition -- Milestone 12 tightened this check to require an actual `raise`, not a plain `return`, specifically because a return-shaped delegate's early exit only ends ITS OWN body and does nothing to stop this function's next statement. Same-function call order is still only an approximation of control dependency, not full CFG dominance, and this resolver still does not know whether the condition that triggers the raise corresponds to attacker-controlled input -- never promoted to VERIFIED_FALSE.",
+        "residual_uncertainty": "Medium: a raise-shaped guard call precedes the sink, but neither full CFG dominance nor the triggering condition's relationship to attacker input is verified."
       },
-      "generated_at": "2026-10-20T17:06:46.748918+00:00"
+      "generated_at": "2026-10-20T18:57:09.737465+00:00"
     },
     {
       "plan_id": "fp_sz_0114",
@@ -3550,10 +3550,10 @@
       },
       "disposition": {
         "status": "UNRESOLVED_INCONCLUSIVE",
-        "reason": "a resolved call to blockwise.project.check_project precedes this sink in the same function, in a non-exclusive branch, and blockwise.project.check_project is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
-        "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
+        "reason": "a resolved call to blockwise.project.check_project precedes this sink in the same function, in a non-exclusive branch, and blockwise.project.check_project raises (directly, or through a bounded delegation chain) on an early-exit condition -- Milestone 12 tightened this check to require an actual `raise`, not a plain `return`, specifically because a return-shaped delegate's early exit only ends ITS OWN body and does nothing to stop this function's next statement. Same-function call order is still only an approximation of control dependency, not full CFG dominance, and this resolver still does not know whether the condition that triggers the raise corresponds to attacker-controlled input -- never promoted to VERIFIED_FALSE.",
+        "residual_uncertainty": "Medium: a raise-shaped guard call precedes the sink, but neither full CFG dominance nor the triggering condition's relationship to attacker input is verified."
       },
-      "generated_at": "2026-10-20T17:06:46.749180+00:00"
+      "generated_at": "2026-10-20T18:57:09.737615+00:00"
     },
     {
       "plan_id": "fp_sz_0115",
@@ -3581,10 +3581,10 @@
       },
       "disposition": {
         "status": "UNRESOLVED_INCONCLUSIVE",
-        "reason": "a resolved call to blockwise.probes.detector_check precedes this sink in the same function, in a non-exclusive branch, and blockwise.probes.detector_check is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
-        "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
+        "reason": "a resolved call to blockwise.probes.detector_check precedes this sink in the same function, in a non-exclusive branch, and blockwise.probes.detector_check raises (directly, or through a bounded delegation chain) on an early-exit condition -- Milestone 12 tightened this check to require an actual `raise`, not a plain `return`, specifically because a return-shaped delegate's early exit only ends ITS OWN body and does nothing to stop this function's next statement. Same-function call order is still only an approximation of control dependency, not full CFG dominance, and this resolver still does not know whether the condition that triggers the raise corresponds to attacker-controlled input -- never promoted to VERIFIED_FALSE.",
+        "residual_uncertainty": "Medium: a raise-shaped guard call precedes the sink, but neither full CFG dominance nor the triggering condition's relationship to attacker input is verified."
       },
-      "generated_at": "2026-10-20T17:06:46.750816+00:00"
+      "generated_at": "2026-10-20T18:57:09.739178+00:00"
     },
     {
       "plan_id": "fp_sz_0116",
@@ -3615,7 +3615,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.750855+00:00"
+      "generated_at": "2026-10-20T18:57:09.739208+00:00"
     },
     {
       "plan_id": "fp_sz_0117",
@@ -3645,10 +3645,10 @@
       },
       "disposition": {
         "status": "UNRESOLVED_INCONCLUSIVE",
-        "reason": "a resolved call to blockwise.cli.main precedes this sink in the same function, in a non-exclusive branch, and blockwise.cli.main is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
-        "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
+        "reason": "a resolved call to blockwise.cli.main precedes this sink in the same function, in a non-exclusive branch, and blockwise.cli.main raises (directly, or through a bounded delegation chain) on an early-exit condition -- Milestone 12 tightened this check to require an actual `raise`, not a plain `return`, specifically because a return-shaped delegate's early exit only ends ITS OWN body and does nothing to stop this function's next statement. Same-function call order is still only an approximation of control dependency, not full CFG dominance, and this resolver still does not know whether the condition that triggers the raise corresponds to attacker-controlled input -- never promoted to VERIFIED_FALSE.",
+        "residual_uncertainty": "Medium: a raise-shaped guard call precedes the sink, but neither full CFG dominance nor the triggering condition's relationship to attacker input is verified."
       },
-      "generated_at": "2026-10-20T17:06:46.751163+00:00"
+      "generated_at": "2026-10-20T18:57:09.739555+00:00"
     },
     {
       "plan_id": "fp_sz_0118",
@@ -3678,10 +3678,10 @@
       },
       "disposition": {
         "status": "UNRESOLVED_INCONCLUSIVE",
-        "reason": "a resolved call to blockwise.cli.main precedes this sink in the same function, in a non-exclusive branch, and blockwise.cli.main is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
-        "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
+        "reason": "a resolved call to blockwise.cli.main precedes this sink in the same function, in a non-exclusive branch, and blockwise.cli.main raises (directly, or through a bounded delegation chain) on an early-exit condition -- Milestone 12 tightened this check to require an actual `raise`, not a plain `return`, specifically because a return-shaped delegate's early exit only ends ITS OWN body and does nothing to stop this function's next statement. Same-function call order is still only an approximation of control dependency, not full CFG dominance, and this resolver still does not know whether the condition that triggers the raise corresponds to attacker-controlled input -- never promoted to VERIFIED_FALSE.",
+        "residual_uncertainty": "Medium: a raise-shaped guard call precedes the sink, but neither full CFG dominance nor the triggering condition's relationship to attacker input is verified."
       },
-      "generated_at": "2026-10-20T17:06:46.751451+00:00"
+      "generated_at": "2026-10-20T18:57:09.739883+00:00"
     },
     {
       "plan_id": "fp_sz_0119",
@@ -3712,7 +3712,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.751477+00:00"
+      "generated_at": "2026-10-20T18:57:09.739913+00:00"
     },
     {
       "plan_id": "fp_sz_0120",
@@ -3743,7 +3743,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.751487+00:00"
+      "generated_at": "2026-10-20T18:57:09.739924+00:00"
     },
     {
       "plan_id": "fp_sz_0121",
@@ -3774,7 +3774,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.751501+00:00"
+      "generated_at": "2026-10-20T18:57:09.739939+00:00"
     },
     {
       "plan_id": "fp_sz_0122",
@@ -3807,7 +3807,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.751513+00:00"
+      "generated_at": "2026-10-20T18:57:09.739950+00:00"
     },
     {
       "plan_id": "fp_sz_0123",
@@ -3840,7 +3840,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.754046+00:00"
+      "generated_at": "2026-10-20T18:57:09.742118+00:00"
     },
     {
       "plan_id": "fp_sz_0124",
@@ -3873,7 +3873,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.756292+00:00"
+      "generated_at": "2026-10-20T18:57:09.744240+00:00"
     },
     {
       "plan_id": "fp_sz_0125",
@@ -3904,7 +3904,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run yet for this finding.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T17:06:46.756342+00:00"
+      "generated_at": "2026-10-20T18:57:09.744294+00:00"
     },
     {
       "plan_id": "fp_sz_0126",
@@ -3932,10 +3932,10 @@
       },
       "disposition": {
         "status": "UNRESOLVED_INCONCLUSIVE",
-        "reason": "a resolved call to blockwise.schema.validate_score precedes this sink in the same function, in a non-exclusive branch, and blockwise.schema.validate_score is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
-        "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
+        "reason": "a resolved call to blockwise.schema.validate_score precedes this sink in the same function, in a non-exclusive branch, and blockwise.schema.validate_score raises (directly, or through a bounded delegation chain) on an early-exit condition -- Milestone 12 tightened this check to require an actual `raise`, not a plain `return`, specifically because a return-shaped delegate's early exit only ends ITS OWN body and does nothing to stop this function's next statement. Same-function call order is still only an approximation of control dependency, not full CFG dominance, and this resolver still does not know whether the condition that triggers the raise corresponds to attacker-controlled input -- never promoted to VERIFIED_FALSE.",
+        "residual_uncertainty": "Medium: a raise-shaped guard call precedes the sink, but neither full CFG dominance nor the triggering condition's relationship to attacker input is verified."
       },
-      "generated_at": "2026-10-20T17:06:46.756387+00:00"
+      "generated_at": "2026-10-20T18:57:09.744337+00:00"
     }
   ],
   "wrapper_middleware_detected": [],

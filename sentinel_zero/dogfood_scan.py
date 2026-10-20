@@ -34,7 +34,9 @@ selected with the `language` parameter/CLI arg -- the proof that graph.py's
 IR holds for more than one language without changing any of the generic
 machinery above. The JS resolver is deliberately NOT at parity with
 Python's five milestones yet (see js_resolver.py/extract_graph.js for the
-exact bounds: top-level functions only, no wrapper-class detection).
+current, stated bounds -- wrapper-class detection and class-method
+call-walking were added in Milestones 9 and 12 respectively, so this is
+no longer "top-level functions only").
 Milestone 8 added external-dependency mapping for JS too, via the same
 _dependency_summary()/ExternalReference machinery below -- no new logic
 needed here, only a JS-populated graph.external_references. Milestone 6's
@@ -216,10 +218,17 @@ def find_finding_plans(
                         plan,
                         "UNRESOLVED_INCONCLUSIVE",
                         reason=f"a resolved call to {guard_hit} precedes this sink in the same function, in a "
-                               f"non-exclusive branch, and {guard_hit} is guard-shaped either directly or through "
-                               "a bounded delegation chain. Same-function call order is an approximation of "
-                               "control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
-                        residual_uncertainty="Low-medium: guard resolved by identity/delegation and shape, coverage not proven.",
+                               f"non-exclusive branch, and {guard_hit} raises (directly, or through a bounded "
+                               "delegation chain) on an early-exit condition -- Milestone 12 tightened this check "
+                               "to require an actual `raise`, not a plain `return`, specifically because a "
+                               "return-shaped delegate's early exit only ends ITS OWN body and does nothing to "
+                               "stop this function's next statement. Same-function call order is still only an "
+                               "approximation of control dependency, not full CFG dominance, and this resolver "
+                               "still does not know whether the condition that triggers the raise corresponds to "
+                               "attacker-controlled input -- never promoted to VERIFIED_FALSE.",
+                        residual_uncertainty="Medium: a raise-shaped guard call precedes the sink, but neither "
+                        "full CFG dominance nor the triggering condition's relationship to attacker input is "
+                        "verified.",
                     )
                 else:
                     set_disposition(

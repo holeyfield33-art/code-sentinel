@@ -92,13 +92,10 @@ def test_unresolvable_dynamic_callee_is_unresolved_not_guessed():
         assert calls[0].target.__class__.__name__ == "Unresolved"
 
 
-def test_class_methods_indexed_but_not_walked_for_calls():
-    """Matches Milestone 9's exact scope, mirroring Python precisely: every
-    class method IS indexed as a FunctionInfo (is_guard_shaped included --
-    needed for wrapper-dispatch detection), but a method's body is still
-    NOT walked for CallSite recording. This is the same real, documented
-    gap python_resolver.py has (see dogfood_scan.py's Milestone 6 commit) --
-    not a JS-specific choice, kept consistent rather than papered over."""
+def test_class_methods_indexed_and_now_walked_for_calls():
+    """Milestone 12 closed the gap this test used to pin (matching
+    Python's Milestone 11 fix): every class method IS indexed as a
+    FunctionInfo, AND its body is now walked for CallSite recording too."""
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         (root / "svc.js").write_text(
@@ -111,9 +108,50 @@ def test_class_methods_indexed_but_not_walked_for_calls():
             "module.exports = Service;\n"
         )
         graph = build_project_graph(root)
-        assert graph.all_calls() == []  # the exec('echo hi') call is NOT recorded
+        calls = graph.all_calls()
+        assert len(calls) == 1
+        assert calls[0].caller == "svc.Service.run"
+        assert calls[0].target == Symbol("child_process.exec")
         assert "svc.Service.run" in graph.functions
         assert graph.functions["svc.Service.run"].is_guard_shaped is False
+
+
+def test_this_dispatch_resolves_to_the_real_method_qualname_js():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "svc.js").write_text(
+            "class Service {\n"
+            "  dispatch() {\n"
+            "    return this.helper();\n"
+            "  }\n"
+            "  helper() {\n"
+            "    return 1;\n"
+            "  }\n"
+            "}\n"
+        )
+        graph = build_project_graph(root)
+        calls = graph.all_calls()
+        assert len(calls) == 1
+        assert calls[0].caller == "svc.Service.dispatch"
+        assert calls[0].target == Symbol("svc.Service.helper")
+
+
+def test_constructor_body_is_also_walked_for_calls():
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "svc.js").write_text(
+            "const { exec } = require('child_process');\n"
+            "class Service {\n"
+            "  constructor() {\n"
+            "    exec('echo hi');\n"
+            "  }\n"
+            "}\n"
+        )
+        graph = build_project_graph(root)
+        calls = graph.all_calls()
+        assert len(calls) == 1
+        assert calls[0].caller == "svc.Service.constructor"
+        assert calls[0].target == Symbol("child_process.exec")
 
 
 def test_unparseable_file_reported_not_silently_dropped():

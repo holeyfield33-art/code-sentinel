@@ -127,10 +127,24 @@ def transitively_guard_shaped(
     _visited: frozenset[str] = frozenset(),
     _depth: int = 0,
 ) -> bool:
+    """Milestone 12: checks FunctionInfo.raises_on_guard, NOT the broader
+    is_guard_shaped. This function answers "if I call `name` as a
+    delegate and discard whatever it returns, can `name` still stop MY
+    next statement from running?" Only a `raise` can do that (it
+    propagates as an exception into the caller); a plain `return` only
+    ends `name`'s own body and has zero effect on the caller's control
+    flow unless the caller checks a returned value, which this resolver
+    does not model. Confirmed as a real false-positive category before
+    this field existed: a return-shaped delegate was read as "protecting"
+    a sink in a caller that never actually checked its return value. See
+    graph.py's FunctionInfo.raises_on_guard for the full reasoning, and
+    is_guard_shaped's own docstring for why that broader, raise-OR-return
+    check is still the right one for a DIFFERENT use (a wrapper's own
+    dispatch method checking itself before forwarding, same function)."""
     fn = graph.functions.get(name)
     if fn is None:
         return False
-    if fn.is_guard_shaped:
+    if fn.raises_on_guard:
         return True
     if _depth >= MAX_DEPTH or name in _visited:
         return False

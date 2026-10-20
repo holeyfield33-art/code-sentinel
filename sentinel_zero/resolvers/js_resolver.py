@@ -25,12 +25,19 @@ JSX-in-TS is a separate parser mode, out of scope). Dogfooded against
 Vercel's own CLI (vercel/vercel, packages/cli): 2194 modules / 2034
 functions indexed from real TS source, versus 209 modules of mostly dev-
 server test fixtures before this milestone, when every real .ts file in
-that repo was invisible to this resolver. One confirmed, logged gap: TS
-parameter-property constructor sugar (`constructor(private x: Foo) {}`,
-common in NestJS-style code) auto-assigns `this.x = x` with no assignment
-statement in the body, so it is not recognized by wrapper-middleware
-detection -- see tests/test_ts_resolver.py's
-test_parameter_property_constructor_sugar_not_detected_known_gap.
+that repo was invisible to this resolver.
+
+Milestone 12 closed two gaps this file used to log here as known limits:
+class method bodies (including the constructor) are now walked for call
+sites too, with `this` bound to the owning class's qualname the same way
+`self`/`cls` are bound on the Python side (see extract_graph.js's
+walkCalls); and TS parameter-property constructor sugar
+(`constructor(private x: Foo) {}`, common in NestJS-style code) is now
+detected directly from the constructor's own parameter list rather than
+relying on a body-walk that could never find it, since the sugar emits no
+assignment statement at all. See tests/test_js_resolver.py and
+tests/test_ts_resolver.py for the regression coverage that replaced the
+old "known gap" pins.
 """
 from __future__ import annotations
 
@@ -118,6 +125,7 @@ def build_project_graph(repo_root: Path) -> ProjectGraph:
         graph.functions[qualname] = FunctionInfo(
             qualified_name=fn["qualified_name"],
             is_guard_shaped=fn["is_guard_shaped"],
+            raises_on_guard=fn["raises_on_guard"],
             file_path=fn["file_path"],
             lineno=fn["lineno"],
         )

@@ -74,11 +74,10 @@ def test_guard_delegation_across_self_dispatch_works_unmodified():
         )
 
 
-def test_classmethod_cls_dispatch_not_handled_known_gap():
-    """Explicitly out of scope for this milestone: only `self` is bound,
-    not `cls`. A classmethod calling another via cls.foo() must NOT
-    silently resolve -- confirmed by checking it lands as a plain,
-    unresolved Symbol rather than the real qualname, not assumed."""
+def test_classmethod_cls_dispatch_resolves_to_the_real_method_qualname():
+    """Milestone 12 closed the gap this test used to pin: `cls` is now
+    bound to the owning class's qualname the same way `self` is, so
+    cls.foo() resolves to the real indexed method, not a bare fallback."""
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         (root / "svc.py").write_text(
@@ -93,7 +92,33 @@ def test_classmethod_cls_dispatch_not_handled_known_gap():
         graph = build_project_graph(root)
         calls = graph.all_calls()
         assert len(calls) == 1
-        # "cls" is never bound, so this falls to the bare dotted fallback --
-        # a Symbol, but NOT the real "svc.Service.helper" qualname.
-        assert calls[0].target == Symbol("cls.helper")
-        assert calls[0].target != Symbol("svc.Service.helper")
+        assert calls[0].caller == "svc.Service.dispatch"
+        assert calls[0].target == Symbol("svc.Service.helper")
+
+
+def test_classmethod_guard_delegation_via_cls_works():
+    """Same proof as the self-dispatch guard-delegation test above, but
+    through cls -- confirms callgraph.py's delegation walk (unchanged,
+    language-agnostic) works through a cls.-resolved call exactly the
+    same way it already does through a self.-resolved one."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "svc.py").write_text(
+            "class Service:\n"
+            "    @classmethod\n"
+            "    def guarded(cls):\n"
+            "        cls.require_admin()\n"
+            "        return cls.do_thing()\n"
+            "    @classmethod\n"
+            "    def require_admin(cls):\n"
+            "        if not cls.is_admin:\n"
+            "            raise PermissionError('nope')\n"
+            "    @classmethod\n"
+            "    def do_thing(cls):\n"
+            "        return 1\n"
+        )
+        graph = build_project_graph(root)
+        callee_index = build_direct_callee_index(graph)
+        guarded_info = graph.functions["svc.Service.guarded"]
+        assert not guarded_info.is_guard_shaped
+        assert transitively_guard_shaped("svc.Service.guarded", graph, callee_index)

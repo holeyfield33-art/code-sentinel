@@ -96,15 +96,13 @@ def test_wrapper_class_detected_with_type_annotated_members():
         assert wc.wrapped_expr == "coreApp"
 
 
-def test_parameter_property_constructor_sugar_not_detected_known_gap():
-    """TS's `constructor(private inner: Function) {}` auto-assigns
-    this.inner = inner with NO assignment statement in the body -- very
-    common in real TS/NestJS code. ctorWrappedParamIndex only looks for an
-    explicit `this.x = paramName` AssignmentExpression in the constructor
-    body, so this shape is a real, confirmed miss (checked by running it
-    before writing this test, not assumed). Logged here as an explicit,
-    known gap rather than silently expanding this milestone's scope --
-    picking it up is its own future piece of work."""
+def test_parameter_property_constructor_sugar_now_detected():
+    """Milestone 12 closed the gap this test used to pin: TS's
+    `constructor(private inner: Function) {}` auto-assigns
+    `this.inner = inner` with no statement in the body, so
+    ctorWrappedParamIndex now checks the constructor's own param list
+    directly for a TSParameterProperty, rather than relying only on the
+    body-walk that can never find this shape."""
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         (root / "svc.ts").write_text(
@@ -117,8 +115,33 @@ def test_parameter_property_constructor_sugar_not_detected_known_gap():
             "}\n"
         )
         graph = build_project_graph(root)
-        assert graph.wrapper_classes == {}, "known gap -- TS parameter-property sugar is not yet modeled"
-        assert "svc.LoggingWrapper.handle" in graph.functions
+        wrapper = graph.wrapper_classes.get("svc.LoggingWrapper")
+        assert wrapper is not None
+        assert wrapper.wrapped_param_index == 0
+        assert wrapper.dispatch_method == "svc.LoggingWrapper.handle"
+        assert not wrapper.dispatch_is_guarded
+
+
+def test_parameter_property_mixed_with_plain_param_keeps_correct_index():
+    """A plain (non-property) param before the parameter-property one must
+    not shift the detected index -- confirmed by checking the real
+    positional index, not assumed from the simpler single-param case above."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "svc.ts").write_text(
+            "class TokenWall {\n"
+            "  constructor(label: string, private inner: Function) {}\n"
+            "  handle(request: any): any {\n"
+            "    if (!request.ok) { throw new Error('no'); }\n"
+            "    return this.inner(request);\n"
+            "  }\n"
+            "}\n"
+        )
+        graph = build_project_graph(root)
+        wrapper = graph.wrapper_classes.get("svc.TokenWall")
+        assert wrapper is not None
+        assert wrapper.wrapped_param_index == 1
+        assert wrapper.dispatch_is_guarded
 
 
 def test_tsx_file_not_collected_known_bound():

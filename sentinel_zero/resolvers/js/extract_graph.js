@@ -4,18 +4,29 @@
  *
  * Deliberately bounded, the JS equivalent of Python's Milestone 1-2 bar, NOT
  * full parity with the Python resolver's five milestones:
- *   - "Caller" scopes are top-level function declarations and top-level
- *     `const name = function(){}` / `const name = () => {}` only. A class
- *     method, an object-literal method, an IIFE, or a callback passed
- *     inline is NOT its own scope here -- any calls inside one are simply
- *     not captured (same "don't guess, report nothing" discipline Python's
+ *   - "Caller" scopes are top-level function declarations, top-level
+ *     `const name = function(){}` / `const name = () => {}`, AND (as of
+ *     Milestone 12) every class's constructor and methods -- `this` is
+ *     bound to the owning class's qualname for each method's own walk,
+ *     mirroring Python's Milestone 11/12 `self`/`cls` binding exactly.
+ *     An object-literal method, an IIFE, or a callback passed inline is
+ *     still NOT its own scope -- any calls inside one are simply not
+ *     captured (same "don't guess, report nothing" discipline Python's
  *     earliest resolver draft used for lambdas).
  *   - require()/import bindings only (CommonJS destructuring and ESM named/
  *     default/namespace imports). Dynamic `import()` is not modeled --
  *     reported Unresolved like any other unrecognized callee shape.
  *   - Guard shape: a same-function, top-level `if (...) { throw ... }` or
- *     `if (...) { return ...; }`, same bar as Python's first guard check --
- *     no cross-function delegation walk on the JS side yet.
+ *     `if (...) { return ...; }` (isGuardShaped); a stricter throw-only
+ *     variant (isRaiseGuardShaped, Milestone 12) is what cross-function
+ *     delegation actually checks for the DELEGATION case -- see
+ *     callgraph.py's transitively_guard_shaped and graph.py's
+ *     FunctionInfo.raises_on_guard for why `return` alone cannot protect
+ *     a caller. Delegation itself is NOT implemented in this file at all
+ *     -- it lives entirely in the language-agnostic callgraph.py, which
+ *     walks whichever resolver's graph it's given; nothing JS-specific is
+ *     needed here for that to work (confirmed by
+ *     test_js_resolver.py's test_delegation_walk_from_callgraph_py_works_unmodified_on_js_graph).
  *   - Loop bodies (for/while/do-while) are NOT given their own branch tag;
  *     calls inside them are recorded at the enclosing branch_path. This is
  *     a stated simplification, not a claim that loop iteration is modeled.
@@ -161,6 +172,14 @@ function collectBindings(programBody, currentFilePath, root) {
 
 function resolveDotted(node, bindings) {
   if (!node) return null;
+  // Milestone 12: `this` resolves only when the caller bound it (a class
+  // method's walk binds bindings.this to the owning class's qualname --
+  // see walkCalls below). Outside that context there is no sensible bare
+  // fallback the way a plain Identifier has one, so this correctly
+  // returns null (-> Unresolved) rather than guessing.
+  if (node.type === 'ThisExpression') {
+    return Object.prototype.hasOwnProperty.call(bindings, 'this') ? bindings['this'] : null;
+  }
   if (node.type === 'Identifier') {
     return Object.prototype.hasOwnProperty.call(bindings, node.name) ? bindings[node.name] : node.name;
   }
@@ -179,6 +198,9 @@ function resolveDotted(node, bindings) {
 // require()/import), not a bare-fallback guess.
 function rootNameIsBound(node, bindings) {
   while (node && node.type === 'MemberExpression') node = node.object;
+  if (node && node.type === 'ThisExpression') {
+    return Object.prototype.hasOwnProperty.call(bindings, 'this');
+  }
   return !!node && node.type === 'Identifier' && Object.prototype.hasOwnProperty.call(bindings, node.name);
 }
 
@@ -196,6 +218,35 @@ function isGuardShaped(fnNode) {
         const stmts = branch.type === 'BlockStatement' ? branch.body : [branch];
         for (const s of stmts) {
           if (s.type === 'ThrowStatement' || s.type === 'ReturnStatement') return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+// Milestone 12: stricter sibling of isGuardShaped, used only for the
+// DELEGATION case -- another function calling fnNode and trusting its
+// shape to protect THAT CALLER's own control flow (mirrors Python's
+// _is_raise_guard_shaped; see graph.py's FunctionInfo.raises_on_guard for
+// the full reasoning). Requires a `throw`, not a plain `return`: a
+// `return` inside fnNode only ends fnNode's own execution, never the
+// caller's -- the caller's next statement runs regardless unless it
+// checks fnNode's return value, which this resolver does not model. A
+// `throw` genuinely propagates into the caller (absent an enclosing
+// try/catch, also not modeled). isGuardShaped (throw-OR-return) remains
+// correct for the SAME-function dispatch shape (Milestone 9's wrapper
+// detection) -- there, a `return` really does stop that same function's
+// own next statement.
+function isRaiseGuardShaped(fnNode) {
+  const body = fnNode.body.type === 'BlockStatement' ? fnNode.body.body : [];
+  for (const stmt of body) {
+    if (stmt.type === 'IfStatement') {
+      for (const branch of [stmt.consequent, stmt.alternate]) {
+        if (!branch) continue;
+        const stmts = branch.type === 'BlockStatement' ? branch.body : [branch];
+        for (const s of stmts) {
+          if (s.type === 'ThrowStatement') return true;
         }
       }
     }
@@ -239,7 +290,25 @@ function forwardsToThisAttr(node, attr) {
 // "generic shape of a wrapper holding what it wraps," not a Horos/ASGI-
 // specific pattern.
 function ctorWrappedParamIndex(ctorFnNode) {
-  const paramNames = ctorFnNode.params.filter((p) => p.type === 'Identifier').map((p) => p.name);
+  // Milestone 12: TS parameter-property constructor sugar
+  // (`constructor(private inner: Foo) {}`) auto-assigns `this.inner = inner`
+  // with NO statement anywhere in the body for the walk below to find --
+  // confirmed as a real, silent miss before this fix (Milestone 10's
+  // test_parameter_property_constructor_sugar_not_detected_known_gap,
+  // now superseded). TS's own rule for this syntax is that the parameter
+  // name and the auto-assigned attribute name are always identical (no
+  // renaming is possible), so this is detected straight from the
+  // constructor's own param list -- checked first, in declaration order,
+  // before the body-walk fallback below, since it can never be found any
+  // other way. acorn-parsed (plain JS) constructors never produce this
+  // node type, so this is a no-op for .js/.mjs/.cjs.
+  for (let i = 0; i < ctorFnNode.params.length; i++) {
+    const p = ctorFnNode.params[i];
+    if (p.type === 'TSParameterProperty' && p.parameter && p.parameter.type === 'Identifier') {
+      return [i, p.parameter.name];
+    }
+  }
+  const paramNames = ctorFnNode.params.map((p) => (p.type === 'Identifier' ? p.name : null));
   let found = null;
   function walk(node) {
     if (found || !isNode(node)) return;
@@ -380,6 +449,7 @@ function indexFile(program, filePath, modQ) {
     functionsOut[qualname] = {
       qualified_name: qualname,
       is_guard_shaped: isGuardShaped(fnNode),
+      raises_on_guard: isRaiseGuardShaped(fnNode),
       file_path: filePath,
       lineno: fnNode.loc.start.line,
     };
@@ -393,11 +463,14 @@ function indexFile(program, filePath, modQ) {
   // names Starlette/ASGI/Horos anywhere).
   //
   // Every class method is indexed into functionsOut (is_guard_shaped
-  // included) the same way Python indexes every method -- but, matching
-  // Python's own real, documented gap (see dogfood_scan.py Milestone 6's
-  // commit message), method bodies are NOT walked for CallSite recording.
-  // A wrapper's dispatch method is detected structurally without needing
-  // its calls in the graph at all.
+  // included) the same way Python indexes every method, INCLUDING the
+  // constructor (mirroring Python indexing __init__ too). Milestone 12
+  // closed the gap the comment here used to describe: method bodies ARE
+  // now walked for CallSite recording too (see walkCalls below, which
+  // binds `this` to classQualname the same way Python's Milestone 11/12
+  // bind `self`/`cls`) -- this function only INDEXES; walkCalls is a
+  // separate pass. A wrapper's dispatch method is still detected
+  // structurally here, without needing its calls in the graph at all.
   function indexClass(classQualname, classNode) {
     let ctorNode = null;
     const otherMethods = [];
@@ -405,6 +478,14 @@ function indexFile(program, filePath, modQ) {
       if (member.type !== 'MethodDefinition' || member.key.type !== 'Identifier' || member.computed) continue;
       if (member.kind === 'constructor') {
         ctorNode = member.value;
+        const ctorQualname = `${classQualname}.constructor`;
+        functionsOut[ctorQualname] = {
+          qualified_name: ctorQualname,
+          is_guard_shaped: isGuardShaped(member.value),
+          raises_on_guard: isRaiseGuardShaped(member.value),
+          file_path: filePath,
+          lineno: member.loc.start.line,
+        };
         continue;
       }
       if (member.kind !== 'method') continue; // getters/setters/static out of scope for v0
@@ -412,6 +493,7 @@ function indexFile(program, filePath, modQ) {
       functionsOut[methodQualname] = {
         qualified_name: methodQualname,
         is_guard_shaped: isGuardShaped(member.value),
+        raises_on_guard: isRaiseGuardShaped(member.value),
         file_path: filePath,
         lineno: member.loc.start.line,
       };
@@ -483,6 +565,16 @@ function walkCalls(
 ) {
   const calls = [];
   const externalReferences = [];
+  // Milestone 12: `bindings` is reassigned (not just read) below, for the
+  // duration of each class method's walk, to add a `this` binding --
+  // recordCallsFromNodes/resolveDotted/rootNameIsBound all close over
+  // this same `bindings` variable (a function parameter, so reassignable
+  // like any local), so reassigning it here is visible to them without
+  // threading an extra argument through every call. fileBindings keeps
+  // the original (require/import-only) bindings to restore between
+  // methods and for the plain top-level-function/module-scope walks
+  // below, which must NOT see a stale `this` from a previous class.
+  const fileBindings = bindings;
 
   function recordCallsFromNodes(nodeList, branchPath, callerName, orderCounter) {
     const sorted = nodeList.slice().sort((a, b) => a.start - b.start);
@@ -603,6 +695,32 @@ function walkCalls(
   for (const [qualname, fnNode] of callerFunctions) {
     if (fnNode.body.type === 'BlockStatement') {
       walkStmts(fnNode.body.body, [], qualname, { n: 0 });
+    }
+  }
+
+  // Milestone 12: every class's constructor and methods are walked for
+  // CallSite recording too -- mirrors Python's Milestone 11/12 fix
+  // exactly, closing the same class of gap (a sink call inside ANY
+  // method was entirely invisible, not even Unresolved). `this` is bound
+  // to the owning class's qualname for the duration of each one method's
+  // walk, so `this.foo(...)` resolves through the same ThisExpression
+  // handling just added to resolveDotted/rootNameIsBound -- no new
+  // resolution mechanism beyond that. `bindings` is reset to
+  // `fileBindings` (no `this`) before and after, so a method in one
+  // class can never leak its `this` binding into a sibling class or back
+  // into the plain top-level/module-scope walks above and below.
+  for (const stmt of program.body) {
+    if (stmt.type !== 'ClassDeclaration' || !stmt.id) continue;
+    const classQualname = `${modQ}.${stmt.id.name}`;
+    for (const member of stmt.body.body) {
+      if (member.type !== 'MethodDefinition' || member.key.type !== 'Identifier' || member.computed) continue;
+      if (member.kind !== 'constructor' && member.kind !== 'method') continue; // getters/setters/static out of scope for v0
+      const methodName = member.kind === 'constructor' ? 'constructor' : member.key.name;
+      const methodQualname = `${classQualname}.${methodName}`;
+      if (member.value.body.type !== 'BlockStatement') continue;
+      bindings = Object.assign({}, fileBindings, { this: classQualname });
+      walkStmts(member.value.body.body, [], methodQualname, { n: 0 });
+      bindings = fileBindings;
     }
   }
 

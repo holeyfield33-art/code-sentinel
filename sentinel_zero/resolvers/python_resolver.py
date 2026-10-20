@@ -21,11 +21,14 @@ a differently-named helper in another file) is inherently cross-file:
 
 Known, stated limits (do not silently claim more than this does):
   - Milestone 11: class method bodies ARE walked for call-site recording
-    (not just indexed), with `self` bound to the owning class's qualname
-    for that walk -- `self.foo()` resolves to the real indexed method, the
-    same way an import binding resolves a module alias. `cls.foo()`
-    (classmethod dispatch) is NOT handled -- a different shape, logged as
-    its own future gap rather than guessed at.
+    (not just indexed). Milestone 12 extended this to bind both `self`
+    AND `cls` to the owning class's qualname for that walk, so both
+    `self.foo()` and `cls.foo()` (classmethod dispatch) resolve to the
+    real indexed method, the same way an import binding resolves a
+    module alias. Not modeled: a method called on a SUBCLASS resolves to
+    the DEFINING class's method, not the subclass's override, the same
+    way `self` already approximates -- real dynamic dispatch through
+    inheritance is a different, harder question, not claimed here.
   - `import a.b.c` without an alias is approximated as binding the
     top-level package name only, per Python's actual binding rule, so
     `a.b.c.fn()` is NOT currently resolved through that form -- it falls
@@ -34,6 +37,17 @@ Known, stated limits (do not silently claim more than this does):
     an approximation of control dependency, not a real CFG dominance
     check. A guard that runs but doesn't actually gate the sink (e.g. it's
     called but its result is ignored) will still read as "guard present."
+  - Milestone 12 tightened WHICH structural shape counts as blocking a
+    DELEGATE's caller: callgraph.transitively_guard_shaped now requires
+    FunctionInfo.raises_on_guard (an actual `raise`), not the broader
+    is_guard_shaped (raise-OR-return), for exactly this reason -- a
+    `return` inside a called-as-a-delegate function only ends that
+    function's own body, never the caller's, so it was never real
+    evidence that the caller's next statement (the sink) is blocked. See
+    graph.py's FunctionInfo.raises_on_guard docstring for the full
+    reasoning. is_guard_shaped (raise-OR-return) is still correct for the
+    SAME-function dispatch shape (a wrapper's own __call__/__init__
+    checking itself before forwarding) -- unchanged, not affected by this.
 """
 from __future__ import annotations
 
@@ -108,6 +122,30 @@ def _is_guard_shaped(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
     return False
 
 
+def _is_raise_guard_shaped(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
+    """Stricter sibling of _is_guard_shaped, used only for the DELEGATION
+    case -- another function calling `fn` and trusting its shape to
+    protect that CALLER's own control flow (see FunctionInfo.raises_on_guard
+    in graph.py for the full reasoning). Requires a `raise`, not a plain
+    `return`, in the early-exit branch: a `return` inside `fn` only ends
+    `fn`'s own execution, never the caller's -- the caller's next statement
+    runs regardless unless it checks `fn`'s return value, which this
+    resolver does not model. A `raise` genuinely propagates into the
+    caller (absent an enclosing try/except, also not modeled, same
+    approximation `transitively_guard_shaped`'s docstring already states).
+
+    is_guard_shaped (raise-OR-return) remains the right check for the
+    SAME-function dispatch case (Milestone 4/9/10's wrapper detection,
+    e.g. Horos's own `__call__`): there, a `return` really does stop that
+    same function's next statement, because it's the SAME execution."""
+    for stmt in fn.body:
+        if isinstance(stmt, ast.If):
+            branches = stmt.body + stmt.orelse
+            if any(isinstance(s, ast.Raise) for s in branches):
+                return True
+    return False
+
+
 def _init_wrapped_param_index(init_fn: ast.FunctionDef | ast.AsyncFunctionDef) -> tuple[int, str] | None:
     """If __init__ stores one of its own (non-self) parameters directly
     onto an attribute (`self._app = app`), return (that parameter's
@@ -156,6 +194,7 @@ def _index_module_functions(
             index[qualname] = FunctionInfo(
                 qualified_name=qualname,
                 is_guard_shaped=_is_guard_shaped(node),
+                raises_on_guard=_is_raise_guard_shaped(node),
                 file_path=file_path,
                 lineno=node.lineno,
             )
@@ -168,6 +207,7 @@ def _index_module_functions(
                     index[member_qualname] = FunctionInfo(
                         qualified_name=member_qualname,
                         is_guard_shaped=_is_guard_shaped(member),
+                        raises_on_guard=_is_raise_guard_shaped(member),
                         file_path=file_path,
                         lineno=member.lineno,
                     )
@@ -451,15 +491,26 @@ def _resolve_module(
             # _index_module_functions already indexed it under
             # ("module.Class.foo"), the same way an import binds a module
             # alias -- no new resolution mechanism, just one more binding.
-            # Deliberately NOT handling `cls.foo()` (classmethod dispatch)
-            # here -- a different shape, out of scope for this pass.
+            #
+            # Milestone 12: `cls` is bound the same way, closing the
+            # `cls.foo()` (classmethod dispatch) gap this file used to
+            # document as explicitly deferred. Both names are bound
+            # unconditionally, regardless of which the method actually
+            # declares (a plain instance method never has a `cls` in its
+            # body to collide with, and vice versa) -- harmless, and
+            # avoids having to detect the @classmethod decorator to know
+            # which one applies. Same approximation `self` already makes:
+            # this resolves to the DEFINING class, not whatever subclass
+            # the method might actually be called on at runtime through
+            # inheritance -- a real dynamic-dispatch nuance, not modeled,
+            # same bound this resolver already states for self.
             class_qualname = f"{module_qualname}.{node.name}"
             for member in node.body:
                 if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     walk_fn(
                         member,
                         f"{class_qualname}.{member.name}",
-                        extra_bindings={"self": class_qualname},
+                        extra_bindings={"self": class_qualname, "cls": class_qualname},
                     )
 
     return calls

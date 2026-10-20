@@ -87,6 +87,20 @@ class CallSite:
 class FunctionInfo:
     qualified_name: str
     is_guard_shaped: bool  # structural: has an early raise- or return-on-condition pattern
+    # Stricter than is_guard_shaped, and the field callgraph.transitively_guard_shaped
+    # actually checks for the DELEGATION case (calling this function and trusting its
+    # shape to protect the CALLER's control flow): True only if the early exit is a
+    # `raise`, not a plain `return`. A `return` inside this function only exits this
+    # function's own body -- it does nothing to stop the caller's next statement from
+    # running, unless the caller checks a returned value (not modeled). A `raise`
+    # propagates as an exception into the caller too, so it genuinely can prevent a
+    # later statement in the caller from executing. is_guard_shaped (raise-OR-return)
+    # stays correct for the SAME-function dispatch case (a wrapper's __call__ checking
+    # itself before forwarding, e.g. Horos's BearerAuthMiddleware) -- there, a `return`
+    # really does stop that same function's own next statement. Confirmed via dogfooding
+    # before this field existed: a return-shaped delegate was read as "protecting" a
+    # sink in a caller that never actually checked its return value.
+    raises_on_guard: bool
     file_path: str
     lineno: int
 
