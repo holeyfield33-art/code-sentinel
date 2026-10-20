@@ -1,21 +1,32 @@
-"""Milestone 1 dogfood run: point Sentinel-Zero at Block-Wise's own repo.
+"""Milestone 2 dogfood run: the ISBG resolver replaces the raw AST-token
+scan from Milestone 1.
 
-v0 scope is deliberately small -- this is NOT the interprocedural symbol/
-binding graph the locked spec calls for later. It is a literal AST walk that
-finds two boundary shapes (file I/O, JSON deserialization of file contents)
-and proves the three success criteria for real:
+What actually changed vs. Milestone 1, and why it matters:
+  - a call site's callee is now a resolved Symbol (qualified identity) or an
+    explicit Unresolved, never a bare name string. Sink matching happens
+    against that resolved identity (sentinel_zero.graph.STDLIB_SINKS, keyed
+    by dotted path), not a literal token like "open" or "json.load" --
+    so `from os import system as run_shell; run_shell(cmd)` is now caught,
+    which plain token matching would miss.
+  - guard detection is by resolved call identity + a structural shape check
+    on the guard's own body (an early `if ...: raise ...`), never by
+    matching the guard's *name*. This is what keeps the class of bug where
+    a `check*` wildcard matched an unrelated `.checkbox()` call from being
+    reproducible here: there is no name-wildcard step anywhere in this path.
+  - the guard can now live in a different file than the sink call, because
+    the project-wide function index (built in pass 1 of the resolver) is
+    looked up by qualified name, not by "is this guard mentioned in the
+    same file's text."
 
-  1. a file that fails to parse halts the run with TOOL_FAILURE, it is never
-     silently skipped;
-  2. every hypothesis resolves against the live ASI catalog -- an unknown
-     attack id is a hard crash, not a guess;
-  3. nothing is marked VERIFIED/clean by this pass -- v0 has no dynamic
-     sandbox step yet, so every real hit is explicitly UNRESOLVED_INCONCLUSIVE,
-     which is the honest answer, not a false reassurance.
+Still bounded, still stated plainly:
+  - "guard precedes sink" is same-function call order, not CFG dominance.
+  - only Python is resolved. A second run against vibe-explainer (a
+    completely unrelated repo, not Block-Wise) is included below runners
+    so sink/guard detection is checked against more than one codebase --
+    see run_dogfood.py.
 """
 from __future__ import annotations
 
-import ast
 import json
 import sys
 from pathlib import Path
@@ -26,137 +37,129 @@ from sentinel_zero.disposition import (
     load_catalog,
     set_disposition,
 )
+from sentinel_zero.graph import ProjectGraph, Symbol
 from sentinel_zero.ledger_writer import safe_write_text
+from sentinel_zero.resolvers.python_resolver import build_project_graph, mutually_exclusive
 
-FILE_IO_ATTACK_ID = "AAC-17"  # Filesystem Escape / Path Traversal
-DESERIALIZATION_ATTACK_ID = "AAC-27"  # Serialization Injection
+SINK_ATTACK_IDS = {
+    "FILE_IO": "AAC-17",
+    "DESERIALIZATION": "AAC-27",
+    "PROCESS_EXEC": "AAC-11",
+}
 
-# Names that, if present anywhere in the same function, we treat as a
-# declared (not verified) guard -- v0 cannot trace whether the guard
-# actually covers the call, so a guard only softens residual_uncertainty,
-# it never flips disposition to VERIFIED_*.
-KNOWN_GUARD_NAMES = {"resolve_inside", "safe_write_text", "safe_read_text"}
-
-
-def _function_source_calls(tree: ast.Module) -> dict[str, set[str]]:
-    """Map each top-level function name to the set of names it calls, by
-    walking its body. Good enough for a v0 same-function guard hint."""
-    calls_by_fn: dict[str, set[str]] = {}
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            calls: set[str] = set()
-            for sub in ast.walk(node):
-                if isinstance(sub, ast.Call) and isinstance(sub.func, ast.Name):
-                    calls.add(sub.func.id)
-                elif isinstance(sub, ast.Call) and isinstance(sub.func, ast.Attribute):
-                    calls.add(sub.func.attr)
-            calls_by_fn[node.name] = calls
-    return calls_by_fn
+_SINK_KIND_BY_NAME = {
+    "builtins.open": "FILE_IO",
+    "json.load": "DESERIALIZATION",
+    "json.loads": "DESERIALIZATION",
+    "os.system": "PROCESS_EXEC",
+    "subprocess.run": "PROCESS_EXEC",
+    "subprocess.call": "PROCESS_EXEC",
+    "subprocess.check_call": "PROCESS_EXEC",
+    "subprocess.check_output": "PROCESS_EXEC",
+    "subprocess.Popen": "PROCESS_EXEC",
+}
 
 
-def _enclosing_function(tree: ast.Module, target: ast.AST) -> str | None:
-    for node in ast.walk(tree):
-        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            if any(child is target for child in ast.walk(node)):
-                return node.name
-    return None
-
-
-def scan_file(py_path: Path, repo_root: Path, catalog, plan_counter: list[int]) -> list:
-    try:
-        source = py_path.read_text(encoding="utf-8")
-        tree = ast.parse(source, filename=str(py_path))
-    except (SyntaxError, UnicodeDecodeError) as exc:
-        # This is exactly failure mode #2 from the prior pipeline, closed:
-        # a file this engine cannot parse halts the run instead of being
-        # silently dropped from the finding count.
-        raise ToolFailure(f"could not parse {py_path} as Python: {exc}") from exc
-
-    calls_by_fn = _function_source_calls(tree)
-    rel_path = py_path.relative_to(repo_root)
+def find_finding_plans(graph: ProjectGraph, repo_name: str, catalog, plan_counter: list[int]) -> list:
     plans = []
+    for module in graph.modules.values():
+        calls_by_caller: dict[str, list] = {}
+        for call in module.calls:
+            calls_by_caller.setdefault(call.caller, []).append(call)
 
-    for node in ast.walk(tree):
-        if not isinstance(node, ast.Call):
-            continue
+        for caller, calls in calls_by_caller.items():
+            for call in calls:
+                if not isinstance(call.target, Symbol) or call.target.qualified_name not in _SINK_KIND_BY_NAME:
+                    continue
+                sink_kind = _SINK_KIND_BY_NAME[call.target.qualified_name]
+                attack_id = SINK_ATTACK_IDS[sink_kind]
 
-        attack_id = None
-        description = None
-        if isinstance(node.func, ast.Name) and node.func.id == "open":
-            attack_id = FILE_IO_ATTACK_ID
-            description = "File opened; path origin not traced in v0."
-        elif isinstance(node.func, ast.Attribute) and node.func.attr in ("load", "loads") \
-                and isinstance(node.func.value, ast.Name) and node.func.value.id == "json":
-            attack_id = DESERIALIZATION_ATTACK_ID
-            description = "JSON deserialized; source trust not traced in v0."
+                # guard precedes sink, same function, by resolved identity + shape,
+                # never by name string.
+                guard_hit = None
+                for earlier in calls:
+                    if earlier.order >= call.order:
+                        continue
+                    if not isinstance(earlier.target, Symbol):
+                        continue
+                    if mutually_exclusive(earlier.branch_path, call.branch_path):
+                        continue  # e.g. an elif sibling -- cannot have actually run
+                    fn_info = graph.functions.get(earlier.target.qualified_name)
+                    if fn_info and fn_info.is_guard_shaped:
+                        guard_hit = earlier.target.qualified_name
 
-        if attack_id is None:
-            continue
-
-        fn_name = _enclosing_function(tree, node)
-        guards_present = calls_by_fn.get(fn_name, set()) & KNOWN_GUARD_NAMES if fn_name else set()
-
-        plan_counter[0] += 1
-        plan = build_finding_plan(
-            plan_id=f"fp_sz_{plan_counter[0]:04d}",
-            target_repository=str(repo_root.name),
-            attack_id=attack_id,
-            catalog=catalog,
-            hypothesis={
-                "source_node": f"{rel_path}:{node.lineno}",
-                "sink_node": f"{rel_path}:{node.lineno}",
-                "symbol_binding": fn_name or "<module scope>",
-                "description": description,
-            },
-            verification_method={
-                "checker_type": "ast_literal_scan_v0",
-                "required_evidence_tier": "CONFIRMED_REACHABLE",
-                "sandbox_validation_required": True,
-            },
-            execution_gate={
-                "tool_identifier": "sentinel-zero-dogfood-scan",
-                "expected_exit_code": 0,
-                "timeout_seconds": 15,
-            },
-        )
-        if guards_present:
-            set_disposition(
-                plan,
-                "UNRESOLVED_INCONCLUSIVE",
-                reason=f"a declared guard ({', '.join(sorted(guards_present))}) is present in "
-                       "the same function, but v0 has no dataflow trace to confirm it covers "
-                       "this call -- never promoted to VERIFIED_FALSE on a guard's presence alone.",
-                residual_uncertainty="Low-medium: guard declared, coverage unverified.",
-            )
-        else:
-            set_disposition(
-                plan,
-                "UNRESOLVED_INCONCLUSIVE",
-                reason="no sandbox probe has run yet in v0; same-function AST scan cannot "
-                       "confirm reachability or taint. Never defaulted to clean.",
-                residual_uncertainty="Medium: no guard found in the same function, no dynamic check run.",
-            )
-        plans.append(plan)
+                plan_counter[0] += 1
+                plan = build_finding_plan(
+                    plan_id=f"fp_sz_{plan_counter[0]:04d}",
+                    target_repository=repo_name,
+                    attack_id=attack_id,
+                    catalog=catalog,
+                    hypothesis={
+                        "source_node": f"{module.file_path}:{call.lineno}",
+                        "sink_node": call.target.qualified_name,
+                        "symbol_binding": caller or "<module scope>",
+                        "description": f"resolved call to {call.target.qualified_name} ({sink_kind}).",
+                    },
+                    verification_method={
+                        "checker_type": "isbg_python_resolver_v0",
+                        "required_evidence_tier": "CONFIRMED_REACHABLE",
+                        "sandbox_validation_required": True,
+                    },
+                    execution_gate={
+                        "tool_identifier": "sentinel-zero-dogfood-scan",
+                        "expected_exit_code": 0,
+                        "timeout_seconds": 15,
+                    },
+                )
+                if guard_hit:
+                    set_disposition(
+                        plan,
+                        "UNRESOLVED_INCONCLUSIVE",
+                        reason=f"a resolved, structurally guard-shaped call to {guard_hit} precedes this "
+                               "sink in the same function. Same-function call order is an approximation of "
+                               "control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
+                        residual_uncertainty="Low-medium: guard resolved by identity and shape, coverage not proven.",
+                    )
+                else:
+                    set_disposition(
+                        plan,
+                        "UNRESOLVED_INCONCLUSIVE",
+                        reason="no resolved, guard-shaped call precedes this sink in the same function. "
+                               "No sandbox probe has run in v0.",
+                        residual_uncertainty="Medium: no in-function guard resolved, no dynamic check run.",
+                    )
+                plans.append(plan)
     return plans
 
 
 def run(repo_root: Path, catalog_path: str, out_dir: Path) -> int:
     catalog = load_catalog(catalog_path)
+    try:
+        graph = build_project_graph(repo_root)
+    except Exception as exc:  # resolver-level failure halts, never silently returns partial
+        raise ToolFailure(f"ISBG resolver failed on {repo_root}: {exc}") from exc
+
     plan_counter = [0]
-    all_plans = []
-    for py_path in sorted(repo_root.rglob("*.py")):
-        if "/.venv/" in str(py_path) or "/tests/mutants/" in str(py_path):
-            continue
-        all_plans.extend(scan_file(py_path, repo_root, catalog, plan_counter))
+    plans = find_finding_plans(graph, repo_root.name, catalog, plan_counter)
+
+    unresolved_calls = sum(
+        1 for c in graph.all_calls() if not isinstance(c.target, Symbol)
+    )
 
     ledger = {
         "target_repository": repo_root.name,
-        "catalog_version": catalog.classes_by_id.get("AAC-11", {}).get("family", "unknown"),
-        "plan_count": len(all_plans),
-        "plans": [p.as_dict() for p in all_plans],
+        "modules_scanned": len(graph.modules),
+        "functions_indexed": len(graph.functions),
+        "unresolved_call_sites": unresolved_calls,
+        "plan_count": len(plans),
+        "plans": [p.as_dict() for p in plans],
     }
     safe_write_text(str(out_dir), "verification_ledger.json", json.dumps(ledger, indent=2), 5_000_000)
-    print(f"wrote {len(all_plans)} finding plans to {out_dir / 'verification_ledger.json'}")
+    print(
+        f"{repo_root.name}: {len(graph.modules)} modules, {len(graph.functions)} functions indexed, "
+        f"{unresolved_calls} unresolved call sites, {len(plans)} finding plans -> "
+        f"{out_dir / 'verification_ledger.json'}"
+    )
     return 0
 
 
