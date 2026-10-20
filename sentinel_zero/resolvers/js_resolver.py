@@ -2,13 +2,15 @@
 language-agnostic, not just promised in prose.
 
 All real parsing happens in resolvers/js/extract_graph.js, run as a Node
-subprocess with a real parser (acorn) -- never regex/string matching on JS
-source, same rule python_resolver.py enforces with Python's own `ast`
-module. This file's only job is translating that subprocess's JSON output
-into the exact same dataclasses python_resolver.py builds (Symbol,
-Unresolved, CallSite, FunctionInfo, ModuleGraph, ProjectGraph). Nothing
-downstream -- callgraph.py's delegation walks, dogfood_scan.py's sink/guard
-matching -- needs to know or care which resolver populated the graph.
+subprocess with real parsers -- acorn for .js/.mjs/.cjs,
+@typescript-eslint/typescript-estree for .ts (Milestone 10) -- never regex/
+string matching on source, same rule python_resolver.py enforces with
+Python's own `ast` module. This file's only job is translating that
+subprocess's JSON output into the exact same dataclasses python_resolver.py
+builds (Symbol, Unresolved, CallSite, FunctionInfo, ModuleGraph,
+ProjectGraph). Nothing downstream -- callgraph.py's delegation walks,
+dogfood_scan.py's sink/guard matching -- needs to know or care which
+resolver, or which of the two JS/TS parsers, populated the graph.
 
 Deliberately NOT at parity with the Python resolver's five milestones (see
 extract_graph.js's module docstring for the exact bounds: top-level
@@ -18,6 +20,17 @@ wrapper-middleware detection (graph.wrapper_classes) and switched to a
 real project-wide two-pass (index everything, then resolve calls) --
 graph.wrap_constructions is populated via callgraph.find_wrap_constructions,
 the same shared, language-agnostic helper python_resolver.py now calls too.
+Milestone 10 added TypeScript support, bounded to plain .ts (NOT .tsx --
+JSX-in-TS is a separate parser mode, out of scope). Dogfooded against
+Vercel's own CLI (vercel/vercel, packages/cli): 2194 modules / 2034
+functions indexed from real TS source, versus 209 modules of mostly dev-
+server test fixtures before this milestone, when every real .ts file in
+that repo was invisible to this resolver. One confirmed, logged gap: TS
+parameter-property constructor sugar (`constructor(private x: Foo) {}`,
+common in NestJS-style code) auto-assigns `this.x = x` with no assignment
+statement in the body, so it is not recognized by wrapper-middleware
+detection -- see tests/test_ts_resolver.py's
+test_parameter_property_constructor_sugar_not_detected_known_gap.
 """
 from __future__ import annotations
 

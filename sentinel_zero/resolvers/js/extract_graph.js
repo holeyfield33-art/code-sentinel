@@ -42,8 +42,21 @@
 const fs = require('fs');
 const path = require('path');
 const acorn = require('acorn');
+const tsEstree = require('@typescript-eslint/typescript-estree');
 
 const SKIP_DIR_NAMES = new Set(['node_modules', '.git', 'dist', 'build', '.next', 'coverage', '__pycache__']);
+
+// Milestone 10: TypeScript support, bounded to plain .ts only -- NOT .tsx.
+// JSX inside a .tsx file is a real, separate parser mode and out of scope
+// for this pass; a .tsx file is simply not collected (same "don't guess"
+// bound as the original JS-only scope). .d.ts is also excluded: a type-only
+// declaration file has no runtime code, so collecting it would only ever
+// add TSInterfaceDeclaration/TSTypeAliasDeclaration noise our walkers
+// already ignore -- never a real function, class or call.
+function isCollectableFile(name) {
+  if (name.endsWith('.d.ts')) return false;
+  return /\.(js|mjs|cjs|ts)$/.test(name);
+}
 
 function findJsFiles(root) {
   const out = [];
@@ -58,7 +71,7 @@ function findJsFiles(root) {
       if (entry.isDirectory()) {
         if (SKIP_DIR_NAMES.has(entry.name)) continue;
         walk(path.join(dir, entry.name));
-      } else if (/\.(js|mjs|cjs)$/.test(entry.name)) {
+      } else if (isCollectableFile(entry.name)) {
         out.push(path.join(dir, entry.name));
       }
     }
@@ -68,7 +81,7 @@ function findJsFiles(root) {
 }
 
 function moduleQualname(filePath, root) {
-  const rel = path.relative(root, filePath).replace(/\.(js|mjs|cjs)$/, '');
+  const rel = path.relative(root, filePath).replace(/\.(js|mjs|cjs|ts)$/, '');
   let parts = rel.split(path.sep);
   if (parts[parts.length - 1] === 'index') parts = parts.slice(0, -1);
   return parts.length ? parts.join('.') : path.basename(filePath);
@@ -86,7 +99,15 @@ function resolveRequireSpecifier(specifier, currentFilePath, root) {
   }
   const currentDir = path.dirname(currentFilePath);
   const resolved = path.resolve(currentDir, specifier);
-  const candidates = [resolved, `${resolved}.js`, `${resolved}.cjs`, `${resolved}.mjs`, path.join(resolved, 'index.js')];
+  const candidates = [
+    resolved,
+    `${resolved}.ts`,
+    `${resolved}.js`,
+    `${resolved}.cjs`,
+    `${resolved}.mjs`,
+    path.join(resolved, 'index.ts'),
+    path.join(resolved, 'index.js'),
+  ];
   for (const candidate of candidates) {
     try {
       if (fs.statSync(candidate).isFile()) return moduleQualname(candidate, root);
@@ -280,6 +301,43 @@ function findCallsInExpr(node, out) {
   }
 }
 
+// typescript-estree gives every node a `range: [start, end]` array but,
+// unlike acorn, no top-level `.start`/`.end` scalars -- and every walker
+// below (findCallsInExpr's position sort, the arg-text `source.slice`
+// extraction) reads `.start`/`.end` directly, inherited unchanged from the
+// acorn-only era. Rather than touch every call site, backfill the two
+// scalars from `range` once, right after a TS parse, so a TS-sourced AST
+// is byte-for-byte interchangeable with an acorn one from here on.
+function backfillRanges(node) {
+  if (Array.isArray(node)) {
+    for (const item of node) backfillRanges(item);
+    return;
+  }
+  if (!node || typeof node !== 'object') return;
+  if (typeof node.type === 'string' && Array.isArray(node.range) && node.start === undefined) {
+    node.start = node.range[0];
+    node.end = node.range[1];
+  }
+  for (const key of Object.keys(node)) {
+    if (key === 'range' || key === 'loc' || key === 'parent') continue;
+    const val = node[key];
+    if (val && typeof val === 'object') backfillRanges(val);
+  }
+}
+
+// Milestone 10: .ts files go through typescript-estree instead of acorn --
+// acorn is a plain-JS parser and chokes on type annotations, interfaces,
+// generics and decorators (confirmed by dogfooding real .ts fixtures
+// before this milestone: every .ts-shaped construct in a .js file came
+// back as a parse error). typescript-estree produces the SAME ESTree node
+// shapes acorn does (FunctionDeclaration, ClassDeclaration, MethodDefinition
+// with kind 'constructor'/'method', CallExpression, Identifier params even
+// when type-annotated) -- confirmed by direct inspection -- so every walker
+// below (findCallsInExpr, indexFile, walkCalls, forwardsToThisAttr,
+// ctorWrappedParamIndex) needs zero changes to handle a TS-sourced AST.
+// TS-only node types (TSInterfaceDeclaration, PropertyDefinition's type
+// annotations, Decorator) simply fall through the existing type checks
+// unrecognized, the same way an unrelated ESTree node always has.
 function parseFile(filePath) {
   let source;
   try {
@@ -287,14 +345,21 @@ function parseFile(filePath) {
   } catch (e) {
     return { error: `could not read file: ${e.message}` };
   }
+  const isTs = filePath.endsWith('.ts');
   try {
-    const program = acorn.parse(source, {
-      ecmaVersion: 'latest',
-      sourceType: 'module',
-      locations: true,
-      allowReturnOutsideFunction: true,
-      allowImportExportEverywhere: true,
-    });
+    let program;
+    if (isTs) {
+      program = tsEstree.parse(source, { loc: true, range: true, jsx: false, errorOnUnknownASTType: false });
+      backfillRanges(program);
+    } else {
+      program = acorn.parse(source, {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+        locations: true,
+        allowReturnOutsideFunction: true,
+        allowImportExportEverywhere: true,
+      });
+    }
     return { program, source };
   } catch (e) {
     return { error: `${e.name || 'ParseError'}: ${e.message}` };
