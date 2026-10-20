@@ -39,6 +39,7 @@ from pathlib import Path
 
 import sys
 
+from sentinel_zero.callgraph import find_wrap_constructions
 from sentinel_zero.graph import (
     CallSite,
     ExternalReference,
@@ -47,7 +48,6 @@ from sentinel_zero.graph import (
     ProjectGraph,
     Symbol,
     Unresolved,
-    WrapConstruction,
     WrapperClass,
 )
 
@@ -471,28 +471,8 @@ def build_project_graph(repo_root: Path) -> ProjectGraph:
         graph.modules[module_qualname] = ModuleGraph(module_qualname=module_qualname, file_path=str(py_path), calls=calls)
 
     # Pass 3: anywhere a known WrapperClass is instantiated, record what it
-    # wrapped. This is what lets a middleware-style guard (one that never
-    # appears in any handler's own call graph, because it wraps the app at
-    # construction time instead) surface as a structural fact at all.
-    for module in graph.modules.values():
-        for call in module.calls:
-            if not isinstance(call.target, Symbol):
-                continue
-            wrapper = graph.wrapper_classes.get(call.target.qualified_name)
-            if wrapper is None:
-                continue
-            wrapped_expr = (
-                call.args[wrapper.wrapped_param_index]
-                if wrapper.wrapped_param_index < len(call.args)
-                else "<could not resolve positional argument -- possibly passed by keyword>"
-            )
-            graph.wrap_constructions.append(
-                WrapConstruction(
-                    wrapper_qualified_name=wrapper.qualified_name,
-                    wrapped_expr=wrapped_expr,
-                    file_path=module.file_path,
-                    lineno=call.lineno,
-                )
-            )
+    # wrapped. Shared with js_resolver.py -- see callgraph.find_wrap_constructions
+    # for why this moved out of here (it was always language-agnostic).
+    graph.wrap_constructions = find_wrap_constructions(graph)
 
     return graph

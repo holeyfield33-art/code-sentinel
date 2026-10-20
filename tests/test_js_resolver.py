@@ -92,10 +92,13 @@ def test_unresolvable_dynamic_callee_is_unresolved_not_guessed():
         assert calls[0].target.__class__.__name__ == "Unresolved"
 
 
-def test_class_methods_not_indexed_v0_stated_scope():
-    """Matches the stated JS v0 scope exactly: class methods are not
-    caller scopes yet (same bounded choice documented in
-    extract_graph.js). Pinned here so a silent scope change is caught."""
+def test_class_methods_indexed_but_not_walked_for_calls():
+    """Matches Milestone 9's exact scope, mirroring Python precisely: every
+    class method IS indexed as a FunctionInfo (is_guard_shaped included --
+    needed for wrapper-dispatch detection), but a method's body is still
+    NOT walked for CallSite recording. This is the same real, documented
+    gap python_resolver.py has (see dogfood_scan.py's Milestone 6 commit) --
+    not a JS-specific choice, kept consistent rather than papered over."""
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         (root / "svc.js").write_text(
@@ -108,8 +111,9 @@ def test_class_methods_not_indexed_v0_stated_scope():
             "module.exports = Service;\n"
         )
         graph = build_project_graph(root)
-        assert graph.all_calls() == []
-        assert graph.functions == {}
+        assert graph.all_calls() == []  # the exec('echo hi') call is NOT recorded
+        assert "svc.Service.run" in graph.functions
+        assert graph.functions["svc.Service.run"].is_guard_shaped is False
 
 
 def test_unparseable_file_reported_not_silently_dropped():

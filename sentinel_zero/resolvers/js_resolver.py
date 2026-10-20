@@ -12,11 +12,12 @@ matching -- needs to know or care which resolver populated the graph.
 
 Deliberately NOT at parity with the Python resolver's five milestones (see
 extract_graph.js's module docstring for the exact bounds: top-level
-functions only, no wrapper-class detection). Milestone 8 added external-
-dependency classification (graph.external_references is now populated for
-JS too, same shape as Python's). graph.wrapper_classes and
-graph.wrap_constructions are still simply left empty for a JS project --
-real future increments, not silently claimed here.
+functions only). Milestone 8 added external-dependency classification
+(graph.external_references, same shape as Python's). Milestone 9 added
+wrapper-middleware detection (graph.wrapper_classes) and switched to a
+real project-wide two-pass (index everything, then resolve calls) --
+graph.wrap_constructions is populated via callgraph.find_wrap_constructions,
+the same shared, language-agnostic helper python_resolver.py now calls too.
 """
 from __future__ import annotations
 
@@ -25,6 +26,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from sentinel_zero.callgraph import find_wrap_constructions
 from sentinel_zero.graph import (
     CallSite,
     ExternalReference,
@@ -33,6 +35,7 @@ from sentinel_zero.graph import (
     ProjectGraph,
     Symbol,
     Unresolved,
+    WrapperClass,
 )
 
 _EXTRACT_SCRIPT = Path(__file__).parent / "js" / "extract_graph.js"
@@ -116,6 +119,15 @@ def build_project_graph(repo_root: Path) -> ProjectGraph:
         )
         for ref in data.get("external_references", [])
     ]
+
+    for qualname, wc in data.get("wrapper_classes", {}).items():
+        graph.wrapper_classes[qualname] = WrapperClass(
+            qualified_name=wc["qualified_name"],
+            wrapped_param_index=wc["wrapped_param_index"],
+            dispatch_method=wc["dispatch_method"],
+            dispatch_is_guarded=wc["dispatch_is_guarded"],
+        )
+    graph.wrap_constructions = find_wrap_constructions(graph)
 
     # Per-file parse errors are real, reportable facts about specific files
     # (e.g. a .js file this parser's grammar subset can't handle) -- they do

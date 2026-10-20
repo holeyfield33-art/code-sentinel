@@ -30,9 +30,44 @@ this result.
 """
 from __future__ import annotations
 
-from sentinel_zero.graph import ProjectGraph, Symbol
+from sentinel_zero.graph import ProjectGraph, Symbol, WrapConstruction
 
 MAX_DEPTH = 6
+
+
+def find_wrap_constructions(graph: ProjectGraph) -> list[WrapConstruction]:
+    """Anywhere a known WrapperClass is instantiated, record what it
+    wrapped. This is what lets a middleware-style guard (one that never
+    appears in any handler's own call graph, because it wraps the app at
+    construction time instead) surface as a structural fact at all.
+
+    Moved here from python_resolver.py's build_project_graph (Milestone 9,
+    while adding JS wrapper-middleware detection) because this logic only
+    ever touched graph.py's generic shapes -- Symbol, CallSite, WrapperClass,
+    WrapConstruction -- never anything Python-specific. Both resolvers now
+    call this one implementation instead of each carrying their own copy."""
+    constructions: list[WrapConstruction] = []
+    for module in graph.modules.values():
+        for call in module.calls:
+            if not isinstance(call.target, Symbol):
+                continue
+            wrapper = graph.wrapper_classes.get(call.target.qualified_name)
+            if wrapper is None:
+                continue
+            wrapped_expr = (
+                call.args[wrapper.wrapped_param_index]
+                if wrapper.wrapped_param_index < len(call.args)
+                else "<could not resolve positional argument -- possibly passed by keyword>"
+            )
+            constructions.append(
+                WrapConstruction(
+                    wrapper_qualified_name=wrapper.qualified_name,
+                    wrapped_expr=wrapped_expr,
+                    file_path=module.file_path,
+                    lineno=call.lineno,
+                )
+            )
+    return constructions
 
 
 def build_direct_external_index(graph: ProjectGraph) -> dict[str, set[str]]:
