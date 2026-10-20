@@ -1,29 +1,34 @@
-"""Milestone 2 dogfood run: the ISBG resolver replaces the raw AST-token
-scan from Milestone 1.
+"""Milestone 3 dogfood run: cross-function guard propagation added on top
+of the Milestone 2 ISBG resolver.
 
-What actually changed vs. Milestone 1, and why it matters:
-  - a call site's callee is now a resolved Symbol (qualified identity) or an
-    explicit Unresolved, never a bare name string. Sink matching happens
-    against that resolved identity (sentinel_zero.graph.STDLIB_SINKS, keyed
-    by dotted path), not a literal token like "open" or "json.load" --
-    so `from os import system as run_shell; run_shell(cmd)` is now caught,
-    which plain token matching would miss.
-  - guard detection is by resolved call identity + a structural shape check
-    on the guard's own body (an early `if ...: raise ...`), never by
-    matching the guard's *name*. This is what keeps the class of bug where
-    a `check*` wildcard matched an unrelated `.checkbox()` call from being
-    reproducible here: there is no name-wildcard step anywhere in this path.
-  - the guard can now live in a different file than the sink call, because
-    the project-wide function index (built in pass 1 of the resolver) is
-    looked up by qualified name, not by "is this guard mentioned in the
-    same file's text."
+What changed vs. Milestone 2, and why: a guard used to have to contain its
+own `if ...: raise ...` to count. A thin delegating wrapper --
+
+    def require_admin(user):
+        require_role(user, allowed=["admin"])
+
+-- has no raise of its own, so it read as NOT a guard even though it
+functions as one, and even though require_role (the thing it delegates
+to) might live in a different file entirely. sentinel_zero.callgraph walks
+the project-wide call graph, bounded and cycle-safe, to answer "does this
+resolve to a guard, directly or through delegation" instead of "does this
+one function's own body look like a guard."
+
+Carried forward from Milestone 2, unchanged:
+  - sink matching by resolved identity, not name/token.
+  - guard matching by resolved identity + structural shape, not name.
+  - same-function branch-exclusivity (an elif sibling can't "precede" a
+    sink it can never run alongside).
 
 Still bounded, still stated plainly:
-  - "guard precedes sink" is same-function call order, not CFG dominance.
-  - only Python is resolved. A second run against vibe-explainer (a
-    completely unrelated repo, not Block-Wise) is included below runners
-    so sink/guard detection is checked against more than one codebase --
-    see run_dogfood.py.
+  - "guard precedes sink" is still same-function call order at the
+    ORIGINAL call site -- delegation crosses functions/files for the
+    *guard's own identity*, but the call that invokes it still has to be
+    in the sink's function, in a non-exclusive branch, before the sink.
+    A guard called three functions up the stack, never passed down, is
+    not yet traced -- that is real interprocedural dataflow, not delegation
+    propagation, and is not claimed here.
+  - only Python is resolved.
 """
 from __future__ import annotations
 
@@ -37,6 +42,7 @@ from sentinel_zero.disposition import (
     load_catalog,
     set_disposition,
 )
+from sentinel_zero.callgraph import build_direct_callee_index, transitively_guard_shaped
 from sentinel_zero.graph import ProjectGraph, Symbol
 from sentinel_zero.ledger_writer import safe_write_text
 from sentinel_zero.resolvers.python_resolver import build_project_graph, mutually_exclusive
@@ -62,6 +68,7 @@ _SINK_KIND_BY_NAME = {
 
 def find_finding_plans(graph: ProjectGraph, repo_name: str, catalog, plan_counter: list[int]) -> list:
     plans = []
+    callee_index = build_direct_callee_index(graph)
     for module in graph.modules.values():
         calls_by_caller: dict[str, list] = {}
         for call in module.calls:
@@ -84,8 +91,7 @@ def find_finding_plans(graph: ProjectGraph, repo_name: str, catalog, plan_counte
                         continue
                     if mutually_exclusive(earlier.branch_path, call.branch_path):
                         continue  # e.g. an elif sibling -- cannot have actually run
-                    fn_info = graph.functions.get(earlier.target.qualified_name)
-                    if fn_info and fn_info.is_guard_shaped:
+                    if transitively_guard_shaped(earlier.target.qualified_name, graph, callee_index):
                         guard_hit = earlier.target.qualified_name
 
                 plan_counter[0] += 1
@@ -115,10 +121,11 @@ def find_finding_plans(graph: ProjectGraph, repo_name: str, catalog, plan_counte
                     set_disposition(
                         plan,
                         "UNRESOLVED_INCONCLUSIVE",
-                        reason=f"a resolved, structurally guard-shaped call to {guard_hit} precedes this "
-                               "sink in the same function. Same-function call order is an approximation of "
+                        reason=f"a resolved call to {guard_hit} precedes this sink in the same function, in a "
+                               f"non-exclusive branch, and {guard_hit} is guard-shaped either directly or through "
+                               "a bounded delegation chain. Same-function call order is an approximation of "
                                "control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
-                        residual_uncertainty="Low-medium: guard resolved by identity and shape, coverage not proven.",
+                        residual_uncertainty="Low-medium: guard resolved by identity/delegation and shape, coverage not proven.",
                     )
                 else:
                     set_disposition(
