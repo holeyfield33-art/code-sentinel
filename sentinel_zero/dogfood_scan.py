@@ -28,7 +28,16 @@ Still bounded, still stated plainly:
     A guard called three functions up the stack, never passed down, is
     not yet traced -- that is real interprocedural dataflow, not delegation
     propagation, and is not claimed here.
-  - only Python is resolved.
+
+Milestone 7 added a second resolver (JS/TS, via resolvers/js_resolver.py)
+selected with the `language` parameter/CLI arg -- the proof that graph.py's
+IR holds for more than one language without changing any of the generic
+machinery above. The JS resolver is deliberately NOT at parity with
+Python's five milestones yet (see js_resolver.py/extract_graph.js for the
+exact bounds: top-level functions only, no wrapper-class detection, no
+external-dependency mapping). Milestone 6's dynamic sandbox probe is
+Python-specific (drives importlib) and is gated to `language == "python"`
+accordingly -- never attempted against a JS finding.
 """
 from __future__ import annotations
 
@@ -52,7 +61,9 @@ from sentinel_zero.callgraph import (
 from sentinel_zero.graph import ProjectGraph, Symbol
 from sentinel_zero.ledger_writer import safe_write_text
 from sentinel_zero.probes.process_exec_probe import run_process_exec_probe
-from sentinel_zero.resolvers.python_resolver import build_project_graph, mutually_exclusive
+from sentinel_zero.resolvers.python_resolver import build_project_graph as build_python_project_graph
+from sentinel_zero.resolvers.python_resolver import mutually_exclusive
+from sentinel_zero.resolvers.js_resolver import build_project_graph as build_js_project_graph
 
 SINK_ATTACK_IDS = {
     "FILE_IO": "AAC-17",
@@ -70,6 +81,39 @@ _SINK_KIND_BY_NAME = {
     "subprocess.check_call": "PROCESS_EXEC",
     "subprocess.check_output": "PROCESS_EXEC",
     "subprocess.Popen": "PROCESS_EXEC",
+}
+
+# Milestone 7: the JS/TS equivalent of _SINK_KIND_BY_NAME, keyed by the same
+# kind of resolved dotted identity js_resolver.py produces via require()/
+# import bindings. Node's child_process family + eval/Function cover
+# PROCESS_EXEC; fs's sync+callback read/write cover FILE_IO; JSON.parse
+# covers DESERIALIZATION. Not claimed exhaustive -- the Python table isn't
+# either (no yaml.load, pickle, etc.) -- this is Milestone 7's starting set.
+_JS_SINK_KIND_BY_NAME = {
+    "child_process.exec": "PROCESS_EXEC",
+    "child_process.execSync": "PROCESS_EXEC",
+    "child_process.execFile": "PROCESS_EXEC",
+    "child_process.execFileSync": "PROCESS_EXEC",
+    "child_process.spawn": "PROCESS_EXEC",
+    "child_process.spawnSync": "PROCESS_EXEC",
+    "child_process.fork": "PROCESS_EXEC",
+    "eval": "PROCESS_EXEC",
+    "Function": "PROCESS_EXEC",
+    "fs.readFile": "FILE_IO",
+    "fs.readFileSync": "FILE_IO",
+    "fs.writeFile": "FILE_IO",
+    "fs.writeFileSync": "FILE_IO",
+    "JSON.parse": "DESERIALIZATION",
+}
+
+_RESOLVERS = {
+    "python": build_python_project_graph,
+    "javascript": build_js_project_graph,
+}
+
+_SINK_TABLES = {
+    "python": _SINK_KIND_BY_NAME,
+    "javascript": _JS_SINK_KIND_BY_NAME,
 }
 
 
@@ -102,8 +146,14 @@ def _zero_arg_top_level_function(file_path: str, module_qualname: str, caller_qu
 
 
 def find_finding_plans(
-    graph: ProjectGraph, repo_name: str, catalog, plan_counter: list[int], repo_root: Path
+    graph: ProjectGraph,
+    repo_name: str,
+    catalog,
+    plan_counter: list[int],
+    repo_root: Path,
+    language: str = "python",
 ) -> list:
+    sink_table = _SINK_TABLES[language]
     plans = []
     callee_index = build_direct_callee_index(graph)
     external_index = build_direct_external_index(graph)
@@ -114,9 +164,9 @@ def find_finding_plans(
 
         for caller, calls in calls_by_caller.items():
             for call in calls:
-                if not isinstance(call.target, Symbol) or call.target.qualified_name not in _SINK_KIND_BY_NAME:
+                if not isinstance(call.target, Symbol) or call.target.qualified_name not in sink_table:
                     continue
-                sink_kind = _SINK_KIND_BY_NAME[call.target.qualified_name]
+                sink_kind = sink_table[call.target.qualified_name]
                 attack_id = SINK_ATTACK_IDS[sink_kind]
 
                 # guard precedes sink, same function, by resolved identity + shape,
@@ -148,7 +198,7 @@ def find_finding_plans(
                         "external_dependencies_reached": reached_packages,
                     },
                     verification_method={
-                        "checker_type": "isbg_python_resolver_v0",
+                        "checker_type": f"isbg_{language}_resolver_v0",
                         "required_evidence_tier": "CONFIRMED_REACHABLE",
                         "sandbox_validation_required": True,
                     },
@@ -185,7 +235,7 @@ def find_finding_plans(
                 # "not_reached" and "call_failed" leave the disposition exactly
                 # as the static analysis above already set it. See
                 # probes/_process_exec_harness.py for the full scope statement.
-                if sink_kind == "PROCESS_EXEC" and caller:
+                if language == "python" and sink_kind == "PROCESS_EXEC" and caller:
                     fn_name = _zero_arg_top_level_function(module.file_path, module.module_qualname, caller)
                     if fn_name:
                         probe_result = run_process_exec_probe(repo_root, module.module_qualname, fn_name)
@@ -230,15 +280,17 @@ def _dependency_summary(graph: ProjectGraph) -> dict:
     return dict(sorted(by_package.items(), key=lambda kv: -kv[1]))
 
 
-def run(repo_root: Path, catalog_path: str, out_dir: Path) -> int:
+def run(repo_root: Path, catalog_path: str, out_dir: Path, language: str = "python") -> int:
+    if language not in _RESOLVERS:
+        raise ToolFailure(f"unknown language {language!r} -- expected one of {sorted(_RESOLVERS)}")
     catalog = load_catalog(catalog_path)
     try:
-        graph = build_project_graph(repo_root)
+        graph = _RESOLVERS[language](repo_root)
     except Exception as exc:  # resolver-level failure halts, never silently returns partial
         raise ToolFailure(f"ISBG resolver failed on {repo_root}: {exc}") from exc
 
     plan_counter = [0]
-    plans = find_finding_plans(graph, repo_root.name, catalog, plan_counter, repo_root)
+    plans = find_finding_plans(graph, repo_root.name, catalog, plan_counter, repo_root, language)
 
     unresolved_calls = sum(
         1 for c in graph.all_calls() if not isinstance(c.target, Symbol)
@@ -267,6 +319,7 @@ def run(repo_root: Path, catalog_path: str, out_dir: Path) -> int:
             for wc in graph.wrap_constructions
         ],
         "external_dependencies": _dependency_summary(graph),
+        "parse_errors": graph.parse_errors,
     }
     safe_write_text(str(out_dir), "verification_ledger.json", json.dumps(ledger, indent=2), 5_000_000)
     print(
@@ -278,11 +331,12 @@ def run(repo_root: Path, catalog_path: str, out_dir: Path) -> int:
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) != 3:
-        print("usage: dogfood_scan.py REPO_ROOT ASI_CATALOG_JSON OUT_DIR")
+    if len(argv) not in (3, 4):
+        print("usage: dogfood_scan.py REPO_ROOT ASI_CATALOG_JSON OUT_DIR [python|javascript]")
         return 2
+    language = argv[3] if len(argv) == 4 else "python"
     try:
-        return run(Path(argv[0]), argv[1], Path(argv[2]))
+        return run(Path(argv[0]), argv[1], Path(argv[2]), language)
     except ToolFailure as exc:
         print(f"CRITICAL_TOOL_FAILURE: {exc}")
         return 3

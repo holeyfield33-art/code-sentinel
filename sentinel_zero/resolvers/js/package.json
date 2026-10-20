@@ -1,0 +1,9 @@
+{
+  "name": "sentinel-zero-js-extractor",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Node-side AST extraction for Sentinel-Zero's JS/TS resolver (Milestone 7). Not published; invoked as a subprocess by js_resolver.py.",
+  "dependencies": {
+    "acorn": "^8.14.0"
+  }
+}

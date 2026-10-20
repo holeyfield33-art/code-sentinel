@@ -154,6 +154,13 @@ class ProjectGraph:
     wrapper_classes: dict[str, WrapperClass] = field(default_factory=dict)
     wrap_constructions: list[WrapConstruction] = field(default_factory=list)
     external_references: list[ExternalReference] = field(default_factory=list)
+    parse_errors: list[dict] = field(default_factory=list)
+    # A file this resolver's language parser could not handle at all (real
+    # syntax it doesn't support, a decode error, ...). Language-agnostic by
+    # design, like every other field here: any resolver can hit a file it
+    # can't parse, and per graph.py's own rule above, that must surface as
+    # a reported fact ({"file_path": ..., "error": ...}), never a file that
+    # silently vanishes from the scan with nothing to show for it.
 
     def all_calls(self) -> list[CallSite]:
         return [c for m in self.modules.values() for c in m.calls]

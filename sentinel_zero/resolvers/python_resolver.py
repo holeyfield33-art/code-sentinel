@@ -444,11 +444,17 @@ def build_project_graph(repo_root: Path) -> ProjectGraph:
     for py_path in py_files:
         try:
             parsed[py_path] = ast.parse(py_path.read_text(encoding="utf-8"), filename=str(py_path))
-        except (SyntaxError, UnicodeDecodeError):
-            # A file this resolver cannot parse is NOT silently skipped from
-            # the index -- the caller (dogfood_scan) treats a parse failure
-            # as ToolFailure and halts. We still let pass 1 finish for the
-            # files that did parse so the error message is informative.
+        except (SyntaxError, UnicodeDecodeError) as exc:
+            # A file this resolver cannot parse is NOT silently dropped from
+            # the run -- recorded on the graph (mirrors js_resolver.py's
+            # per-file errors; graph.py's own stated rule is that an
+            # unresolved/unparseable thing must surface, never vanish).
+            # Found while adding the JS resolver: this `except` used to just
+            # `continue` with a comment claiming the caller halted on it --
+            # it never did. The rest of the project proceeds with the files
+            # that did parse; that choice is now a visible fact, not a
+            # silent one.
+            graph.parse_errors.append({"file_path": str(py_path), "error": f"{type(exc).__name__}: {exc}"})
             continue
 
     for py_path, tree in parsed.items():
