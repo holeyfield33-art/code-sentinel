@@ -107,6 +107,22 @@ class WrapperClass:
 
 
 @dataclass(frozen=True)
+class ExternalReference:
+    """One call that leaves the project entirely -- resolves to a dotted
+    name whose top-level component is neither one of this project's own
+    modules nor the standard library. This is the queued dependency-
+    mapping feature: it answers 'what does this function/route reach
+    outside the project' using data the resolver already produces, rather
+    than a new analysis pass."""
+
+    caller: str
+    package: str  # the top-level package name, e.g. "requests" from "requests.get"
+    qualified_name: str
+    file_path: str
+    lineno: int
+
+
+@dataclass(frozen=True)
 class WrapConstruction:
     """One place in the project where a WrapperClass is instantiated,
     wrapping some expression. Does not yet trace which specific handler
@@ -137,6 +153,7 @@ class ProjectGraph:
     functions: dict[str, FunctionInfo] = field(default_factory=dict)
     wrapper_classes: dict[str, WrapperClass] = field(default_factory=dict)
     wrap_constructions: list[WrapConstruction] = field(default_factory=list)
+    external_references: list[ExternalReference] = field(default_factory=list)
 
     def all_calls(self) -> list[CallSite]:
         return [c for m in self.modules.values() for c in m.calls]

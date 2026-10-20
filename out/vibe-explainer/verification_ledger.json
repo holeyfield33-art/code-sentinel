@@ -16,7 +16,8 @@
         "source_node": "/home/claude/holeyfield33-art/vibe-explainer/build/lib/vibe_explainer/asi_matrix.py:46",
         "sink_node": "json.loads",
         "symbol_binding": "build.lib.vibe_explainer.asi_matrix._load_json",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -33,7 +34,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:46.216573+00:00"
+      "generated_at": "2026-10-20T16:20:04.503881+00:00"
     },
     {
       "plan_id": "fp_sz_0002",
@@ -46,7 +47,8 @@
         "source_node": "/home/claude/holeyfield33-art/vibe-explainer/build/lib/vibe_explainer/integrate_vibe_check.py:19",
         "sink_node": "json.loads",
         "symbol_binding": "build.lib.vibe_explainer.integrate_vibe_check.load_vibe_check_report",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -63,7 +65,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:46.216816+00:00"
+      "generated_at": "2026-10-20T16:20:04.504362+00:00"
     },
     {
       "plan_id": "fp_sz_0003",
@@ -76,7 +78,8 @@
         "source_node": "/home/claude/holeyfield33-art/vibe-explainer/build/lib/vibe_explainer/validation.py:71",
         "sink_node": "json.loads",
         "symbol_binding": "build.lib.vibe_explainer.validation.evaluate_corpus",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -93,7 +96,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:46.217008+00:00"
+      "generated_at": "2026-10-20T16:20:04.504583+00:00"
     },
     {
       "plan_id": "fp_sz_0004",
@@ -106,7 +109,8 @@
         "source_node": "/home/claude/holeyfield33-art/vibe-explainer/examples/analyst-review-fixture/tools.py:24",
         "sink_node": "subprocess.run",
         "symbol_binding": "examples.analyst-review-fixture.tools.propose_action",
-        "description": "resolved call to subprocess.run (PROCESS_EXEC)."
+        "description": "resolved call to subprocess.run (PROCESS_EXEC).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -123,7 +127,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:46.217037+00:00"
+      "generated_at": "2026-10-20T16:20:04.504613+00:00"
     },
     {
       "plan_id": "fp_sz_0005",
@@ -136,7 +140,8 @@
         "source_node": "/home/claude/holeyfield33-art/vibe-explainer/scripts/golden_report.py:34",
         "sink_node": "json.loads",
         "symbol_binding": "scripts.golden_report.render",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -153,7 +158,7 @@
         "reason": "a resolved call to vibe_explainer.cli.main precedes this sink in the same function, in a non-exclusive branch, and vibe_explainer.cli.main is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
         "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
       },
-      "generated_at": "2026-10-20T15:59:46.217061+00:00"
+      "generated_at": "2026-10-20T16:20:04.504792+00:00"
     },
     {
       "plan_id": "fp_sz_0006",
@@ -166,7 +171,8 @@
         "source_node": "/home/claude/holeyfield33-art/vibe-explainer/scripts/qualify_clean_environment.py:26",
         "sink_node": "subprocess.check_output",
         "symbol_binding": "scripts.qualify_clean_environment.main",
-        "description": "resolved call to subprocess.check_output (PROCESS_EXEC)."
+        "description": "resolved call to subprocess.check_output (PROCESS_EXEC).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -183,7 +189,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:46.217079+00:00"
+      "generated_at": "2026-10-20T16:20:04.504815+00:00"
     },
     {
       "plan_id": "fp_sz_0007",
@@ -196,7 +202,8 @@
         "source_node": "/home/claude/holeyfield33-art/vibe-explainer/scripts/qualify_large_repos.py:71",
         "sink_node": "subprocess.check_output",
         "symbol_binding": "scripts.qualify_large_repos.main",
-        "description": "resolved call to subprocess.check_output (PROCESS_EXEC)."
+        "description": "resolved call to subprocess.check_output (PROCESS_EXEC).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -213,7 +220,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:46.217099+00:00"
+      "generated_at": "2026-10-20T16:20:04.504842+00:00"
     },
     {
       "plan_id": "fp_sz_0008",
@@ -226,7 +233,8 @@
         "source_node": "/home/claude/holeyfield33-art/vibe-explainer/scripts/qualify_large_repos.py:79",
         "sink_node": "subprocess.run",
         "symbol_binding": "scripts.qualify_large_repos.main",
-        "description": "resolved call to subprocess.run (PROCESS_EXEC)."
+        "description": "resolved call to subprocess.run (PROCESS_EXEC).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -243,7 +251,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:46.217119+00:00"
+      "generated_at": "2026-10-20T16:20:04.504865+00:00"
     },
     {
       "plan_id": "fp_sz_0009",
@@ -256,7 +264,8 @@
         "source_node": "/home/claude/holeyfield33-art/vibe-explainer/scripts/qualify_large_repos.py:84",
         "sink_node": "json.loads",
         "symbol_binding": "scripts.qualify_large_repos.main",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -273,7 +282,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:46.217137+00:00"
+      "generated_at": "2026-10-20T16:20:04.504886+00:00"
     },
     {
       "plan_id": "fp_sz_0010",
@@ -286,7 +295,8 @@
         "source_node": "/home/claude/holeyfield33-art/vibe-explainer/scripts/qualify_release.py:136",
         "sink_node": "json.loads",
         "symbol_binding": "scripts.qualify_release.main",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -303,7 +313,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:46.217186+00:00"
+      "generated_at": "2026-10-20T16:20:04.504941+00:00"
     },
     {
       "plan_id": "fp_sz_0011",
@@ -316,7 +326,8 @@
         "source_node": "/home/claude/holeyfield33-art/vibe-explainer/scripts/qualify_release.py:137",
         "sink_node": "json.loads",
         "symbol_binding": "scripts.qualify_release.main",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -333,7 +344,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:46.217215+00:00"
+      "generated_at": "2026-10-20T16:20:04.504975+00:00"
     },
     {
       "plan_id": "fp_sz_0012",
@@ -346,7 +357,8 @@
         "source_node": "/home/claude/holeyfield33-art/vibe-explainer/scripts/qualify_release.py:187",
         "sink_node": "json.loads",
         "symbol_binding": "scripts.qualify_release.main",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -363,7 +375,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:46.217290+00:00"
+      "generated_at": "2026-10-20T16:20:04.505054+00:00"
     },
     {
       "plan_id": "fp_sz_0013",
@@ -376,7 +388,8 @@
         "source_node": "/home/claude/holeyfield33-art/vibe-explainer/scripts/review_detection.py:27",
         "sink_node": "json.loads",
         "symbol_binding": "scripts.review_detection.main",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -393,7 +406,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:46.217309+00:00"
+      "generated_at": "2026-10-20T16:20:04.505259+00:00"
     },
     {
       "plan_id": "fp_sz_0014",
@@ -406,7 +419,8 @@
         "source_node": "/home/claude/holeyfield33-art/vibe-explainer/scripts/review_detection.py:33",
         "sink_node": "json.loads",
         "symbol_binding": "scripts.review_detection.main",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -423,7 +437,7 @@
         "reason": "a resolved call to vibe_explainer.validation.evaluate_corpus precedes this sink in the same function, in a non-exclusive branch, and vibe_explainer.validation.evaluate_corpus is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
         "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
       },
-      "generated_at": "2026-10-20T15:59:46.217333+00:00"
+      "generated_at": "2026-10-20T16:20:04.505409+00:00"
     },
     {
       "plan_id": "fp_sz_0015",
@@ -436,7 +450,8 @@
         "source_node": "/home/claude/holeyfield33-art/vibe-explainer/scripts/review_detection.py:36",
         "sink_node": "json.loads",
         "symbol_binding": "scripts.review_detection.main",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -453,7 +468,7 @@
         "reason": "a resolved call to vibe_explainer.validation.evaluate_corpus precedes this sink in the same function, in a non-exclusive branch, and vibe_explainer.validation.evaluate_corpus is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
         "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
       },
-      "generated_at": "2026-10-20T15:59:46.217352+00:00"
+      "generated_at": "2026-10-20T16:20:04.505546+00:00"
     },
     {
       "plan_id": "fp_sz_0016",
@@ -466,7 +481,8 @@
         "source_node": "/home/claude/holeyfield33-art/vibe-explainer/tests/fixtures/agent-with-tools/agent.py:12",
         "sink_node": "subprocess.run",
         "symbol_binding": "tests.fixtures.agent-with-tools.agent.run_shell",
-        "description": "resolved call to subprocess.run (PROCESS_EXEC)."
+        "description": "resolved call to subprocess.run (PROCESS_EXEC).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -483,7 +499,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:46.217361+00:00"
+      "generated_at": "2026-10-20T16:20:04.505559+00:00"
     },
     {
       "plan_id": "fp_sz_0017",
@@ -496,7 +512,8 @@
         "source_node": "/home/claude/holeyfield33-art/vibe-explainer/tests/fixtures/controls-tool-with-auth/agent.py:16",
         "sink_node": "subprocess.run",
         "symbol_binding": "tests.fixtures.controls-tool-with-auth.agent.run_shell",
-        "description": "resolved call to subprocess.run (PROCESS_EXEC)."
+        "description": "resolved call to subprocess.run (PROCESS_EXEC).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -513,7 +530,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:46.217376+00:00"
+      "generated_at": "2026-10-20T16:20:04.505579+00:00"
     },
     {
       "plan_id": "fp_sz_0018",
@@ -526,7 +543,8 @@
         "source_node": "/home/claude/holeyfield33-art/vibe-explainer/tests/fixtures/dataflow-model-to-shell/agent.py:13",
         "sink_node": "subprocess.run",
         "symbol_binding": "tests.fixtures.dataflow-model-to-shell.agent.run_agent",
-        "description": "resolved call to subprocess.run (PROCESS_EXEC)."
+        "description": "resolved call to subprocess.run (PROCESS_EXEC).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -543,7 +561,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:46.217386+00:00"
+      "generated_at": "2026-10-20T16:20:04.505591+00:00"
     },
     {
       "plan_id": "fp_sz_0019",
@@ -556,7 +574,8 @@
         "source_node": "/home/claude/holeyfield33-art/vibe-explainer/tests/fixtures/readiness-continuous/agent.py:22",
         "sink_node": "subprocess.run",
         "symbol_binding": "tests.fixtures.readiness-continuous.agent.run_shell",
-        "description": "resolved call to subprocess.run (PROCESS_EXEC)."
+        "description": "resolved call to subprocess.run (PROCESS_EXEC).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -573,7 +592,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:46.217403+00:00"
+      "generated_at": "2026-10-20T16:20:04.505613+00:00"
     },
     {
       "plan_id": "fp_sz_0020",
@@ -586,7 +605,8 @@
         "source_node": "/home/claude/holeyfield33-art/vibe-explainer/tests/fixtures/readiness-hardened/agent.py:22",
         "sink_node": "subprocess.run",
         "symbol_binding": "tests.fixtures.readiness-hardened.agent.run_shell",
-        "description": "resolved call to subprocess.run (PROCESS_EXEC)."
+        "description": "resolved call to subprocess.run (PROCESS_EXEC).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -603,7 +623,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:46.217414+00:00"
+      "generated_at": "2026-10-20T16:20:04.505630+00:00"
     },
     {
       "plan_id": "fp_sz_0021",
@@ -616,7 +636,8 @@
         "source_node": "/home/claude/holeyfield33-art/vibe-explainer/tests/fixtures/readiness-managed/agent.py:15",
         "sink_node": "subprocess.run",
         "symbol_binding": "tests.fixtures.readiness-managed.agent.run_shell",
-        "description": "resolved call to subprocess.run (PROCESS_EXEC)."
+        "description": "resolved call to subprocess.run (PROCESS_EXEC).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -633,7 +654,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:46.217423+00:00"
+      "generated_at": "2026-10-20T16:20:04.505645+00:00"
     },
     {
       "plan_id": "fp_sz_0022",
@@ -646,7 +667,8 @@
         "source_node": "/home/claude/holeyfield33-art/vibe-explainer/tests/test_scan_budget.py:34",
         "sink_node": "json.loads",
         "symbol_binding": "tests.test_scan_budget.test_partial_artifact",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -663,7 +685,7 @@
         "reason": "a resolved call to vibe_explainer.cli.main precedes this sink in the same function, in a non-exclusive branch, and vibe_explainer.cli.main is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
         "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
       },
-      "generated_at": "2026-10-20T15:59:46.217488+00:00"
+      "generated_at": "2026-10-20T16:20:04.505833+00:00"
     },
     {
       "plan_id": "fp_sz_0023",
@@ -676,7 +698,8 @@
         "source_node": "/home/claude/holeyfield33-art/vibe-explainer/tests/test_scan_budget.py:62",
         "sink_node": "json.loads",
         "symbol_binding": "tests.test_scan_budget.test_clock_budget_is_deterministic_and_retains_evidence",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -693,7 +716,7 @@
         "reason": "a resolved call to vibe_explainer.cli.main precedes this sink in the same function, in a non-exclusive branch, and vibe_explainer.cli.main is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
         "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
       },
-      "generated_at": "2026-10-20T15:59:46.217502+00:00"
+      "generated_at": "2026-10-20T16:20:04.505966+00:00"
     },
     {
       "plan_id": "fp_sz_0024",
@@ -706,7 +729,10 @@
         "source_node": "/home/claude/holeyfield33-art/vibe-explainer/tests/test_scan_budget.py:78",
         "sink_node": "json.loads",
         "symbol_binding": "tests.test_scan_budget.test_failed_atomic_publish_preserves_previous_partial",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": [
+          "pytest"
+        ]
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -723,7 +749,7 @@
         "reason": "a resolved call to vibe_explainer.cli.main precedes this sink in the same function, in a non-exclusive branch, and vibe_explainer.cli.main is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
         "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
       },
-      "generated_at": "2026-10-20T15:59:46.217525+00:00"
+      "generated_at": "2026-10-20T16:20:04.506096+00:00"
     },
     {
       "plan_id": "fp_sz_0025",
@@ -736,7 +762,8 @@
         "source_node": "/home/claude/holeyfield33-art/vibe-explainer/tests/test_scan_budget.py:118",
         "sink_node": "json.loads",
         "symbol_binding": "tests.test_scan_budget.test_parse_failure_is_reported_and_target_not_executed",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -753,7 +780,7 @@
         "reason": "a resolved call to vibe_explainer.cli.main precedes this sink in the same function, in a non-exclusive branch, and vibe_explainer.cli.main is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
         "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
       },
-      "generated_at": "2026-10-20T15:59:46.217544+00:00"
+      "generated_at": "2026-10-20T16:20:04.506261+00:00"
     },
     {
       "plan_id": "fp_sz_0026",
@@ -766,7 +793,8 @@
         "source_node": "/home/claude/holeyfield33-art/vibe-explainer/tests/test_security_utils.py:15",
         "sink_node": "json.loads",
         "symbol_binding": "<module scope>",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -783,7 +811,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:46.217555+00:00"
+      "generated_at": "2026-10-20T16:20:04.506275+00:00"
     },
     {
       "plan_id": "fp_sz_0027",
@@ -796,7 +824,8 @@
         "source_node": "/home/claude/holeyfield33-art/vibe-explainer/vibe_explainer/asi_matrix.py:46",
         "sink_node": "json.loads",
         "symbol_binding": "vibe_explainer.asi_matrix._load_json",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -813,7 +842,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:46.217634+00:00"
+      "generated_at": "2026-10-20T16:20:04.506343+00:00"
     },
     {
       "plan_id": "fp_sz_0028",
@@ -826,7 +855,8 @@
         "source_node": "/home/claude/holeyfield33-art/vibe-explainer/vibe_explainer/integrate_vibe_check.py:19",
         "sink_node": "json.loads",
         "symbol_binding": "vibe_explainer.integrate_vibe_check.load_vibe_check_report",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -843,7 +873,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:46.217834+00:00"
+      "generated_at": "2026-10-20T16:20:04.506600+00:00"
     },
     {
       "plan_id": "fp_sz_0029",
@@ -856,7 +886,8 @@
         "source_node": "/home/claude/holeyfield33-art/vibe-explainer/vibe_explainer/validation.py:71",
         "sink_node": "json.loads",
         "symbol_binding": "vibe_explainer.validation.evaluate_corpus",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -873,9 +904,20 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:46.218029+00:00"
+      "generated_at": "2026-10-20T16:20:04.506820+00:00"
     }
   ],
   "wrapper_middleware_detected": [],
-  "wrapper_construction_sites": []
+  "wrapper_construction_sites": [],
+  "external_dependencies": {
+    "openai": 24,
+    "anthropic": 4,
+    "langchain_chroma": 3,
+    "requests": 3,
+    "pytest": 3,
+    "mcp": 2,
+    "sqlalchemy": 2,
+    "src": 1,
+    "flask": 1
+  }
 }

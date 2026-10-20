@@ -35,6 +35,41 @@ from sentinel_zero.graph import ProjectGraph, Symbol
 MAX_DEPTH = 6
 
 
+def build_direct_external_index(graph: ProjectGraph) -> dict[str, set[str]]:
+    """qualified function name -> the set of external package names it
+    reaches DIRECTLY (not through another project function)."""
+    index: dict[str, set[str]] = {}
+    for ref in graph.external_references:
+        if not ref.caller:
+            continue
+        index.setdefault(ref.caller, set()).add(ref.package)
+    return index
+
+
+def external_packages_reached(
+    name: str,
+    graph: ProjectGraph,
+    callee_index: dict[str, set[str]],
+    direct_external_index: dict[str, set[str]],
+    _visited: frozenset[str] = frozenset(),
+    _depth: int = 0,
+) -> frozenset[str]:
+    """The dual of transitively_guard_shaped: instead of 'does this resolve
+    to a guard', 'what third-party packages does this function reach,
+    directly or through delegation to other project functions.' Same
+    bound (depth, cycle-safety) and same reasoning for why: a route/
+    function's exposure to a dependency should survive the function being
+    refactored into a helper two calls deeper, the same way a guard
+    should."""
+    if _depth >= MAX_DEPTH or name in _visited:
+        return frozenset()
+    reached = set(direct_external_index.get(name, ()))
+    next_visited = _visited | {name}
+    for callee in callee_index.get(name, ()):
+        reached |= external_packages_reached(callee, graph, callee_index, direct_external_index, next_visited, _depth + 1)
+    return frozenset(reached)
+
+
 def build_direct_callee_index(graph: ProjectGraph) -> dict[str, set[str]]:
     """qualified function name -> the set of project-defined functions it
     directly calls (anywhere in its body, any branch -- intentionally

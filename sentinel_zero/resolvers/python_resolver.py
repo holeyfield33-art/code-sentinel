@@ -37,8 +37,11 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+import sys
+
 from sentinel_zero.graph import (
     CallSite,
+    ExternalReference,
     FunctionInfo,
     ModuleGraph,
     ProjectGraph,
@@ -47,6 +50,12 @@ from sentinel_zero.graph import (
     WrapConstruction,
     WrapperClass,
 )
+
+try:
+    _STDLIB_MODULE_NAMES = set(sys.stdlib_module_names)  # Python >= 3.10
+except AttributeError:  # pragma: no cover - older Python fallback
+    _STDLIB_MODULE_NAMES = set(sys.builtin_module_names)
+_STDLIB_MODULE_NAMES.add("builtins")
 
 STDLIB_SINKS = {
     "builtins.open",
@@ -201,6 +210,23 @@ def _import_bindings(tree: ast.Module, module_qualname: str) -> dict[str, str]:
     return bindings
 
 
+def _root_name_is_bound(node: ast.expr, bindings: dict[str, str]) -> bool:
+    """True only if the leftmost name in an attribute chain (`x` in
+    `x.y.z`) is something we can actually prove came from an import or a
+    resolved re-assignment -- not a bare fallback. Needed because
+    `_resolve_dotted` deliberately falls back to returning an unbound bare
+    name verbatim (required so a same-module call like `handle(req)`
+    still resolves against the project function index), but that same
+    fallback would otherwise make an ordinary method call on a local
+    variable (`lines.append(x)`) indistinguishable from a real
+    `module.function()` reference -- confirmed as a real false-positive
+    generator (local names like 'lines', 'text', 'row' were showing up as
+    'external dependencies') before this check was added."""
+    while isinstance(node, ast.Attribute):
+        node = node.value
+    return isinstance(node, ast.Name) and node.id in bindings
+
+
 def _resolve_dotted(node: ast.expr, bindings: dict[str, str]) -> str | None:
     """Resolve a Name or Attribute chain to a dotted string, through the
     binding map where possible."""
@@ -210,6 +236,52 @@ def _resolve_dotted(node: ast.expr, bindings: dict[str, str]) -> str | None:
         base = _resolve_dotted(node.value, bindings)
         return f"{base}.{node.attr}" if base else None
     return None
+
+
+def _alias_rhs_is_trustworthy(
+    value_node: ast.expr,
+    resolved_rhs: str,
+    bindings: dict[str, str],
+    project_functions: dict[str, "FunctionInfo"],
+    module_qualname: str,
+) -> bool:
+    """Decides whether `alias = <value_node>` is safe to record in the
+    binding map as `alias -> resolved_rhs`.
+
+    `_resolve_dotted`'s unbound-Name fallback (it returns the bare name
+    itself when there's no binding) is deliberate and needed elsewhere --
+    without it, a same-module call like `handle(req)` couldn't resolve
+    against the project function index. But that same fallback makes
+    `_resolve_dotted` return a *string that looks resolved* even for a
+    plain local variable (`add = lines.append` resolves to the string
+    "lines.append" even though `lines` is a local list). This helper is
+    the one place that decides whether to actually trust that string
+    enough to propagate it as an alias, rather than just using it for the
+    one expression it came from.
+
+    Trusted in exactly two cases, both genuinely resolved rather than bare
+    fallback: the RHS's root name is already bound (an import or a
+    previously-trusted alias -- `_root_name_is_bound` covers Attribute
+    chains; the plain-Name case is checked directly below), or the RHS
+    names a real project function (so `handle = some_helper` keeps working
+    for call-target resolution). Anything else -- in particular a bare,
+    never-bound local variable name surviving only via the fallback --
+    is rejected.
+
+    Found for real while dogfooding vibe-explainer: `metadata = meta_payload`
+    (where meta_payload is a local variable, never imported) let `metadata`
+    inherit the bare string "meta_payload", and a later `metadata.get(...)`
+    call then passed the root-bound check on `metadata` itself -- reporting
+    a fake dependency on a package named "meta_payload". Confirmed this is
+    a different call site, caught by a second round of dogfooding after the
+    first alias fix (`add = lines.append`) was already in place.
+    """
+    if isinstance(value_node, ast.Name):
+        if value_node.id in bindings:
+            return True  # chains to something already trusted
+    elif _root_name_is_bound(value_node, bindings):
+        return True  # Attribute chain rooted in something already trusted
+    return resolved_rhs in project_functions or f"{module_qualname}.{resolved_rhs}" in project_functions
 
 
 def mutually_exclusive(path_a: tuple, path_b: tuple) -> bool:
@@ -227,6 +299,9 @@ def _resolve_module(
     tree: ast.Module,
     module_qualname: str,
     project_functions: dict[str, FunctionInfo],
+    project_top_level_names: set[str],
+    file_path: str,
+    external_refs: list[ExternalReference],
 ) -> list[CallSite]:
     bindings = _import_bindings(tree, module_qualname)
     calls: list[CallSite] = []
@@ -265,6 +340,23 @@ def _resolve_module(
                         reason=f"callee expression at line {node.lineno} did not resolve to a dotted name "
                                "(dynamic dispatch, getattr, or an import form this resolver doesn't model)."
                     )
+                elif isinstance(target, Symbol) and "." in target.qualified_name:
+                    top_level = target.qualified_name.split(".", 1)[0]
+                    if (
+                        target.qualified_name not in project_functions
+                        and top_level not in project_top_level_names
+                        and top_level not in _STDLIB_MODULE_NAMES
+                        and _root_name_is_bound(node.func, local_bindings)
+                    ):
+                        external_refs.append(
+                            ExternalReference(
+                                caller=caller_name,
+                                package=top_level,
+                                qualified_name=target.qualified_name,
+                                file_path=file_path,
+                                lineno=node.lineno,
+                            )
+                        )
                 try:
                     arg_texts = tuple(ast.unparse(a) for a in node.args)
                 except Exception:
@@ -288,7 +380,13 @@ def _resolve_module(
                 if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1 and isinstance(stmt.targets[0], ast.Name):
                     record_calls_in_expr(stmt.value, branch_path)
                     resolved_rhs = _resolve_dotted(stmt.value, local_bindings)
-                    if resolved_rhs:
+                    # Only propagate the alias when it's actually trustworthy
+                    # -- see _alias_rhs_is_trustworthy's docstring for the two
+                    # real false-positives (`add = lines.append` and
+                    # `metadata = meta_payload`) this gate exists to block.
+                    if resolved_rhs and _alias_rhs_is_trustworthy(
+                        stmt.value, resolved_rhs, local_bindings, project_functions, module_qualname
+                    ):
                         local_bindings[stmt.targets[0].id] = resolved_rhs
                     continue
                 if isinstance(stmt, ast.If):
@@ -357,9 +455,13 @@ def build_project_graph(repo_root: Path) -> ProjectGraph:
         module_qualname = _module_qualname(py_path, repo_root)
         _index_module_functions(tree, module_qualname, str(py_path), graph.functions, graph.wrapper_classes)
 
+    project_top_level_names = {_module_qualname(p, repo_root).split(".", 1)[0] for p in parsed}
+
     for py_path, tree in parsed.items():
         module_qualname = _module_qualname(py_path, repo_root)
-        calls = _resolve_module(tree, module_qualname, graph.functions)
+        calls = _resolve_module(
+            tree, module_qualname, graph.functions, project_top_level_names, str(py_path), graph.external_references
+        )
         graph.modules[module_qualname] = ModuleGraph(module_qualname=module_qualname, file_path=str(py_path), calls=calls)
 
     # Pass 3: anywhere a known WrapperClass is instantiated, record what it

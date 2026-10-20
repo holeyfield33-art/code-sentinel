@@ -16,7 +16,10 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/blockwise/cli.py:117",
         "sink_node": "json.loads",
         "symbol_binding": "blockwise.cli.main",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": [
+          "mcp"
+        ]
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -33,7 +36,7 @@
         "reason": "a resolved call to blockwise.probes.review_record precedes this sink in the same function, in a non-exclusive branch, and blockwise.probes.review_record is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
         "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
       },
-      "generated_at": "2026-10-20T15:59:45.614175+00:00"
+      "generated_at": "2026-10-20T16:20:03.911858+00:00"
     },
     {
       "plan_id": "fp_sz_0002",
@@ -46,7 +49,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/blockwise/coverage.py:25",
         "sink_node": "json.loads",
         "symbol_binding": "blockwise.coverage.load_coverage",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -63,7 +67,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.614282+00:00"
+      "generated_at": "2026-10-20T16:20:03.911966+00:00"
     },
     {
       "plan_id": "fp_sz_0003",
@@ -76,7 +80,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/blockwise/presets.py:30",
         "sink_node": "json.loads",
         "symbol_binding": "blockwise.presets.load_presets",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -93,7 +98,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.614320+00:00"
+      "generated_at": "2026-10-20T16:20:03.912006+00:00"
     },
     {
       "plan_id": "fp_sz_0004",
@@ -106,7 +111,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/blockwise/presets.py:43",
         "sink_node": "json.loads",
         "symbol_binding": "blockwise.presets.load_blueprints",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -123,7 +129,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.614330+00:00"
+      "generated_at": "2026-10-20T16:20:03.912018+00:00"
     },
     {
       "plan_id": "fp_sz_0005",
@@ -136,7 +142,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/blockwise/probes.py:206",
         "sink_node": "subprocess.run",
         "symbol_binding": "blockwise.probes._call",
-        "description": "resolved call to subprocess.run (PROCESS_EXEC)."
+        "description": "resolved call to subprocess.run (PROCESS_EXEC).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -153,7 +160,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.614373+00:00"
+      "generated_at": "2026-10-20T16:20:03.912061+00:00"
     },
     {
       "plan_id": "fp_sz_0006",
@@ -166,7 +173,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/blockwise/probes.py:211",
         "sink_node": "json.loads",
         "symbol_binding": "blockwise.probes._call",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -183,7 +191,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.614381+00:00"
+      "generated_at": "2026-10-20T16:20:03.912070+00:00"
     },
     {
       "plan_id": "fp_sz_0007",
@@ -196,7 +204,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/blockwise/project.py:31",
         "sink_node": "json.loads",
         "symbol_binding": "blockwise.project.load_plan",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -213,7 +222,7 @@
         "reason": "a resolved call to blockwise.schema.validate_score precedes this sink in the same function, in a non-exclusive branch, and blockwise.schema.validate_score is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
         "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
       },
-      "generated_at": "2026-10-20T15:59:45.614408+00:00"
+      "generated_at": "2026-10-20T16:20:03.912110+00:00"
     },
     {
       "plan_id": "fp_sz_0008",
@@ -226,7 +235,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/blockwise/schema.py:267",
         "sink_node": "json.loads",
         "symbol_binding": "blockwise.schema.load_score",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -243,7 +253,7 @@
         "reason": "a resolved call to blockwise.schema.validate_score precedes this sink in the same function, in a non-exclusive branch, and blockwise.schema.validate_score is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
         "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
       },
-      "generated_at": "2026-10-20T15:59:45.614451+00:00"
+      "generated_at": "2026-10-20T16:20:03.912210+00:00"
     },
     {
       "plan_id": "fp_sz_0009",
@@ -256,7 +266,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/blockwise/secure_apply.py:49",
         "sink_node": "json.loads",
         "symbol_binding": "blockwise.secure_apply._manifest",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -273,7 +284,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.614464+00:00"
+      "generated_at": "2026-10-20T16:20:03.912232+00:00"
     },
     {
       "plan_id": "fp_sz_0010",
@@ -286,7 +297,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/bwcache.py:40",
         "sink_node": "json.loads",
         "symbol_binding": "experiments.agent-cache-003.bwcache.load_pins",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -303,7 +315,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.614485+00:00"
+      "generated_at": "2026-10-20T16:20:03.912255+00:00"
     },
     {
       "plan_id": "fp_sz_0011",
@@ -316,7 +328,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/bwcache.py:79",
         "sink_node": "subprocess.run",
         "symbol_binding": "experiments.agent-cache-003.bwcache.main",
-        "description": "resolved call to subprocess.run (PROCESS_EXEC)."
+        "description": "resolved call to subprocess.run (PROCESS_EXEC).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -333,7 +346,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.614553+00:00"
+      "generated_at": "2026-10-20T16:20:03.912293+00:00"
     },
     {
       "plan_id": "fp_sz_0012",
@@ -346,7 +359,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/run003.py:51",
         "sink_node": "subprocess.run",
         "symbol_binding": "experiments.agent-cache-003.run003.run_bw",
-        "description": "resolved call to subprocess.run (PROCESS_EXEC)."
+        "description": "resolved call to subprocess.run (PROCESS_EXEC).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -363,7 +377,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.614590+00:00"
+      "generated_at": "2026-10-20T16:20:03.912326+00:00"
     },
     {
       "plan_id": "fp_sz_0013",
@@ -376,7 +390,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/run003.py:56",
         "sink_node": "json.loads",
         "symbol_binding": "experiments.agent-cache-003.run003.build",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -393,7 +408,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.614600+00:00"
+      "generated_at": "2026-10-20T16:20:03.912335+00:00"
     },
     {
       "plan_id": "fp_sz_0014",
@@ -406,7 +421,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/run003.py:57",
         "sink_node": "subprocess.run",
         "symbol_binding": "experiments.agent-cache-003.run003.build",
-        "description": "resolved call to subprocess.run (PROCESS_EXEC)."
+        "description": "resolved call to subprocess.run (PROCESS_EXEC).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -423,7 +439,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.614614+00:00"
+      "generated_at": "2026-10-20T16:20:03.912346+00:00"
     },
     {
       "plan_id": "fp_sz_0015",
@@ -436,7 +452,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/run003.py:120",
         "sink_node": "subprocess.run",
         "symbol_binding": "experiments.agent-cache-003.run003.bwcache",
-        "description": "resolved call to subprocess.run (PROCESS_EXEC)."
+        "description": "resolved call to subprocess.run (PROCESS_EXEC).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -453,7 +470,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.614629+00:00"
+      "generated_at": "2026-10-20T16:20:03.912357+00:00"
     },
     {
       "plan_id": "fp_sz_0016",
@@ -466,7 +483,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/run003.py:149",
         "sink_node": "json.loads",
         "symbol_binding": "experiments.agent-cache-003.run003.version_change",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -483,7 +501,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.614643+00:00"
+      "generated_at": "2026-10-20T16:20:03.912367+00:00"
     },
     {
       "plan_id": "fp_sz_0017",
@@ -496,7 +514,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/run003.py:157",
         "sink_node": "subprocess.run",
         "symbol_binding": "experiments.agent-cache-003.run003.version_change",
-        "description": "resolved call to subprocess.run (PROCESS_EXEC)."
+        "description": "resolved call to subprocess.run (PROCESS_EXEC).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -513,7 +532,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.614660+00:00"
+      "generated_at": "2026-10-20T16:20:03.912381+00:00"
     },
     {
       "plan_id": "fp_sz_0018",
@@ -526,7 +545,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/run003.py:175",
         "sink_node": "json.loads",
         "symbol_binding": "experiments.agent-cache-003.run003.cache_evidence",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -543,7 +563,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.614674+00:00"
+      "generated_at": "2026-10-20T16:20:03.912391+00:00"
     },
     {
       "plan_id": "fp_sz_0019",
@@ -556,7 +576,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/run003.py:272",
         "sink_node": "json.loads",
         "symbol_binding": "experiments.agent-cache-003.run003.finalize",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -573,7 +594,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.614690+00:00"
+      "generated_at": "2026-10-20T16:20:03.912404+00:00"
     },
     {
       "plan_id": "fp_sz_0020",
@@ -586,7 +607,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/run003.py:285",
         "sink_node": "json.loads",
         "symbol_binding": "experiments.agent-cache-003.run003.finalize",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -603,7 +625,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.614713+00:00"
+      "generated_at": "2026-10-20T16:20:03.912421+00:00"
     },
     {
       "plan_id": "fp_sz_0021",
@@ -616,7 +638,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/run003.py:301",
         "sink_node": "json.loads",
         "symbol_binding": "experiments.agent-cache-003.run003.compare",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -633,7 +656,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.614725+00:00"
+      "generated_at": "2026-10-20T16:20:03.912430+00:00"
     },
     {
       "plan_id": "fp_sz_0022",
@@ -646,7 +669,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/run003.py:308",
         "sink_node": "json.loads",
         "symbol_binding": "experiments.agent-cache-003.run003.compare",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -663,7 +687,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.614738+00:00"
+      "generated_at": "2026-10-20T16:20:03.912439+00:00"
     },
     {
       "plan_id": "fp_sz_0023",
@@ -676,7 +700,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/run003.py:308",
         "sink_node": "json.loads",
         "symbol_binding": "experiments.agent-cache-003.run003.compare",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -693,7 +718,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.614749+00:00"
+      "generated_at": "2026-10-20T16:20:03.912448+00:00"
     },
     {
       "plan_id": "fp_sz_0024",
@@ -706,7 +731,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/run003.py:340",
         "sink_node": "json.loads",
         "symbol_binding": "experiments.agent-cache-003.run003.compare",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -723,7 +749,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.614779+00:00"
+      "generated_at": "2026-10-20T16:20:03.912469+00:00"
     },
     {
       "plan_id": "fp_sz_0025",
@@ -736,7 +762,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/run003.py:349",
         "sink_node": "json.loads",
         "symbol_binding": "experiments.agent-cache-003.run003.local_phase",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -753,7 +780,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.614786+00:00"
+      "generated_at": "2026-10-20T16:20:03.912479+00:00"
     },
     {
       "plan_id": "fp_sz_0026",
@@ -766,7 +793,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/runs/A-1/app/store.py:11",
         "sink_node": "json.load",
         "symbol_binding": "experiments.agent-cache-003.runs.A-1.app.store.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -783,7 +811,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.614810+00:00"
+      "generated_at": "2026-10-20T16:20:03.912501+00:00"
     },
     {
       "plan_id": "fp_sz_0027",
@@ -796,7 +824,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/runs/A-1/app/todo.py:11",
         "sink_node": "json.load",
         "symbol_binding": "experiments.agent-cache-003.runs.A-1.app.todo.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -813,7 +842,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.614822+00:00"
+      "generated_at": "2026-10-20T16:20:03.912514+00:00"
     },
     {
       "plan_id": "fp_sz_0028",
@@ -826,7 +855,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/runs/A-2/app/store.py:11",
         "sink_node": "json.load",
         "symbol_binding": "experiments.agent-cache-003.runs.A-2.app.store.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -843,7 +873,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.614842+00:00"
+      "generated_at": "2026-10-20T16:20:03.912533+00:00"
     },
     {
       "plan_id": "fp_sz_0029",
@@ -856,7 +886,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/runs/A-2/app/todo.py:11",
         "sink_node": "json.load",
         "symbol_binding": "experiments.agent-cache-003.runs.A-2.app.todo.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -873,7 +904,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.614853+00:00"
+      "generated_at": "2026-10-20T16:20:03.912545+00:00"
     },
     {
       "plan_id": "fp_sz_0030",
@@ -886,7 +917,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/runs/B-1/app/store.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.agent-cache-003.runs.B-1.app.store.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -903,7 +935,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.614876+00:00"
+      "generated_at": "2026-10-20T16:20:03.912567+00:00"
     },
     {
       "plan_id": "fp_sz_0031",
@@ -916,7 +948,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/runs/B-1/app/todo.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.agent-cache-003.runs.B-1.app.todo.load_items",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -933,7 +966,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.614887+00:00"
+      "generated_at": "2026-10-20T16:20:03.912578+00:00"
     },
     {
       "plan_id": "fp_sz_0032",
@@ -946,7 +979,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/runs/B-2/app/store.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.agent-cache-003.runs.B-2.app.store.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -963,7 +997,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.614955+00:00"
+      "generated_at": "2026-10-20T16:20:03.912598+00:00"
     },
     {
       "plan_id": "fp_sz_0033",
@@ -976,7 +1010,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/runs/B-2/app/todo.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.agent-cache-003.runs.B-2.app.todo.load_items",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -993,7 +1028,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.614968+00:00"
+      "generated_at": "2026-10-20T16:20:03.912610+00:00"
     },
     {
       "plan_id": "fp_sz_0034",
@@ -1006,7 +1041,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/runs/C-1/app/store.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.agent-cache-003.runs.C-1.app.store.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1023,7 +1059,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.614989+00:00"
+      "generated_at": "2026-10-20T16:20:03.912631+00:00"
     },
     {
       "plan_id": "fp_sz_0035",
@@ -1036,7 +1072,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/runs/C-1/app/todo.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.agent-cache-003.runs.C-1.app.todo.load_items",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1053,7 +1090,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615000+00:00"
+      "generated_at": "2026-10-20T16:20:03.912642+00:00"
     },
     {
       "plan_id": "fp_sz_0036",
@@ -1066,7 +1103,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/runs/C-2/app/store.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.agent-cache-003.runs.C-2.app.store.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1083,7 +1121,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615020+00:00"
+      "generated_at": "2026-10-20T16:20:03.912663+00:00"
     },
     {
       "plan_id": "fp_sz_0037",
@@ -1096,7 +1134,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/runs/C-2/app/todo.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.agent-cache-003.runs.C-2.app.todo.load_items",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1113,7 +1152,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615030+00:00"
+      "generated_at": "2026-10-20T16:20:03.912674+00:00"
     },
     {
       "plan_id": "fp_sz_0038",
@@ -1126,7 +1165,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/runs/D-1/app/store.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.agent-cache-003.runs.D-1.app.store.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1143,7 +1183,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615049+00:00"
+      "generated_at": "2026-10-20T16:20:03.912696+00:00"
     },
     {
       "plan_id": "fp_sz_0039",
@@ -1156,7 +1196,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/runs/D-1/app/todo.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.agent-cache-003.runs.D-1.app.todo.load_items",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1173,7 +1214,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615060+00:00"
+      "generated_at": "2026-10-20T16:20:03.912707+00:00"
     },
     {
       "plan_id": "fp_sz_0040",
@@ -1186,7 +1227,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/runs/D-2/app/store.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.agent-cache-003.runs.D-2.app.store.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1203,7 +1245,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615079+00:00"
+      "generated_at": "2026-10-20T16:20:03.912728+00:00"
     },
     {
       "plan_id": "fp_sz_0041",
@@ -1216,7 +1258,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/agent-cache-003/runs/D-2/app/todo.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.agent-cache-003.runs.D-2.app.todo.load_items",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1233,7 +1276,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615090+00:00"
+      "generated_at": "2026-10-20T16:20:03.912740+00:00"
     },
     {
       "plan_id": "fp_sz_0042",
@@ -1246,7 +1289,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/sanitize_transcripts.py:20",
         "sink_node": "json.loads",
         "symbol_binding": "experiments.sanitize_transcripts.records",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1263,7 +1307,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615103+00:00"
+      "generated_at": "2026-10-20T16:20:03.912751+00:00"
     },
     {
       "plan_id": "fp_sz_0043",
@@ -1276,7 +1320,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/harness/analyze.py:50",
         "sink_node": "json.loads",
         "symbol_binding": "<module scope>",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1293,7 +1338,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615121+00:00"
+      "generated_at": "2026-10-20T16:20:03.912769+00:00"
     },
     {
       "plan_id": "fp_sz_0044",
@@ -1306,7 +1351,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/harness/analyze.py:55",
         "sink_node": "json.loads",
         "symbol_binding": "<module scope>",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1323,7 +1369,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615137+00:00"
+      "generated_at": "2026-10-20T16:20:03.912779+00:00"
     },
     {
       "plan_id": "fp_sz_0045",
@@ -1336,7 +1382,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/harness/analyze.py:55",
         "sink_node": "json.loads",
         "symbol_binding": "<module scope>",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1353,7 +1400,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615148+00:00"
+      "generated_at": "2026-10-20T16:20:03.912788+00:00"
     },
     {
       "plan_id": "fp_sz_0046",
@@ -1366,7 +1413,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/harness/analyze.py:24",
         "sink_node": "subprocess.run",
         "symbol_binding": "experiments.token-efficiency.harness.analyze.blueprint_program",
-        "description": "resolved call to subprocess.run (PROCESS_EXEC)."
+        "description": "resolved call to subprocess.run (PROCESS_EXEC).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1383,7 +1431,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615158+00:00"
+      "generated_at": "2026-10-20T16:20:03.912799+00:00"
     },
     {
       "plan_id": "fp_sz_0047",
@@ -1396,7 +1444,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/harness/analyze.py:31",
         "sink_node": "subprocess.run",
         "symbol_binding": "experiments.token-efficiency.harness.analyze.drift",
-        "description": "resolved call to subprocess.run (PROCESS_EXEC)."
+        "description": "resolved call to subprocess.run (PROCESS_EXEC).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1413,7 +1462,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615165+00:00"
+      "generated_at": "2026-10-20T16:20:03.912808+00:00"
     },
     {
       "plan_id": "fp_sz_0048",
@@ -1426,7 +1475,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/harness/analyze.py:33",
         "sink_node": "json.loads",
         "symbol_binding": "experiments.token-efficiency.harness.analyze.drift",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1443,7 +1493,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615171+00:00"
+      "generated_at": "2026-10-20T16:20:03.912819+00:00"
     },
     {
       "plan_id": "fp_sz_0049",
@@ -1456,7 +1506,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/reproduce.py:109",
         "sink_node": "json.loads",
         "symbol_binding": "experiments.token-efficiency.reproduce.run_scenarios",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1473,7 +1524,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615198+00:00"
+      "generated_at": "2026-10-20T16:20:03.912847+00:00"
     },
     {
       "plan_id": "fp_sz_0050",
@@ -1486,7 +1537,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/reproduce.py:125",
         "sink_node": "subprocess.run",
         "symbol_binding": "experiments.token-efficiency.reproduce.run_scenarios",
-        "description": "resolved call to subprocess.run (PROCESS_EXEC)."
+        "description": "resolved call to subprocess.run (PROCESS_EXEC).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1503,7 +1555,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615213+00:00"
+      "generated_at": "2026-10-20T16:20:03.912862+00:00"
     },
     {
       "plan_id": "fp_sz_0051",
@@ -1516,7 +1568,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/reproduce.py:183",
         "sink_node": "json.loads",
         "symbol_binding": "experiments.token-efficiency.reproduce.plan_for",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1533,7 +1586,7 @@
         "reason": "a resolved call to blockwise.presets.render_blueprint precedes this sink in the same function, in a non-exclusive branch, and blockwise.presets.render_blueprint is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
         "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
       },
-      "generated_at": "2026-10-20T15:59:45.615231+00:00"
+      "generated_at": "2026-10-20T16:20:03.912896+00:00"
     },
     {
       "plan_id": "fp_sz_0052",
@@ -1546,7 +1599,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/reproduce.py:236",
         "sink_node": "json.loads",
         "symbol_binding": "experiments.token-efficiency.reproduce.transcript_metrics",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1563,7 +1617,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615242+00:00"
+      "generated_at": "2026-10-20T16:20:03.912908+00:00"
     },
     {
       "plan_id": "fp_sz_0053",
@@ -1576,7 +1630,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/reproduce.py:302",
         "sink_node": "json.loads",
         "symbol_binding": "experiments.token-efficiency.reproduce.finalize",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1593,7 +1648,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615257+00:00"
+      "generated_at": "2026-10-20T16:20:03.912924+00:00"
     },
     {
       "plan_id": "fp_sz_0054",
@@ -1606,7 +1661,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/reproduce.py:331",
         "sink_node": "json.loads",
         "symbol_binding": "experiments.token-efficiency.reproduce.aggregate",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1623,7 +1679,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615274+00:00"
+      "generated_at": "2026-10-20T16:20:03.912935+00:00"
     },
     {
       "plan_id": "fp_sz_0055",
@@ -1636,7 +1692,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/reproduce.py:338",
         "sink_node": "json.loads",
         "symbol_binding": "experiments.token-efficiency.reproduce.aggregate",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1653,7 +1710,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615283+00:00"
+      "generated_at": "2026-10-20T16:20:03.912946+00:00"
     },
     {
       "plan_id": "fp_sz_0056",
@@ -1666,7 +1723,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/reproduce.py:338",
         "sink_node": "json.loads",
         "symbol_binding": "experiments.token-efficiency.reproduce.aggregate",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1683,7 +1741,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615292+00:00"
+      "generated_at": "2026-10-20T16:20:03.912956+00:00"
     },
     {
       "plan_id": "fp_sz_0057",
@@ -1696,7 +1754,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T2_todo_cli/A-1/app/todo.py:11",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T2_todo_cli.A-1.app.todo.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1713,7 +1772,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615367+00:00"
+      "generated_at": "2026-10-20T16:20:03.913029+00:00"
     },
     {
       "plan_id": "fp_sz_0058",
@@ -1726,7 +1785,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T2_todo_cli/A-2/app/todo.py:11",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T2_todo_cli.A-2.app.todo.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1743,7 +1803,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615381+00:00"
+      "generated_at": "2026-10-20T16:20:03.913041+00:00"
     },
     {
       "plan_id": "fp_sz_0059",
@@ -1756,7 +1816,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T2_todo_cli/A-3/app/todo.py:11",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T2_todo_cli.A-3.app.todo.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1773,7 +1834,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615392+00:00"
+      "generated_at": "2026-10-20T16:20:03.913052+00:00"
     },
     {
       "plan_id": "fp_sz_0060",
@@ -1786,7 +1847,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T2_todo_cli/B-1/app/todo.py:10",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T2_todo_cli.B-1.app.todo.load_items",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1803,7 +1865,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615403+00:00"
+      "generated_at": "2026-10-20T16:20:03.913065+00:00"
     },
     {
       "plan_id": "fp_sz_0061",
@@ -1816,7 +1878,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T2_todo_cli/B-2/app/todo.py:10",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T2_todo_cli.B-2.app.todo.load_items",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1833,7 +1896,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615414+00:00"
+      "generated_at": "2026-10-20T16:20:03.913078+00:00"
     },
     {
       "plan_id": "fp_sz_0062",
@@ -1846,7 +1909,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T2_todo_cli/B-3/app/todo.py:10",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T2_todo_cli.B-3.app.todo.load_items",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1863,7 +1927,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615425+00:00"
+      "generated_at": "2026-10-20T16:20:03.913090+00:00"
     },
     {
       "plan_id": "fp_sz_0063",
@@ -1876,7 +1940,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T2_todo_cli/C-1/app/todo.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T2_todo_cli.C-1.app.todo.load_items",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1893,7 +1958,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615436+00:00"
+      "generated_at": "2026-10-20T16:20:03.913103+00:00"
     },
     {
       "plan_id": "fp_sz_0064",
@@ -1906,7 +1971,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T2_todo_cli/C-2/app/todo.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T2_todo_cli.C-2.app.todo.load_items",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1923,7 +1989,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615448+00:00"
+      "generated_at": "2026-10-20T16:20:03.913115+00:00"
     },
     {
       "plan_id": "fp_sz_0065",
@@ -1936,7 +2002,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T2_todo_cli/C-3/app/todo.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T2_todo_cli.C-3.app.todo.load_items",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1953,7 +2020,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615459+00:00"
+      "generated_at": "2026-10-20T16:20:03.913128+00:00"
     },
     {
       "plan_id": "fp_sz_0066",
@@ -1966,7 +2033,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T2_todo_cli/C2-1/app/todo.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T2_todo_cli.C2-1.app.todo.load_items",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -1983,7 +2051,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615474+00:00"
+      "generated_at": "2026-10-20T16:20:03.913170+00:00"
     },
     {
       "plan_id": "fp_sz_0067",
@@ -1996,7 +2064,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T2_todo_cli/C2-2/app/todo.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T2_todo_cli.C2-2.app.todo.load_items",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2013,7 +2082,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615486+00:00"
+      "generated_at": "2026-10-20T16:20:03.913199+00:00"
     },
     {
       "plan_id": "fp_sz_0068",
@@ -2026,7 +2095,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T2_todo_cli/C2-3/app/todo.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T2_todo_cli.C2-3.app.todo.load_items",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2043,7 +2113,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615497+00:00"
+      "generated_at": "2026-10-20T16:20:03.913213+00:00"
     },
     {
       "plan_id": "fp_sz_0069",
@@ -2056,7 +2126,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T3_kv_store/A-1/app/store.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T3_kv_store.A-1.app.store.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2073,7 +2144,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615508+00:00"
+      "generated_at": "2026-10-20T16:20:03.913225+00:00"
     },
     {
       "plan_id": "fp_sz_0070",
@@ -2086,7 +2157,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T3_kv_store/A-2/app/store.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T3_kv_store.A-2.app.store.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2103,7 +2175,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615519+00:00"
+      "generated_at": "2026-10-20T16:20:03.913241+00:00"
     },
     {
       "plan_id": "fp_sz_0071",
@@ -2116,7 +2188,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T3_kv_store/A-3/app/store.py:11",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T3_kv_store.A-3.app.store.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2133,7 +2206,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615529+00:00"
+      "generated_at": "2026-10-20T16:20:03.913251+00:00"
     },
     {
       "plan_id": "fp_sz_0072",
@@ -2146,7 +2219,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T3_kv_store/B-1/app/store.py:10",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T3_kv_store.B-1.app.store.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2163,7 +2237,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615538+00:00"
+      "generated_at": "2026-10-20T16:20:03.913263+00:00"
     },
     {
       "plan_id": "fp_sz_0073",
@@ -2176,7 +2250,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T3_kv_store/B-2/app/store.py:9",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T3_kv_store.B-2.app.store.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2193,7 +2268,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615549+00:00"
+      "generated_at": "2026-10-20T16:20:03.913275+00:00"
     },
     {
       "plan_id": "fp_sz_0074",
@@ -2206,7 +2281,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T3_kv_store/B-3/app/store.py:10",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T3_kv_store.B-3.app.store.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2223,7 +2299,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615561+00:00"
+      "generated_at": "2026-10-20T16:20:03.913288+00:00"
     },
     {
       "plan_id": "fp_sz_0075",
@@ -2236,7 +2312,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T3_kv_store/C-1/app/store.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T3_kv_store.C-1.app.store.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2253,7 +2330,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615572+00:00"
+      "generated_at": "2026-10-20T16:20:03.913300+00:00"
     },
     {
       "plan_id": "fp_sz_0076",
@@ -2266,7 +2343,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T3_kv_store/C-2/app/store.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T3_kv_store.C-2.app.store.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2283,7 +2361,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615583+00:00"
+      "generated_at": "2026-10-20T16:20:03.913312+00:00"
     },
     {
       "plan_id": "fp_sz_0077",
@@ -2296,7 +2374,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T3_kv_store/C-3/app/store.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T3_kv_store.C-3.app.store.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2313,7 +2392,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615594+00:00"
+      "generated_at": "2026-10-20T16:20:03.913324+00:00"
     },
     {
       "plan_id": "fp_sz_0078",
@@ -2326,7 +2405,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T3_kv_store/C2-1/app/store.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T3_kv_store.C2-1.app.store.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2343,7 +2423,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615606+00:00"
+      "generated_at": "2026-10-20T16:20:03.913338+00:00"
     },
     {
       "plan_id": "fp_sz_0079",
@@ -2356,7 +2436,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T3_kv_store/C2-2/app/store.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T3_kv_store.C2-2.app.store.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2373,7 +2454,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615617+00:00"
+      "generated_at": "2026-10-20T16:20:03.913349+00:00"
     },
     {
       "plan_id": "fp_sz_0080",
@@ -2386,7 +2467,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T3_kv_store/C2-3/app/store.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T3_kv_store.C2-3.app.store.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2403,7 +2485,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615627+00:00"
+      "generated_at": "2026-10-20T16:20:03.913361+00:00"
     },
     {
       "plan_id": "fp_sz_0081",
@@ -2416,7 +2498,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T5_inventory/A-1/app/inventory.py:17",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T5_inventory.A-1.app.inventory.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2433,7 +2516,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615684+00:00"
+      "generated_at": "2026-10-20T16:20:03.913418+00:00"
     },
     {
       "plan_id": "fp_sz_0082",
@@ -2446,7 +2529,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T5_inventory/A-2/app/inventory.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T5_inventory.A-2.app.inventory.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2463,7 +2547,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615699+00:00"
+      "generated_at": "2026-10-20T16:20:03.913432+00:00"
     },
     {
       "plan_id": "fp_sz_0083",
@@ -2476,7 +2560,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T5_inventory/A-3/app/inventory.py:13",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T5_inventory.A-3.app.inventory.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2493,7 +2578,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615712+00:00"
+      "generated_at": "2026-10-20T16:20:03.913447+00:00"
     },
     {
       "plan_id": "fp_sz_0084",
@@ -2506,7 +2591,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T5_inventory/B-1/app/inventory.py:11",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T5_inventory.B-1.app.inventory.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2523,7 +2609,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615725+00:00"
+      "generated_at": "2026-10-20T16:20:03.913462+00:00"
     },
     {
       "plan_id": "fp_sz_0085",
@@ -2536,7 +2622,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T5_inventory/B-2/app/inventory.py:11",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T5_inventory.B-2.app.inventory.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2553,7 +2640,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615739+00:00"
+      "generated_at": "2026-10-20T16:20:03.913478+00:00"
     },
     {
       "plan_id": "fp_sz_0086",
@@ -2566,7 +2653,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T5_inventory/B-3/app/inventory.py:11",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T5_inventory.B-3.app.inventory.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2583,7 +2671,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615752+00:00"
+      "generated_at": "2026-10-20T16:20:03.913494+00:00"
     },
     {
       "plan_id": "fp_sz_0087",
@@ -2596,7 +2684,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T5_inventory/C-1/app/inventory.py:13",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T5_inventory.C-1.app.inventory.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2613,7 +2702,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615765+00:00"
+      "generated_at": "2026-10-20T16:20:03.913507+00:00"
     },
     {
       "plan_id": "fp_sz_0088",
@@ -2626,7 +2715,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T5_inventory/C-2/app/inventory.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T5_inventory.C-2.app.inventory.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2643,7 +2733,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615778+00:00"
+      "generated_at": "2026-10-20T16:20:03.913521+00:00"
     },
     {
       "plan_id": "fp_sz_0089",
@@ -2656,7 +2746,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/main/T5_inventory/C-3/app/inventory.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.main.T5_inventory.C-3.app.inventory.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2673,7 +2764,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615791+00:00"
+      "generated_at": "2026-10-20T16:20:03.913534+00:00"
     },
     {
       "plan_id": "fp_sz_0090",
@@ -2686,7 +2777,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/pilot/T5_inventory/A-1/app/inventory.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.pilot.T5_inventory.A-1.app.inventory.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2703,7 +2795,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615823+00:00"
+      "generated_at": "2026-10-20T16:20:03.913567+00:00"
     },
     {
       "plan_id": "fp_sz_0091",
@@ -2716,7 +2808,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/pilot/T5_inventory/B-1/app/inventory.py:11",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.pilot.T5_inventory.B-1.app.inventory.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2733,7 +2826,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615837+00:00"
+      "generated_at": "2026-10-20T16:20:03.913582+00:00"
     },
     {
       "plan_id": "fp_sz_0092",
@@ -2746,7 +2839,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/token-efficiency/runs/pilot/T5_inventory/C-1/app/inventory.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.token-efficiency.runs.pilot.T5_inventory.C-1.app.inventory.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2763,7 +2857,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615849+00:00"
+      "generated_at": "2026-10-20T16:20:03.913596+00:00"
     },
     {
       "plan_id": "fp_sz_0093",
@@ -2776,7 +2870,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/trusted-blueprint-002/run002.py:95",
         "sink_node": "subprocess.run",
         "symbol_binding": "experiments.trusted-blueprint-002.run002.generator_commit",
-        "description": "resolved call to subprocess.run (PROCESS_EXEC)."
+        "description": "resolved call to subprocess.run (PROCESS_EXEC).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2793,7 +2888,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615868+00:00"
+      "generated_at": "2026-10-20T16:20:03.913616+00:00"
     },
     {
       "plan_id": "fp_sz_0094",
@@ -2806,7 +2901,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/trusted-blueprint-002/run002.py:102",
         "sink_node": "subprocess.run",
         "symbol_binding": "experiments.trusted-blueprint-002.run002.apply_blueprint",
-        "description": "resolved call to subprocess.run (PROCESS_EXEC)."
+        "description": "resolved call to subprocess.run (PROCESS_EXEC).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2823,7 +2919,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615874+00:00"
+      "generated_at": "2026-10-20T16:20:03.913624+00:00"
     },
     {
       "plan_id": "fp_sz_0095",
@@ -2836,7 +2932,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/trusted-blueprint-002/run002.py:147",
         "sink_node": "json.loads",
         "symbol_binding": "experiments.trusted-blueprint-002.run002.prepare",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2853,7 +2950,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615884+00:00"
+      "generated_at": "2026-10-20T16:20:03.913637+00:00"
     },
     {
       "plan_id": "fp_sz_0096",
@@ -2866,7 +2963,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/trusted-blueprint-002/run002.py:180",
         "sink_node": "json.loads",
         "symbol_binding": "experiments.trusted-blueprint-002.run002.finalize",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2883,7 +2981,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615927+00:00"
+      "generated_at": "2026-10-20T16:20:03.913648+00:00"
     },
     {
       "plan_id": "fp_sz_0097",
@@ -2896,7 +2994,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/trusted-blueprint-002/run002.py:194",
         "sink_node": "json.loads",
         "symbol_binding": "experiments.trusted-blueprint-002.run002.finalize",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2913,7 +3012,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615952+00:00"
+      "generated_at": "2026-10-20T16:20:03.913667+00:00"
     },
     {
       "plan_id": "fp_sz_0098",
@@ -2926,7 +3025,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/trusted-blueprint-002/run002.py:207",
         "sink_node": "json.loads",
         "symbol_binding": "experiments.trusted-blueprint-002.run002.compare",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2943,7 +3043,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615959+00:00"
+      "generated_at": "2026-10-20T16:20:03.913675+00:00"
     },
     {
       "plan_id": "fp_sz_0099",
@@ -2956,7 +3056,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/trusted-blueprint-002/run002.py:210",
         "sink_node": "json.loads",
         "symbol_binding": "experiments.trusted-blueprint-002.run002.compare",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -2973,7 +3074,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615966+00:00"
+      "generated_at": "2026-10-20T16:20:03.913683+00:00"
     },
     {
       "plan_id": "fp_sz_0100",
@@ -2986,7 +3087,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/trusted-blueprint-002/run002.py:216",
         "sink_node": "json.loads",
         "symbol_binding": "experiments.trusted-blueprint-002.run002.compare",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -3003,7 +3105,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615974+00:00"
+      "generated_at": "2026-10-20T16:20:03.913694+00:00"
     },
     {
       "plan_id": "fp_sz_0101",
@@ -3016,7 +3118,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/trusted-blueprint-002/run002.py:216",
         "sink_node": "json.loads",
         "symbol_binding": "experiments.trusted-blueprint-002.run002.compare",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -3033,7 +3136,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615982+00:00"
+      "generated_at": "2026-10-20T16:20:03.913702+00:00"
     },
     {
       "plan_id": "fp_sz_0102",
@@ -3046,7 +3149,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/trusted-blueprint-002/run002.py:251",
         "sink_node": "json.loads",
         "symbol_binding": "experiments.trusted-blueprint-002.run002.compare",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -3063,7 +3167,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.615995+00:00"
+      "generated_at": "2026-10-20T16:20:03.913716+00:00"
     },
     {
       "plan_id": "fp_sz_0103",
@@ -3076,7 +3180,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/trusted-blueprint-002/runs/pilot/T2_todo_cli/C3-1/app/todo.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.trusted-blueprint-002.runs.pilot.T2_todo_cli.C3-1.app.todo.load_items",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -3093,7 +3198,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.616011+00:00"
+      "generated_at": "2026-10-20T16:20:03.913734+00:00"
     },
     {
       "plan_id": "fp_sz_0104",
@@ -3106,7 +3211,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/experiments/trusted-blueprint-002/runs/pilot/T3_kv_store/C3-1/app/store.py:12",
         "sink_node": "json.load",
         "symbol_binding": "experiments.trusted-blueprint-002.runs.pilot.T3_kv_store.C3-1.app.store.load",
-        "description": "resolved call to json.load (DESERIALIZATION)."
+        "description": "resolved call to json.load (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -3123,7 +3229,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.616022+00:00"
+      "generated_at": "2026-10-20T16:20:03.913746+00:00"
     },
     {
       "plan_id": "fp_sz_0105",
@@ -3136,7 +3242,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/tests/test_blueprints.py:26",
         "sink_node": "subprocess.run",
         "symbol_binding": "tests.test_blueprints.run",
-        "description": "resolved call to subprocess.run (PROCESS_EXEC)."
+        "description": "resolved call to subprocess.run (PROCESS_EXEC).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -3153,7 +3260,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.616042+00:00"
+      "generated_at": "2026-10-20T16:20:03.913764+00:00"
     },
     {
       "plan_id": "fp_sz_0106",
@@ -3166,7 +3273,10 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/tests/test_blueprints.py:73",
         "sink_node": "json.loads",
         "symbol_binding": "tests.test_blueprints.test_parameters_rename_file_and_store",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": [
+          "pytest"
+        ]
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -3183,7 +3293,7 @@
         "reason": "a resolved call to blockwise.presets.render_blueprint precedes this sink in the same function, in a non-exclusive branch, and blockwise.presets.render_blueprint is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
         "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
       },
-      "generated_at": "2026-10-20T15:59:45.616061+00:00"
+      "generated_at": "2026-10-20T16:20:03.913815+00:00"
     },
     {
       "plan_id": "fp_sz_0107",
@@ -3196,7 +3306,10 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/tests/test_blueprints.py:94",
         "sink_node": "json.loads",
         "symbol_binding": "tests.test_blueprints.test_agents_find_and_list_blueprints",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": [
+          "mcp"
+        ]
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -3213,7 +3326,7 @@
         "reason": "a resolved call to blockwise.cli.main precedes this sink in the same function, in a non-exclusive branch, and blockwise.cli.main is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
         "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
       },
-      "generated_at": "2026-10-20T15:59:45.616088+00:00"
+      "generated_at": "2026-10-20T16:20:03.914132+00:00"
     },
     {
       "plan_id": "fp_sz_0108",
@@ -3226,7 +3339,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/tests/test_coverage.py:24",
         "sink_node": "json.loads",
         "symbol_binding": "tests.test_coverage.lesson_ids",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -3243,7 +3357,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.616105+00:00"
+      "generated_at": "2026-10-20T16:20:03.914184+00:00"
     },
     {
       "plan_id": "fp_sz_0109",
@@ -3256,7 +3370,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/tests/test_coverage.py:73",
         "sink_node": "json.loads",
         "symbol_binding": "tests.test_coverage.test_everything_blockwise_generates_is_representable",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -3273,7 +3388,7 @@
         "reason": "a resolved call to blockwise.presets.render precedes this sink in the same function, in a non-exclusive branch, and blockwise.presets.render is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
         "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
       },
-      "generated_at": "2026-10-20T15:59:45.616128+00:00"
+      "generated_at": "2026-10-20T16:20:03.914320+00:00"
     },
     {
       "plan_id": "fp_sz_0110",
@@ -3286,7 +3401,10 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/tests/test_coverage.py:89",
         "sink_node": "json.loads",
         "symbol_binding": "tests.test_coverage.test_cli_coverage",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": [
+          "mcp"
+        ]
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -3303,7 +3421,7 @@
         "reason": "a resolved call to blockwise.cli.main precedes this sink in the same function, in a non-exclusive branch, and blockwise.cli.main is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
         "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
       },
-      "generated_at": "2026-10-20T15:59:45.616149+00:00"
+      "generated_at": "2026-10-20T16:20:03.914661+00:00"
     },
     {
       "plan_id": "fp_sz_0111",
@@ -3316,7 +3434,10 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/tests/test_coverage.py:97",
         "sink_node": "json.loads",
         "symbol_binding": "tests.test_coverage.test_cli_coverage",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": [
+          "mcp"
+        ]
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -3333,7 +3454,7 @@
         "reason": "a resolved call to blockwise.cli.main precedes this sink in the same function, in a non-exclusive branch, and blockwise.cli.main is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
         "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
       },
-      "generated_at": "2026-10-20T15:59:45.616192+00:00"
+      "generated_at": "2026-10-20T16:20:03.914953+00:00"
     },
     {
       "plan_id": "fp_sz_0112",
@@ -3346,7 +3467,10 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/tests/test_coverage.py:99",
         "sink_node": "json.loads",
         "symbol_binding": "tests.test_coverage.test_cli_coverage",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": [
+          "mcp"
+        ]
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -3363,7 +3487,7 @@
         "reason": "a resolved call to blockwise.cli.main precedes this sink in the same function, in a non-exclusive branch, and blockwise.cli.main is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
         "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
       },
-      "generated_at": "2026-10-20T15:59:45.616243+00:00"
+      "generated_at": "2026-10-20T16:20:03.915333+00:00"
     },
     {
       "plan_id": "fp_sz_0113",
@@ -3376,7 +3500,10 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/tests/test_project.py:76",
         "sink_node": "json.loads",
         "symbol_binding": "tests.test_project.test_cli_is_compact_and_uses_exit_codes",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": [
+          "mcp"
+        ]
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -3393,7 +3520,7 @@
         "reason": "a resolved call to blockwise.cli.main precedes this sink in the same function, in a non-exclusive branch, and blockwise.cli.main is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
         "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
       },
-      "generated_at": "2026-10-20T15:59:45.616309+00:00"
+      "generated_at": "2026-10-20T16:20:03.915658+00:00"
     },
     {
       "plan_id": "fp_sz_0114",
@@ -3406,7 +3533,10 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/tests/test_project.py:118",
         "sink_node": "subprocess.run",
         "symbol_binding": "tests.test_project.test_checked_operation_imports_its_checks_and_runs",
-        "description": "resolved call to subprocess.run (PROCESS_EXEC)."
+        "description": "resolved call to subprocess.run (PROCESS_EXEC).",
+        "external_dependencies_reached": [
+          "pytest"
+        ]
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -3423,7 +3553,7 @@
         "reason": "a resolved call to blockwise.project.check_project precedes this sink in the same function, in a non-exclusive branch, and blockwise.project.check_project is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
         "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
       },
-      "generated_at": "2026-10-20T15:59:45.616322+00:00"
+      "generated_at": "2026-10-20T16:20:03.915807+00:00"
     },
     {
       "plan_id": "fp_sz_0115",
@@ -3436,7 +3566,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/tests/test_security_blocks.py:36",
         "sink_node": "json.loads",
         "symbol_binding": "tests.test_security_blocks.test_security_block_passes_gates_and_kills_every_mutant",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -3453,7 +3584,7 @@
         "reason": "a resolved call to blockwise.probes.detector_check precedes this sink in the same function, in a non-exclusive branch, and blockwise.probes.detector_check is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
         "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
       },
-      "generated_at": "2026-10-20T15:59:45.616351+00:00"
+      "generated_at": "2026-10-20T16:20:03.915891+00:00"
     },
     {
       "plan_id": "fp_sz_0116",
@@ -3466,7 +3597,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/tests/test_security_blocks.py:144",
         "sink_node": "json.loads",
         "symbol_binding": "tests.test_security_blocks.test_shipped_approval_and_review_match_the_current_block",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -3483,7 +3615,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.616364+00:00"
+      "generated_at": "2026-10-20T16:20:03.915910+00:00"
     },
     {
       "plan_id": "fp_sz_0117",
@@ -3496,7 +3628,10 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/tests/test_security_blocks.py:152",
         "sink_node": "json.loads",
         "symbol_binding": "tests.test_security_blocks.test_cli_probe_and_review_exit_codes",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": [
+          "mcp"
+        ]
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -3513,7 +3648,7 @@
         "reason": "a resolved call to blockwise.cli.main precedes this sink in the same function, in a non-exclusive branch, and blockwise.cli.main is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
         "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
       },
-      "generated_at": "2026-10-20T15:59:45.616382+00:00"
+      "generated_at": "2026-10-20T16:20:03.916244+00:00"
     },
     {
       "plan_id": "fp_sz_0118",
@@ -3526,7 +3661,10 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/tests/test_security_blocks.py:156",
         "sink_node": "json.loads",
         "symbol_binding": "tests.test_security_blocks.test_cli_probe_and_review_exit_codes",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": [
+          "mcp"
+        ]
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -3543,7 +3681,7 @@
         "reason": "a resolved call to blockwise.cli.main precedes this sink in the same function, in a non-exclusive branch, and blockwise.cli.main is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
         "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
       },
-      "generated_at": "2026-10-20T15:59:45.616409+00:00"
+      "generated_at": "2026-10-20T16:20:03.916529+00:00"
     },
     {
       "plan_id": "fp_sz_0119",
@@ -3556,7 +3694,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/tests/test_studio.py:28",
         "sink_node": "json.loads",
         "symbol_binding": "tests.test_studio.load_js_array",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -3573,7 +3712,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.616427+00:00"
+      "generated_at": "2026-10-20T16:20:03.916552+00:00"
     },
     {
       "plan_id": "fp_sz_0120",
@@ -3586,7 +3725,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/tests/test_studio.py:46",
         "sink_node": "json.loads",
         "symbol_binding": "tests.test_studio.run_harness",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -3603,7 +3743,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.616435+00:00"
+      "generated_at": "2026-10-20T16:20:03.916562+00:00"
     },
     {
       "plan_id": "fp_sz_0121",
@@ -3616,7 +3756,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/tests/test_studio.py:76",
         "sink_node": "json.loads",
         "symbol_binding": "tests.test_studio.test_harness_reports_load_errors_and_try_expressions",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -3633,7 +3774,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.616445+00:00"
+      "generated_at": "2026-10-20T16:20:03.916575+00:00"
     },
     {
       "plan_id": "fp_sz_0122",
@@ -3646,7 +3787,10 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/tests/test_studio.py:91",
         "sink_node": "subprocess.run",
         "symbol_binding": "tests.test_studio.e2e",
-        "description": "resolved call to subprocess.run (PROCESS_EXEC)."
+        "description": "resolved call to subprocess.run (PROCESS_EXEC).",
+        "external_dependencies_reached": [
+          "pytest"
+        ]
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -3663,7 +3807,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.616452+00:00"
+      "generated_at": "2026-10-20T16:20:03.916585+00:00"
     },
     {
       "plan_id": "fp_sz_0123",
@@ -3676,7 +3820,10 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/tests/test_studio.py:96",
         "sink_node": "subprocess.run",
         "symbol_binding": "tests.test_studio.e2e",
-        "description": "resolved call to subprocess.run (PROCESS_EXEC)."
+        "description": "resolved call to subprocess.run (PROCESS_EXEC).",
+        "external_dependencies_reached": [
+          "pytest"
+        ]
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -3693,7 +3840,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.616461+00:00"
+      "generated_at": "2026-10-20T16:20:03.916596+00:00"
     },
     {
       "plan_id": "fp_sz_0124",
@@ -3706,7 +3853,10 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/tests/test_studio.py:99",
         "sink_node": "json.loads",
         "symbol_binding": "tests.test_studio.e2e",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": [
+          "pytest"
+        ]
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -3723,7 +3873,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.616471+00:00"
+      "generated_at": "2026-10-20T16:20:03.916608+00:00"
     },
     {
       "plan_id": "fp_sz_0125",
@@ -3736,7 +3886,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/tests/test_studio.py:145",
         "sink_node": "json.loads",
         "symbol_binding": "tests.test_studio.test_studio_templates_match_compiler",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -3753,7 +3904,7 @@
         "reason": "no resolved, guard-shaped call precedes this sink in the same function. No sandbox probe has run in v0.",
         "residual_uncertainty": "Medium: no in-function guard resolved, no dynamic check run."
       },
-      "generated_at": "2026-10-20T15:59:45.616477+00:00"
+      "generated_at": "2026-10-20T16:20:03.916641+00:00"
     },
     {
       "plan_id": "fp_sz_0126",
@@ -3766,7 +3917,8 @@
         "source_node": "/home/claude/holeyfield33-art/block-wise/tests/test_studio.py:183",
         "sink_node": "json.loads",
         "symbol_binding": "tests.test_studio.test_render_matches_build_and_zip_is_valid",
-        "description": "resolved call to json.loads (DESERIALIZATION)."
+        "description": "resolved call to json.loads (DESERIALIZATION).",
+        "external_dependencies_reached": []
       },
       "verification_method": {
         "checker_type": "isbg_python_resolver_v0",
@@ -3783,9 +3935,14 @@
         "reason": "a resolved call to blockwise.schema.validate_score precedes this sink in the same function, in a non-exclusive branch, and blockwise.schema.validate_score is guard-shaped either directly or through a bounded delegation chain. Same-function call order is an approximation of control dependency, not full CFG dominance -- never promoted to VERIFIED_FALSE.",
         "residual_uncertainty": "Low-medium: guard resolved by identity/delegation and shape, coverage not proven."
       },
-      "generated_at": "2026-10-20T15:59:45.616490+00:00"
+      "generated_at": "2026-10-20T16:20:03.916679+00:00"
     }
   ],
   "wrapper_middleware_detected": [],
-  "wrapper_construction_sites": []
+  "wrapper_construction_sites": [],
+  "external_dependencies": {
+    "pytest": 20,
+    "tiktoken": 1,
+    "mcp": 1
+  }
 }

@@ -42,7 +42,12 @@ from sentinel_zero.disposition import (
     load_catalog,
     set_disposition,
 )
-from sentinel_zero.callgraph import build_direct_callee_index, transitively_guard_shaped
+from sentinel_zero.callgraph import (
+    build_direct_callee_index,
+    build_direct_external_index,
+    external_packages_reached,
+    transitively_guard_shaped,
+)
 from sentinel_zero.graph import ProjectGraph, Symbol
 from sentinel_zero.ledger_writer import safe_write_text
 from sentinel_zero.resolvers.python_resolver import build_project_graph, mutually_exclusive
@@ -69,6 +74,7 @@ _SINK_KIND_BY_NAME = {
 def find_finding_plans(graph: ProjectGraph, repo_name: str, catalog, plan_counter: list[int]) -> list:
     plans = []
     callee_index = build_direct_callee_index(graph)
+    external_index = build_direct_external_index(graph)
     for module in graph.modules.values():
         calls_by_caller: dict[str, list] = {}
         for call in module.calls:
@@ -94,6 +100,8 @@ def find_finding_plans(graph: ProjectGraph, repo_name: str, catalog, plan_counte
                     if transitively_guard_shaped(earlier.target.qualified_name, graph, callee_index):
                         guard_hit = earlier.target.qualified_name
 
+                reached_packages = sorted(external_packages_reached(caller, graph, callee_index, external_index)) if caller else []
+
                 plan_counter[0] += 1
                 plan = build_finding_plan(
                     plan_id=f"fp_sz_{plan_counter[0]:04d}",
@@ -105,6 +113,7 @@ def find_finding_plans(graph: ProjectGraph, repo_name: str, catalog, plan_counte
                         "sink_node": call.target.qualified_name,
                         "symbol_binding": caller or "<module scope>",
                         "description": f"resolved call to {call.target.qualified_name} ({sink_kind}).",
+                        "external_dependencies_reached": reached_packages,
                     },
                     verification_method={
                         "checker_type": "isbg_python_resolver_v0",
@@ -137,6 +146,22 @@ def find_finding_plans(graph: ProjectGraph, repo_name: str, catalog, plan_counte
                     )
                 plans.append(plan)
     return plans
+
+
+def _dependency_summary(graph: ProjectGraph) -> dict:
+    """Project-wide view of the queued dependency-mapping feature: which
+    third-party packages does this codebase actually call into, and how
+    many distinct call sites reach each one directly. This is the
+    AAC-10-anchored ('Agentic Supply Chain Tampering') question -- 'if
+    package X were compromised, how exposed is this codebase' -- answered
+    from data the resolver already collects, not a new analysis pass.
+    Does not yet cross-reference against aletheia-registry or any
+    known-vulnerable-package list; that is the natural next hook, not
+    done here."""
+    by_package: dict[str, int] = {}
+    for ref in graph.external_references:
+        by_package[ref.package] = by_package.get(ref.package, 0) + 1
+    return dict(sorted(by_package.items(), key=lambda kv: -kv[1]))
 
 
 def run(repo_root: Path, catalog_path: str, out_dir: Path) -> int:
@@ -175,6 +200,7 @@ def run(repo_root: Path, catalog_path: str, out_dir: Path) -> int:
             }
             for wc in graph.wrap_constructions
         ],
+        "external_dependencies": _dependency_summary(graph),
     }
     safe_write_text(str(out_dir), "verification_ledger.json", json.dumps(ledger, indent=2), 5_000_000)
     print(
