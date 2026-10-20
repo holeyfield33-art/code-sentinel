@@ -34,10 +34,13 @@ selected with the `language` parameter/CLI arg -- the proof that graph.py's
 IR holds for more than one language without changing any of the generic
 machinery above. The JS resolver is deliberately NOT at parity with
 Python's five milestones yet (see js_resolver.py/extract_graph.js for the
-exact bounds: top-level functions only, no wrapper-class detection, no
-external-dependency mapping). Milestone 6's dynamic sandbox probe is
-Python-specific (drives importlib) and is gated to `language == "python"`
-accordingly -- never attempted against a JS finding.
+exact bounds: top-level functions only, no wrapper-class detection).
+Milestone 8 added external-dependency mapping for JS too, via the same
+_dependency_summary()/ExternalReference machinery below -- no new logic
+needed here, only a JS-populated graph.external_references. Milestone 6's
+dynamic sandbox probe is Python-specific (drives importlib) and is gated
+to `language == "python"` accordingly -- never attempted against a JS
+finding.
 """
 from __future__ import annotations
 

@@ -12,10 +12,11 @@ matching -- needs to know or care which resolver populated the graph.
 
 Deliberately NOT at parity with the Python resolver's five milestones (see
 extract_graph.js's module docstring for the exact bounds: top-level
-functions only, no cross-function delegation, no wrapper-class detection,
-no external-dependency mapping). graph.wrapper_classes, graph.wrap_constructions
-and graph.external_references are simply left empty for a JS project --
-those are real future increments, not silently claimed here.
+functions only, no wrapper-class detection). Milestone 8 added external-
+dependency classification (graph.external_references is now populated for
+JS too, same shape as Python's). graph.wrapper_classes and
+graph.wrap_constructions are still simply left empty for a JS project --
+real future increments, not silently claimed here.
 """
 from __future__ import annotations
 
@@ -24,7 +25,15 @@ import subprocess
 import sys
 from pathlib import Path
 
-from sentinel_zero.graph import CallSite, FunctionInfo, ModuleGraph, ProjectGraph, Symbol, Unresolved
+from sentinel_zero.graph import (
+    CallSite,
+    ExternalReference,
+    FunctionInfo,
+    ModuleGraph,
+    ProjectGraph,
+    Symbol,
+    Unresolved,
+)
 
 _EXTRACT_SCRIPT = Path(__file__).parent / "js" / "extract_graph.js"
 EXTRACT_TIMEOUT_SECONDS = 60
@@ -96,6 +105,17 @@ def build_project_graph(repo_root: Path) -> ProjectGraph:
             file_path=fn["file_path"],
             lineno=fn["lineno"],
         )
+
+    graph.external_references = [
+        ExternalReference(
+            caller=ref["caller"],
+            package=ref["package"],
+            qualified_name=ref["qualified_name"],
+            file_path=ref["file_path"],
+            lineno=ref["lineno"],
+        )
+        for ref in data.get("external_references", [])
+    ]
 
     # Per-file parse errors are real, reportable facts about specific files
     # (e.g. a .js file this parser's grammar subset can't handle) -- they do

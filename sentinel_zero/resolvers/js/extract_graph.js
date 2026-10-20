@@ -20,13 +20,24 @@
  *     calls inside them are recorded at the enclosing branch_path. This is
  *     a stated simplification, not a claim that loop iteration is modeled.
  *
+ * Milestone 8 added external-dependency classification (which npm package
+ * a call reaches), mirroring Python's Milestone 5 exactly: a resolved
+ * call's top-level dotted component is "external" only if it is neither
+ * one of this project's own top-level module segments nor a Node builtin
+ * (require('module').builtinModules), AND the callee's root name is
+ * provably bound (rootNameIsBound) rather than surviving only on
+ * resolveDotted's unbound-name fallback -- the same two guards Python's
+ * _root_name_is_bound exists to enforce, for the same reason (a local
+ * variable's method call must never read as a dependency on a package of
+ * the same name).
+ *
  * Uses acorn (a real, standard JS parser) to get an actual AST -- never
  * regex/string matching, same rule the Python resolver enforces with
  * Python's own `ast` module. Invoked as a subprocess by js_resolver.py;
  * never imported into the running firewall/target code, no eval of target
  * source -- parsing only.
  *
- * Emits one JSON object on stdout: { modules, functions, errors }.
+ * Emits one JSON object on stdout: { modules, functions, errors, external_references }.
  */
 const fs = require('fs');
 const path = require('path');
@@ -139,6 +150,22 @@ function resolveDotted(node, bindings) {
   return null;
 }
 
+// Mirrors python_resolver.py's _root_name_is_bound exactly: a resolved
+// dotted string alone isn't enough to trust as "this reaches an external
+// package" -- resolveDotted falls back to an unbound bare name for a
+// same-module reference, same reason Python's does. Only trust it when the
+// expression's root Identifier is a real key in the binding map (a real
+// require()/import), not a bare-fallback guess.
+function rootNameIsBound(node, bindings) {
+  while (node && node.type === 'MemberExpression') node = node.object;
+  return !!node && node.type === 'Identifier' && Object.prototype.hasOwnProperty.call(bindings, node.name);
+}
+
+function isBuiltinTopLevel(topLevel, builtinModules) {
+  const stripped = topLevel.startsWith('node:') ? topLevel.slice(5) : topLevel;
+  return builtinModules.has(stripped) || builtinModules.has(topLevel);
+}
+
 function isGuardShaped(fnNode) {
   const body = fnNode.body.type === 'BlockStatement' ? fnNode.body.body : [];
   for (const stmt of body) {
@@ -189,7 +216,7 @@ function findCallsInExpr(node, out) {
   }
 }
 
-function processFile(filePath, root) {
+function processFile(filePath, root, projectTopLevelNames, builtinModules) {
   let source;
   try {
     source = fs.readFileSync(filePath, 'utf8');
@@ -213,6 +240,7 @@ function processFile(filePath, root) {
   const bindings = collectBindings(program.body, filePath, root);
   const functionsOut = {};
   const calls = [];
+  const externalReferences = [];
 
   function recordCallsFromNodes(nodeList, branchPath, callerName, orderCounter) {
     const sorted = nodeList.slice().sort((a, b) => a.start - b.start);
@@ -222,6 +250,22 @@ function processFile(filePath, root) {
       let target;
       if (dotted) {
         target = { kind: 'symbol', qualified_name: dotted };
+        if (dotted.includes('.')) {
+          const topLevel = dotted.split('.')[0];
+          if (
+            !projectTopLevelNames.has(topLevel) &&
+            !isBuiltinTopLevel(topLevel, builtinModules) &&
+            rootNameIsBound(calleeNode, bindings)
+          ) {
+            externalReferences.push({
+              caller: callerName,
+              package: topLevel,
+              qualified_name: dotted,
+              file_path: filePath,
+              lineno: node.loc.start.line,
+            });
+          }
+        }
       } else {
         target = {
           kind: 'unresolved',
@@ -322,7 +366,14 @@ function processFile(filePath, root) {
 
   walkStmts(program.body, [], '', { n: 0 }); // module-scope calls, caller = ""
 
-  return { module_qualname: modQ, file_path: filePath, functions: functionsOut, calls, error: null };
+  return {
+    module_qualname: modQ,
+    file_path: filePath,
+    functions: functionsOut,
+    calls,
+    external_references: externalReferences,
+    error: null,
+  };
 }
 
 function main() {
@@ -333,21 +384,30 @@ function main() {
     return;
   }
   const files = findJsFiles(root);
+  // Mirrors python_resolver.py's two-pass structure: the full set of this
+  // project's own top-level module segments has to be known BEFORE
+  // classifying any call as "external," the same reason Python computes
+  // project_top_level_names before its resolve pass.
+  const projectTopLevelNames = new Set(files.map((f) => moduleQualname(f, root).split('.')[0]));
+  const builtinModules = new Set(require('module').builtinModules);
+
   const modules = {};
   const functions = {};
   const errors = [];
+  const externalReferences = [];
 
   for (const filePath of files) {
-    const result = processFile(filePath, root);
+    const result = processFile(filePath, root, projectTopLevelNames, builtinModules);
     if (result.error) {
       errors.push({ file_path: filePath, error: result.error });
       continue;
     }
     modules[result.module_qualname] = { file_path: result.file_path, calls: result.calls };
     Object.assign(functions, result.functions);
+    externalReferences.push(...result.external_references);
   }
 
-  process.stdout.write(JSON.stringify({ modules, functions, errors }));
+  process.stdout.write(JSON.stringify({ modules, functions, errors, external_references: externalReferences }));
 }
 
 main();
