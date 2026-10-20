@@ -37,7 +37,16 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
-from sentinel_zero.graph import CallSite, FunctionInfo, ModuleGraph, ProjectGraph, Symbol, Unresolved
+from sentinel_zero.graph import (
+    CallSite,
+    FunctionInfo,
+    ModuleGraph,
+    ProjectGraph,
+    Symbol,
+    Unresolved,
+    WrapConstruction,
+    WrapperClass,
+)
 
 STDLIB_SINKS = {
     "builtins.open",
@@ -63,19 +72,72 @@ def _module_qualname(py_path: Path, repo_root: Path) -> str:
 
 
 def _is_guard_shaped(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
-    """Structural check: does this function contain an `if ...: raise ...`
-    (in the true branch or the else branch) anywhere at its top level?
-    Matches Block-Wise's own require_* preset shape, and any hand-written
-    equivalent, without ever comparing a function *name*."""
+    """Structural check: does this function contain a top-level `if` whose
+    true or else branch ends in an early exit (`raise` or `return`)?
+
+    Broadened from Milestone 2's raise-only check specifically because of
+    Horos's real BearerAuthMiddleware.__call__:
+
+        if not self._authorized(scope):
+            await self._reject(send)
+            return
+        await self._app(scope, receive, send)
+
+    That is a guard -- it's the exact pattern this whole effort traces
+    back to -- but it has no `raise` anywhere, only an early `return`.
+    Matches Block-Wise's require_* preset shape too (which does raise),
+    and any hand-written equivalent of either -- never a function *name*.
+    """
     for stmt in fn.body:
         if isinstance(stmt, ast.If):
             branches = stmt.body + stmt.orelse
-            if any(isinstance(s, ast.Raise) for s in branches):
+            if any(isinstance(s, (ast.Raise, ast.Return)) for s in branches):
                 return True
     return False
 
 
-def _index_module_functions(tree: ast.Module, module_qualname: str, file_path: str, index: dict[str, FunctionInfo]) -> None:
+def _init_wrapped_param_index(init_fn: ast.FunctionDef | ast.AsyncFunctionDef) -> tuple[int, str] | None:
+    """If __init__ stores one of its own (non-self) parameters directly
+    onto an attribute (`self._app = app`), return (that parameter's
+    position among non-self params, the attribute name). This is the
+    generic shape of "a wrapper that holds onto the thing it wraps" --
+    no attribute or parameter name is hardcoded."""
+    params = [a.arg for a in init_fn.args.args if a.arg != "self"]
+    for stmt in ast.walk(init_fn):
+        if (
+            isinstance(stmt, ast.Assign)
+            and len(stmt.targets) == 1
+            and isinstance(stmt.targets[0], ast.Attribute)
+            and isinstance(stmt.targets[0].value, ast.Name)
+            and stmt.targets[0].value.id == "self"
+            and isinstance(stmt.value, ast.Name)
+            and stmt.value.id in params
+        ):
+            return params.index(stmt.value.id), stmt.targets[0].attr
+    return None
+
+
+def _dispatch_forwards_to(method: ast.FunctionDef | ast.AsyncFunctionDef, wrapped_attr: str) -> bool:
+    """Does this method, anywhere in its body, call self.<wrapped_attr>(...)?"""
+    for node in ast.walk(method):
+        if (
+            isinstance(node, ast.Call)
+            and isinstance(node.func, ast.Attribute)
+            and node.func.attr == wrapped_attr
+            and isinstance(node.func.value, ast.Name)
+            and node.func.value.id == "self"
+        ):
+            return True
+    return False
+
+
+def _index_module_functions(
+    tree: ast.Module,
+    module_qualname: str,
+    file_path: str,
+    index: dict[str, FunctionInfo],
+    wrapper_classes: dict[str, WrapperClass],
+) -> None:
     for node in tree.body:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             qualname = f"{module_qualname}.{node.name}"
@@ -85,6 +147,33 @@ def _index_module_functions(tree: ast.Module, module_qualname: str, file_path: s
                 file_path=file_path,
                 lineno=node.lineno,
             )
+        elif isinstance(node, ast.ClassDef):
+            class_qualname = f"{module_qualname}.{node.name}"
+            init_fn = call_fn = None
+            for member in node.body:
+                if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    member_qualname = f"{class_qualname}.{member.name}"
+                    index[member_qualname] = FunctionInfo(
+                        qualified_name=member_qualname,
+                        is_guard_shaped=_is_guard_shaped(member),
+                        file_path=file_path,
+                        lineno=member.lineno,
+                    )
+                    if member.name == "__init__":
+                        init_fn = member
+                    elif member.name == "__call__":
+                        call_fn = member
+            if init_fn is not None and call_fn is not None:
+                wrapped = _init_wrapped_param_index(init_fn)
+                if wrapped is not None:
+                    param_index, attr = wrapped
+                    if _dispatch_forwards_to(call_fn, attr):
+                        wrapper_classes[class_qualname] = WrapperClass(
+                            qualified_name=class_qualname,
+                            wrapped_param_index=param_index,
+                            dispatch_method=f"{class_qualname}.__call__",
+                            dispatch_is_guarded=_is_guard_shaped(call_fn),
+                        )
 
 
 def _import_bindings(tree: ast.Module, module_qualname: str) -> dict[str, str]:
@@ -176,6 +265,10 @@ def _resolve_module(
                         reason=f"callee expression at line {node.lineno} did not resolve to a dotted name "
                                "(dynamic dispatch, getattr, or an import form this resolver doesn't model)."
                     )
+                try:
+                    arg_texts = tuple(ast.unparse(a) for a in node.args)
+                except Exception:
+                    arg_texts = ()
                 order_counter[0] += 1
                 calls.append(
                     CallSite(
@@ -183,6 +276,7 @@ def _resolve_module(
                         target=target,
                         lineno=node.lineno,
                         order=order_counter[0],
+                        args=arg_texts,
                         branch_path=branch_path,
                     )
                 )
@@ -261,11 +355,36 @@ def build_project_graph(repo_root: Path) -> ProjectGraph:
 
     for py_path, tree in parsed.items():
         module_qualname = _module_qualname(py_path, repo_root)
-        _index_module_functions(tree, module_qualname, str(py_path), graph.functions)
+        _index_module_functions(tree, module_qualname, str(py_path), graph.functions, graph.wrapper_classes)
 
     for py_path, tree in parsed.items():
         module_qualname = _module_qualname(py_path, repo_root)
         calls = _resolve_module(tree, module_qualname, graph.functions)
         graph.modules[module_qualname] = ModuleGraph(module_qualname=module_qualname, file_path=str(py_path), calls=calls)
+
+    # Pass 3: anywhere a known WrapperClass is instantiated, record what it
+    # wrapped. This is what lets a middleware-style guard (one that never
+    # appears in any handler's own call graph, because it wraps the app at
+    # construction time instead) surface as a structural fact at all.
+    for module in graph.modules.values():
+        for call in module.calls:
+            if not isinstance(call.target, Symbol):
+                continue
+            wrapper = graph.wrapper_classes.get(call.target.qualified_name)
+            if wrapper is None:
+                continue
+            wrapped_expr = (
+                call.args[wrapper.wrapped_param_index]
+                if wrapper.wrapped_param_index < len(call.args)
+                else "<could not resolve positional argument -- possibly passed by keyword>"
+            )
+            graph.wrap_constructions.append(
+                WrapConstruction(
+                    wrapper_qualified_name=wrapper.qualified_name,
+                    wrapped_expr=wrapped_expr,
+                    file_path=module.file_path,
+                    lineno=call.lineno,
+                )
+            )
 
     return graph

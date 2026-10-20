@@ -160,6 +160,21 @@ def run(repo_root: Path, catalog_path: str, out_dir: Path) -> int:
         "unresolved_call_sites": unresolved_calls,
         "plan_count": len(plans),
         "plans": [p.as_dict() for p in plans],
+        "wrapper_middleware_detected": [
+            {
+                "class": w.qualified_name,
+                "dispatch_is_guarded": w.dispatch_is_guarded,
+            }
+            for w in graph.wrapper_classes.values()
+        ],
+        "wrapper_construction_sites": [
+            {
+                "wrapper": wc.wrapper_qualified_name,
+                "wraps": wc.wrapped_expr,
+                "location": f"{wc.file_path}:{wc.lineno}",
+            }
+            for wc in graph.wrap_constructions
+        ],
     }
     safe_write_text(str(out_dir), "verification_ledger.json", json.dumps(ledger, indent=2), 5_000_000)
     print(

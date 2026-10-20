@@ -70,6 +70,9 @@ class CallSite:
     order: int  # position among calls in `caller`, for the bounded same-function
     # "guard precedes sink" check -- an approximation of control
     # dependency, not full CFG dominance. See docs/isbg-limits.md.
+    args: tuple = ()  # best-effort source text of each positional argument, for
+    # the wrapper-construction detector below -- not used for further
+    # resolution, only for reporting *what* was passed where.
     branch_path: tuple = ()  # sequence of (enclosing If/Try node id, branch label)
     # from the function root down to this call -- lets the "guard precedes
     # sink" check tell an elif/else sibling (mutually exclusive, can never
@@ -83,7 +86,36 @@ class CallSite:
 @dataclass
 class FunctionInfo:
     qualified_name: str
-    is_guard_shaped: bool  # structural: has an early raise-on-condition pattern
+    is_guard_shaped: bool  # structural: has an early raise- or return-on-condition pattern
+    file_path: str
+    lineno: int
+
+
+@dataclass(frozen=True)
+class WrapperClass:
+    """A class that structurally behaves like middleware: its constructor
+    stores a passed-in object, and its dispatch method checks something
+    before forwarding to that stored object. Framework-agnostic on purpose
+    -- this is how Horos's real BearerAuthMiddleware looks (a plain ASGI
+    callable, not a Django/Flask-specific base class), and the detector
+    below never names Starlette, ASGI, or Horos anywhere."""
+
+    qualified_name: str
+    wrapped_param_index: int  # position of the wrapped-object parameter in __init__ (0 = first non-self arg)
+    dispatch_method: str  # qualified name of the guarding dispatch method, e.g. "...BearerAuthMiddleware.__call__"
+    dispatch_is_guarded: bool
+
+
+@dataclass(frozen=True)
+class WrapConstruction:
+    """One place in the project where a WrapperClass is instantiated,
+    wrapping some expression. Does not yet trace which specific handler
+    functions sit behind the wrapped expression -- that hop is framework-
+    specific route/middleware registration and is explicitly not claimed
+    here."""
+
+    wrapper_qualified_name: str
+    wrapped_expr: str  # best-effort source text of the wrapped argument
     file_path: str
     lineno: int
 
@@ -103,6 +135,8 @@ class ProjectGraph:
 
     modules: dict[str, ModuleGraph] = field(default_factory=dict)
     functions: dict[str, FunctionInfo] = field(default_factory=dict)
+    wrapper_classes: dict[str, WrapperClass] = field(default_factory=dict)
+    wrap_constructions: list[WrapConstruction] = field(default_factory=list)
 
     def all_calls(self) -> list[CallSite]:
         return [c for m in self.modules.values() for c in m.calls]
