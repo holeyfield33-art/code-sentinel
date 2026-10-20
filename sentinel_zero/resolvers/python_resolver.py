@@ -20,9 +20,12 @@ a differently-named helper in another file) is inherently cross-file:
   never a dropped call.
 
 Known, stated limits (do not silently claim more than this does):
-  - only module-level and function-level `def`s are indexed; methods on
-    classes are not yet (classes are out of scope for v0, same as
-    Block-Wise's own plan grammar).
+  - Milestone 11: class method bodies ARE walked for call-site recording
+    (not just indexed), with `self` bound to the owning class's qualname
+    for that walk -- `self.foo()` resolves to the real indexed method, the
+    same way an import binding resolves a module alias. `cls.foo()`
+    (classmethod dispatch) is NOT handled -- a different shape, logged as
+    its own future gap rather than guessed at.
   - `import a.b.c` without an alias is approximated as binding the
     top-level package name only, per Python's actual binding rule, so
     `a.b.c.fn()` is NOT currently resolved through that form -- it falls
@@ -306,8 +309,14 @@ def _resolve_module(
     bindings = _import_bindings(tree, module_qualname)
     calls: list[CallSite] = []
 
-    def walk_fn(fn_node: ast.FunctionDef | ast.AsyncFunctionDef | None, caller_name: str) -> None:
+    def walk_fn(
+        fn_node: ast.FunctionDef | ast.AsyncFunctionDef | None,
+        caller_name: str,
+        extra_bindings: dict[str, str] | None = None,
+    ) -> None:
         local_bindings = dict(bindings)
+        if extra_bindings:
+            local_bindings.update(extra_bindings)
         order_counter = [0]
         body = fn_node.body if fn_node else tree.body
 
@@ -430,6 +439,28 @@ def _resolve_module(
     for node in tree.body:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             walk_fn(node, f"{module_qualname}.{node.name}")
+        elif isinstance(node, ast.ClassDef):
+            # Milestone 11: class method bodies are walked for CallSite
+            # recording too -- the pre-existing gap logged in Milestone 6's
+            # commit and pinned by
+            # test_class_method_sink_is_not_probed_and_is_not_even_a_finding_yet
+            # (a sink call inside ANY method produced zero finding plans,
+            # not even UNRESOLVED_INCONCLUSIVE). `self` is bound to the
+            # owning class's qualname for the duration of this one method's
+            # walk, so `self.foo(...)` resolves to the exact qualname
+            # _index_module_functions already indexed it under
+            # ("module.Class.foo"), the same way an import binds a module
+            # alias -- no new resolution mechanism, just one more binding.
+            # Deliberately NOT handling `cls.foo()` (classmethod dispatch)
+            # here -- a different shape, out of scope for this pass.
+            class_qualname = f"{module_qualname}.{node.name}"
+            for member in node.body:
+                if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    walk_fn(
+                        member,
+                        f"{class_qualname}.{member.name}",
+                        extra_bindings={"self": class_qualname},
+                    )
 
     return calls
 

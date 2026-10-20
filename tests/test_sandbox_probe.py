@@ -67,18 +67,17 @@ def test_guarded_path_not_taken_on_zero_arg_call_stays_unresolved_not_demoted():
         assert plans[0]["disposition"]["status"] == "UNRESOLVED_INCONCLUSIVE"
 
 
-def test_class_method_sink_is_not_probed_and_is_not_even_a_finding_yet():
-    """Class methods are explicitly out of scope for this probe (no safe,
-    generic way to construct an instance) -- must not be attempted.
+def test_class_method_sink_is_not_probed_but_is_now_a_finding():
+    """Milestone 11 closed the gap this test originally pinned:
+    _resolve_module now walks class method bodies for call-site recording
+    (see python_resolver.py's module docstring), so a sink call inside a
+    method is no longer invisible -- it produces a real finding plan.
 
-    Found via this test, NOT a Milestone 6 bug, deliberately not fixed
-    here: _resolve_module's call-walking skips ast.ClassDef entirely, so a
-    sink call inside ANY method -- probed or not -- currently produces zero
-    finding plans, not even UNRESOLVED_INCONCLUSIVE. That is a pre-existing
-    gap in the core resolver affecting sink/guard/dependency detection in
-    general, not something specific to this probe. Logged as a known gap
-    for a future milestone; asserting the real current behavior (0 plans)
-    here rather than papering over it."""
+    The sandbox probe itself is unchanged and still correctly refuses this
+    case: _zero_arg_top_level_function returns None for any caller_qualname
+    containing a dot beyond the module ("module.Runner.run_it"), so a class
+    method is never probed regardless of its arity -- confirmed by the
+    disposition below being UNRESOLVED_INCONCLUSIVE, not VERIFIED_TRUE."""
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         (root / "runner.py").write_text(
@@ -88,8 +87,5 @@ def test_class_method_sink_is_not_probed_and_is_not_even_a_finding_yet():
             "        subprocess.run(['echo', 'hi'])\n"
         )
         plans = _run(root)
-        assert len(plans) == 0, (
-            "if this starts producing a plan, the ClassDef call-walking gap above "
-            "has been closed elsewhere -- update this test to assert UNRESOLVED_INCONCLUSIVE "
-            "(never probed) instead of 0 plans"
-        )
+        assert len(plans) == 1
+        assert plans[0]["disposition"]["status"] == "UNRESOLVED_INCONCLUSIVE"
