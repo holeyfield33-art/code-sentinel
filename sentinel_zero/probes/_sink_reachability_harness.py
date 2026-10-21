@@ -1,28 +1,35 @@
 """Bounded dynamic reachability probe (Milestone 6, widened in Milestone 16
 to cover FILE_IO and DESERIALIZATION in addition to the original
-PROCESS_EXEC-only scope -- same mechanism, just a wider patch table).
+PROCESS_EXEC-only scope, and in Milestone 17 to call a function with
+harvested literal arguments instead of only zero-argument functions --
+same mechanism both times, just a wider patch table / wider call shape).
 
 Invoked ONLY as a subprocess (python -I, hard timeout) -- never imported by
 the main scan process. That subprocess boundary is the actual isolation:
 this file monkeypatches every known sink entry point to a recorder BEFORE
-importing the target module, calls exactly one named zero-argument
-top-level function, and reports whether the recorder fired. No real
-process is ever executed, no real file is ever opened, no real payload is
-ever deserialized by this probe -- every one of those actions is replaced
-by a recorder that raises before the real call underneath it runs.
+importing the target module, calls exactly one named top-level function
+(with zero arguments, or with a tuple of real values harvested from a
+genuine literal-only call site -- see main()'s argv handling), and reports
+whether the recorder fired. No real process is ever executed, no real file
+is ever opened, no real payload is ever deserialized by this probe --
+every one of those actions is replaced by a recorder that raises before
+the real call underneath it runs.
 
 Scope, stated plainly and deliberately narrow:
-  - Confirms REACHABILITY under one benign, zero-argument call. It never
-    attempts adversarial/crafted inputs -- that is open-ended fuzzing work,
-    explicitly out of scope for this milestone.
+  - Confirms REACHABILITY under one benign call -- either zero arguments,
+    or arguments that are themselves constants lifted verbatim from a real
+    call site elsewhere in the project (Milestone 17). It never attempts
+    adversarial/crafted inputs -- that is open-ended fuzzing work,
+    explicitly out of scope here.
   - It can only ever argue FOR "this path is live" (-> VERIFIED_TRUE in the
     caller). A sink NOT reached on this one run proves nothing about other
     inputs, so this harness never produces evidence for VERIFIED_FALSE --
     the caller (dogfood_scan.py) enforces that by only ever checking for
     the "sink_reached" status, never treating "not_reached" as a pass.
   - Only a plain module-level function the caller has already confirmed
-    takes zero required arguments is ever named here; that eligibility
-    check lives in dogfood_scan.py, not here.
+    is safe to call this way is ever named here; that eligibility check
+    (arity, harvested-literal-argument lookup) lives in dogfood_scan.py,
+    not here -- this file only ever does what it's told.
   - Every known sink across all three kinds is patched simultaneously
     (same approach the original PROCESS_EXEC-only version used for its own
     six entry points) -- the harness does not know or care which specific
@@ -129,13 +136,42 @@ def _patch_sinks() -> None:
 
 
 def main() -> None:
-    if len(sys.argv) != 4:
+    # Milestone 17: an optional 5th argv, ARGS_REPR, is the repr() of a
+    # tuple of real Python values harvested from a genuine call site
+    # elsewhere in the project that calls this exact function with
+    # arguments Milestone 15's taint classifier confirmed are built
+    # entirely from literal constants (see dogfood_scan.py's
+    # _literal_argument_call_site). repr() of a literal-eval'able value
+    # round-trips cleanly through ast.literal_eval, the same mechanism
+    # used to harvest it in the first place -- never raw source text
+    # re-embedded as code, never eval()'d. If absent, the call is made
+    # with zero arguments, same as Milestone 6's original behavior.
+    if len(sys.argv) not in (4, 5):
         print(json.dumps({
             "status": "call_failed",
-            "detail": "usage: _sink_reachability_harness.py REPO_ROOT MODULE_QUALNAME FUNCTION_NAME",
+            "detail": "usage: _sink_reachability_harness.py REPO_ROOT MODULE_QUALNAME FUNCTION_NAME [ARGS_REPR]",
         }))
         return
     repo_root, module_qualname, function_name = sys.argv[1], sys.argv[2], sys.argv[3]
+
+    call_args: tuple = ()
+    if len(sys.argv) == 5:
+        import ast as _ast
+
+        try:
+            call_args = tuple(_ast.literal_eval(sys.argv[4]))
+        except (ValueError, SyntaxError) as exc:
+            # This project's own harvesting step is supposed to only ever
+            # produce a literal_eval-able repr -- a failure here is this
+            # tool's own bug, not the target's, but it must still be
+            # reported rather than silently falling back to a zero-arg
+            # call (that would claim a DIFFERENT, unintended invocation
+            # happened).
+            print(json.dumps({
+                "status": "call_failed",
+                "detail": f"could not parse harvested arguments: {type(exc).__name__}: {exc}",
+            }))
+            return
 
     sys.path.insert(0, repo_root)
 
@@ -161,7 +197,7 @@ def main() -> None:
         return
 
     try:
-        fn()
+        fn(*call_args)
     except _SinkReached as reached:
         print(json.dumps({
             "status": "sink_reached",

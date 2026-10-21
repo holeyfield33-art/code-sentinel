@@ -24,7 +24,9 @@ _HARNESS_PATH = Path(__file__).parent / "_sink_reachability_harness.py"
 PROBE_TIMEOUT_SECONDS = 5
 
 
-def run_sink_reachability_probe(repo_root: Path, module_qualname: str, function_name: str) -> dict:
+def run_sink_reachability_probe(
+    repo_root: Path, module_qualname: str, function_name: str, args_repr: str | None = None
+) -> dict:
     """Runs the harness in an isolated `python -I` subprocess and returns
     one of:
       {"status": "sink_reached", "symbol": ..., "args": ...}
@@ -41,13 +43,23 @@ def run_sink_reachability_probe(repo_root: Path, module_qualname: str, function_
     on this, added in Milestone 16 to fix a real bug where a second,
     never-actually-reached sink in the same function was incorrectly
     promoted to VERIFIED_TRUE off the first sink's evidence.
+
+    `args_repr` (Milestone 17), when given, is the repr() of a tuple of
+    real Python values -- never raw/arbitrary text -- harvested by the
+    caller from a genuine call site in the project (see dogfood_scan.py's
+    _literal_argument_call_site). Passed straight through as the
+    harness's 4th argv; omitted entirely (zero-argument call) when None.
     """
     if not _HARNESS_PATH.is_file():
         raise FileNotFoundError(f"sandbox probe harness missing at {_HARNESS_PATH}")
 
+    argv = [sys.executable, "-I", str(_HARNESS_PATH), str(repo_root), module_qualname, function_name]
+    if args_repr is not None:
+        argv.append(args_repr)
+
     try:
         completed = subprocess.run(
-            [sys.executable, "-I", str(_HARNESS_PATH), str(repo_root), module_qualname, function_name],
+            argv,
             capture_output=True,
             text=True,
             timeout=PROBE_TIMEOUT_SECONDS,

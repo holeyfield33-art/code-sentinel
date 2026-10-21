@@ -50,7 +50,13 @@ patches every known sink simultaneously and reports whichever one fired
 first, so a disposition must check that the reported symbol actually
 matches THIS finding's own sink before promoting to VERIFIED_TRUE -- a
 check that was missing before, and would have gotten worse as more sink
-kinds were added to the same probe run.
+kinds were added to the same probe run. Milestone 17 widened the probe's
+eligible CALL SHAPE, not just its sink coverage: a function requiring
+arguments is no longer automatically out of scope -- if a real call site
+elsewhere in the project passes it only literal-constant arguments
+(Milestone 15's taint classifier says so), those exact values are
+harvested and used to make the probe call, instead of calling with zero
+arguments. See _literal_argument_values/_probe_invocation_for below.
 """
 from __future__ import annotations
 
@@ -166,6 +172,25 @@ def _zero_arg_top_level_function(file_path: str, module_qualname: str, caller_qu
     probe is allowed to call with no inputs. Returns None for anything else
     (a class method, a function needing real arguments, an unparseable
     file) -- the probe is simply not attempted for those, never guessed at."""
+    fn_node = _top_level_function_node(file_path, module_qualname, caller_qualname)
+    if fn_node is None:
+        return None
+    args = fn_node.args
+    required_positional = len(args.posonlyargs) + len(args.args) - len(args.defaults)
+    required_kwonly = sum(1 for default in args.kw_defaults if default is None)
+    if required_positional > 0 or required_kwonly > 0:
+        return None
+    return fn_node.name
+
+
+def _top_level_function_node(
+    file_path: str, module_qualname: str, caller_qualname: str
+) -> ast.FunctionDef | ast.AsyncFunctionDef | None:
+    """Shared AST lookup behind both _zero_arg_top_level_function and
+    Milestone 17's literal-argument harvesting: finds caller_qualname's own
+    function definition, but only when it's a plain top-level function in
+    this module (not a class method, not nested) -- the shape every probe
+    invocation path requires regardless of its arity."""
     prefix = module_qualname + "."
     if not caller_qualname.startswith(prefix):
         return None
@@ -178,13 +203,76 @@ def _zero_arg_top_level_function(file_path: str, module_qualname: str, caller_qu
         return None
     for node in tree.body:  # top-level only -- a nested def is a different scope
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and node.name == name:
-            args = node.args
-            required_positional = len(args.posonlyargs) + len(args.args) - len(args.defaults)
-            required_kwonly = sum(1 for default in args.kw_defaults if default is None)
-            if required_positional > 0 or required_kwonly > 0:
-                return None
-            return name
+            return node
     return None
+
+
+def _literal_argument_values(graph: ProjectGraph, module_qualname: str, function_name: str) -> list | None:
+    """Milestone 17: looks for a real call site ANYWHERE in the project
+    graph that calls <module_qualname>.<function_name> with one or more
+    positional arguments Milestone 15's taint classifier confirmed are
+    "literal" for every one of them -- built entirely from constants in
+    the AST, never from a parameter, a global, or another call's result.
+    When found, harvests the concrete Python values via ast.literal_eval
+    on the call site's own captured source text (CallSite.args) -- never
+    synthesized, never guessed, always a value that genuinely gets passed
+    to this function somewhere in the real codebase today.
+
+    Zero-arg call sites are irrelevant here (the simpler, pre-existing
+    zero-arg path already covers those) -- only call sites that actually
+    pass arguments are considered. If several qualifying call sites exist,
+    the first by (caller, lineno, order) is used, for determinism; any one
+    of them is equally valid evidence, since each is a real invocation
+    that genuinely occurs in this codebase. Returns None if no call site
+    qualifies, or if ast.literal_eval unexpectedly fails on a value the
+    taint classifier called "literal" (defensive only -- should not
+    happen; never silently falls back to guessing a value instead)."""
+    target_qualname = f"{module_qualname}.{function_name}"
+    candidates = [
+        call
+        for call in graph.all_calls()
+        if isinstance(call.target, Symbol)
+        and call.target.qualified_name == target_qualname
+        and call.args
+        and len(call.arg_taint) == len(call.args)
+        and all(t == "literal" for t in call.arg_taint)
+    ]
+    if not candidates:
+        return None
+    candidates.sort(key=lambda c: (c.caller, c.lineno, c.order))
+    try:
+        return [ast.literal_eval(text) for text in candidates[0].args]
+    except (ValueError, SyntaxError):
+        return None
+
+
+def _probe_invocation_for(
+    file_path: str, module_qualname: str, caller_qualname: str, graph: ProjectGraph
+) -> tuple[str, list | None] | None:
+    """Decides whether, and how, the dynamic probe may safely call this
+    caller: returns (function_name, None) for the original zero-required-
+    argument case, (function_name, values) when Milestone 17's harvesting
+    found real literal values for every required positional parameter, or
+    None when neither applies -- the probe is simply not attempted, never
+    guessed at. Keyword-only parameters are never modeled (no harvesting
+    attempted for them) -- a function requiring one is always ineligible."""
+    fn_node = _top_level_function_node(file_path, module_qualname, caller_qualname)
+    if fn_node is None:
+        return None
+    args = fn_node.args
+    required_positional = len(args.posonlyargs) + len(args.args) - len(args.defaults)
+    required_kwonly = sum(1 for default in args.kw_defaults if default is None)
+    if required_kwonly > 0:
+        return None
+    if required_positional == 0:
+        return (fn_node.name, None)
+    harvested = _literal_argument_values(graph, module_qualname, fn_node.name)
+    if harvested is None or len(harvested) < required_positional:
+        return None  # too few literal values to satisfy required params -- would be a TypeError
+    total_positional_slots = len(args.posonlyargs) + len(args.args)
+    if not args.vararg and len(harvested) > total_positional_slots:
+        return None  # more values than this function accepts positionally
+    return (fn_node.name, harvested)
 
 
 def _taint_note(arg_taint: tuple) -> str:
@@ -305,17 +393,19 @@ def find_finding_plans(
                         residual_uncertainty="Medium: no in-function guard resolved, no dynamic check run.",
                     )
 
-                # Milestone 6, widened in Milestone 16: a bounded dynamic
-                # reachability probe, zero-argument top-level functions only,
-                # never attempting adversarial inputs. Originally PROCESS_EXEC
-                # only; now also FILE_IO and DESERIALIZATION, since the harness
-                # patches every known sink kind simultaneously (see
-                # probes/_sink_reachability_harness.py for the full scope
-                # statement). It can only ever argue FOR VERIFIED_TRUE ("this
-                # path is live, confirmed by a real call") -- a sink not
-                # reached on this one run proves nothing about other inputs,
-                # so "not_reached" and "call_failed" leave the disposition
-                # exactly as the static analysis above already set it.
+                # Milestone 6, widened in Milestone 16 (FILE_IO/DESERIALIZATION
+                # sink kinds) and Milestone 17 (harvested-literal-argument
+                # calls, not just zero-argument ones -- see
+                # _probe_invocation_for/_literal_argument_values above): a
+                # bounded dynamic reachability probe, never attempting
+                # adversarial inputs, that patches every known sink kind
+                # simultaneously (see probes/_sink_reachability_harness.py
+                # for the full scope statement). It can only ever argue FOR
+                # VERIFIED_TRUE ("this path is live, confirmed by a real
+                # call") -- a sink not reached on this one run proves nothing
+                # about other inputs, so "not_reached" and "call_failed"
+                # leave the disposition exactly as the static analysis above
+                # already set it.
                 #
                 # builtins.eval/builtins.exec findings are deliberately
                 # excluded from probing entirely, not just from promotion:
@@ -334,9 +424,13 @@ def find_finding_plans(
                     and call.target.qualified_name not in ("builtins.eval", "builtins.exec")
                     and caller
                 ):
-                    fn_name = _zero_arg_top_level_function(module.file_path, module.module_qualname, caller)
-                    if fn_name:
-                        probe_result = run_sink_reachability_probe(repo_root, module.module_qualname, fn_name)
+                    invocation = _probe_invocation_for(module.file_path, module.module_qualname, caller, graph)
+                    if invocation:
+                        fn_name, harvested_args = invocation
+                        args_repr = repr(tuple(harvested_args)) if harvested_args is not None else None
+                        probe_result = run_sink_reachability_probe(
+                            repo_root, module.module_qualname, fn_name, args_repr
+                        )
                         # Milestone 16 correctness fix: the harness patches
                         # EVERY known sink at once and reports whichever one
                         # actually fired first, which is not necessarily THIS
@@ -358,14 +452,22 @@ def find_finding_plans(
                                 f" A guard-shaped call ({guard_hit}) was detected statically on this path, "
                                 "but the dynamic probe still reached the sink -- this does not mean the guard "
                                 "is bypassable by attacker-controlled input, only that it did not block this "
-                                "specific zero-argument call."
+                                "specific call."
                                 if guard_hit else ""
                             )
+                            if harvested_args is not None:
+                                call_desc = (
+                                    f"with harvested arguments {tuple(harvested_args)!r} -- values lifted "
+                                    "verbatim from a real call site elsewhere in this project that Milestone 15's "
+                                    "taint classifier confirmed are literal constants there, never synthesized"
+                                )
+                            else:
+                                call_desc = "with zero arguments"
                             set_disposition(
                                 plan,
                                 "VERIFIED_TRUE",
                                 reason=(
-                                    f"a bounded dynamic probe called {caller}() with zero arguments in an "
+                                    f"a bounded dynamic probe called {caller}() {call_desc} in an "
                                     f"isolated subprocess and observed {probe_result.get('symbol')} invoked "
                                     f"(args={probe_result.get('args')}) before the real sink could execute "
                                     "(monkeypatched, never actually run). This confirms the call path is live "
