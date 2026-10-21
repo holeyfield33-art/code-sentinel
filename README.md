@@ -84,6 +84,7 @@ specific bugs found in the earlier pipeline:
 | 16 | Widened the Milestone 6 dynamic probe past PROCESS_EXEC-only to also cover FILE_IO and DESERIALIZATION (`builtins.open`, `json.load`/`loads`, `pickle.load`/`loads`, `yaml.load`), and fixed a real bug found while widening it: the probe patches every known sink at once and reports whichever fires first, so a second, never-actually-reached sink in the same zero-arg function was wrongly promoted to `VERIFIED_TRUE` off the first one's evidence — now checked against the specific finding's own sink identity before promoting. `builtins.eval`/`builtins.exec` are deliberately excluded from probing entirely (not just promotion): CPython's import machinery itself runs on the builtin `exec()`, so patching it would either break every import or risk a false positive from a probed function's own nested import. Renamed `process_exec_probe.py` → `sink_reachability_probe.py` to match the real scope. Re-scanning Block-Wise: `VERIFIED_TRUE` findings went from 3 to 39 | Python |
 | 17 | The probe can now call a function that *requires* arguments, not just a zero-arg one — if a real call site elsewhere in the project passes it only literal-constant arguments (Milestone 15's taint classifier says so), those exact values are harvested via `ast.literal_eval` on that call site's own source text and used to make the probe call. Never synthesized, never guessed; a call site that fails this test (parameter-derived, too few values for the required params, a required keyword-only param) is simply not attempted, same as before. Honest result on this project's own repo sample: the mechanism is correct and covered by 6 unit tests, but across 5 real Python repos re-scanned (vibe-check, vibe-explainer, aletheia-redteam-kit, aletheia-sentinel, horos) it never actually fired — real call sites in practice almost always pass a variable, not a literal. Worth having for repos with more "hardcoded driver call" shapes; not a universal lift | Python |
 | 18 | Ported the Milestone 6/16 dynamic probe to JS/TS — closes the "Python-only" bound two rows up, for the exported-and-zero-argument call shape the probe already knows how to handle. Same safety model (isolated `node` subprocess, hard timeout, patch sinks before `require()`, raise-to-short-circuit before the real sink runs) and the same Milestone 16 symbol-match correctness rule, now shared between both languages via one `_promote_if_sink_reached` helper. The one function that is unsafe to patch differs per language and had to be found empirically for each: Python's is `builtins.eval`/`exec` (breaks CPython's import machinery); JS's is `fs.readFileSync` (breaks Node's `require()`) — `eval`, `Function`, and the whole `vm` module are all safe to patch on the JS side, the opposite of Python's pattern. Eligibility is also decided differently: Python checks call shape statically from the AST; JS decides it at runtime inside the harness, via the real exported function's `fn.length === 0`, because JS silently fills a missing argument with `undefined` instead of raising the way Python raises `TypeError` — a static "requires no arguments" check would not actually guarantee a safe call there. Honest result, not oversold: across 2 real JS/TS repos re-scanned (runtime-firewall-mvp, vercel-cli) this produced zero actual `VERIFIED_TRUE` lift — see Known bounds for the two specific, diagnosed reasons (a self-executing test file, and a `.ts` file that can't `require()` cleanly under plain Node). The mechanism itself is correct, proven by 7 unit tests covering promotion, the symbol-mismatch guard, the `fs.readFileSync` exclusion, unexported functions, and non-zero-arg functions | JS, TS |
+| 19 | Replaced the "guard precedes sink" approximation (same-function call order + a branch-exclusivity check that only caught two paths diverging at a *shared* ancestor node) with real CFG dominance for If/Try nesting (`python_resolver.dominates` — a guard call's `branch_path` must be a literal prefix of the sink call's own `branch_path`, i.e. the guard genuinely executes on *every* path that can reach the sink, not just "comes earlier and isn't on a mutually-exclusive sibling branch"). This closed a real, confirmed false positive the old heuristic could not catch: a guard call sitting inside a bare `if`, with no `else`, used to be wrongly credited with protecting a sink that sits at an outer, unconditional level — the sink runs regardless of whether that `if`'s condition was ever true, so the guard was never actually on its path. Confirmed directly by diffing the old and new checks over the same real call data: Block-Wise had exactly 2 such false positives (`experiments/token-efficiency/reproduce.py:183` and `tests/test_coverage.py:73`, both a conditionally-called `render_blueprint`/`render` wrongly credited as guarding an unconditionally-reached `json.loads`), Horos had 0. This tightens `UNRESOLVED_INCONCLUSIVE` reasoning, not a lever for more `VERIFIED_TRUE` — a confirmed dominance hit still only proves the guard *call* runs before the sink on every path, never that its own condition ties to attacker-controlled input, so it still never promotes to `VERIFIED_FALSE` (see `dominates()`'s own docstring). 5 new unit/end-to-end tests, including the exact false-positive regression case | Python |
 
 Every milestone above was dogfooded against ≥2–3 real, unrelated
 repositories before being trusted, and every surprising result was
@@ -125,13 +126,19 @@ These are stated limits, not bugs waiting to be noticed:
 
 - **`.tsx` (JSX-in-TS) is out of scope.** A `.tsx` file is silently not
   collected, not attempted and reported as a parse error. (Milestone 10)
-- **"Guard precedes sink" is same-function call order, an approximation of
-  control dependency — not full CFG dominance.** A guard that runs but
-  whose result is ignored still reads as "guard present," and whether the
-  condition that triggers the guard's `raise` corresponds to
-  attacker-controlled input is not evaluated. (Tightened in Milestone 12
-  to require an actual `raise`, not a `return`, for the cross-function
-  delegation case — see `callgraph.transitively_guard_shaped`.)
+- **"Guard precedes sink" is real CFG dominance (Milestone 19), for
+  If/Try nesting, within one function.** A guard call must execute on
+  *every* control-flow path that can reach the sink to count — see
+  `python_resolver.dominates` for the exact check and a worked false-
+  positive example. Still bounded: a guard whose boolean result is read
+  and then ignored (rather than the guard itself raising) still reads as
+  "guard present" if it structurally raises on an early-exit condition,
+  and whether the condition that triggers that `raise` corresponds to
+  attacker-controlled input is not evaluated — dominance proves the CALL
+  happens, not that its condition is meaningful, so this never promotes
+  to `VERIFIED_FALSE`. (Tightened in Milestone 12 to require an actual
+  `raise`, not a `return`, for the cross-function delegation case — see
+  `callgraph.transitively_guard_shaped`.)
 - **Loop bodies are not given their own branch tag** in either resolver;
   calls inside a loop are recorded at the enclosing branch path.
 - **Python's `import a.b.c` without an alias** binds only the top-level
@@ -255,7 +262,7 @@ pytest tests/ -v
 python3 -m sentinel_zero.cli analyze /path/to/some/repo
 ```
 
-As of this checkpoint: **108 tests, all passing**, covering both
+As of this checkpoint: **113 tests, all passing**, covering both
 resolvers, the shared `callgraph.py` delegation walk, the dynamic probe,
 external-dependency mapping, wrapper-middleware detection, every
 documented gap above, the `cli.py`/`mcp_server.py` transports, the

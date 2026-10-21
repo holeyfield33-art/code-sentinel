@@ -18,16 +18,41 @@ Carried forward from Milestone 2, unchanged:
   - sink matching by resolved identity, not name/token.
   - guard matching by resolved identity + structural shape, not name.
   - same-function branch-exclusivity (an elif sibling can't "precede" a
-    sink it can never run alongside).
+    sink it can never run alongside) -- subsumed by Milestone 19's real
+    dominance check below, which catches this case too, plus the one the
+    old mutually_exclusive-based check missed.
+
+Milestone 19 replaced the "guard precedes sink" approximation (same-
+function call ORDER plus a branch-exclusivity check that only caught two
+paths diverging at a SHARED ancestor node) with real CFG dominance for
+If/Try nesting (python_resolver.dominates): a guard call now only counts
+if it executes on EVERY control-flow path that can reach the sink, not
+just "comes earlier in source and isn't on a mutually-exclusive sibling
+branch." That distinction is not academic -- the old check had a real,
+confirmed false positive: a guard call sitting inside a bare `if`, with
+no `else`, used to be wrongly credited with protecting a sink at an
+outer, unconditional level, even though the sink runs regardless of
+whether that `if`'s condition was ever true. See dominates()'s own
+docstring for the worked example and the exact fix.
 
 Still bounded, still stated plainly:
-  - "guard precedes sink" is still same-function call order at the
+  - "guard precedes sink" is still same-function dominance at the
     ORIGINAL call site -- delegation crosses functions/files for the
     *guard's own identity*, but the call that invokes it still has to be
-    in the sink's function, in a non-exclusive branch, before the sink.
-    A guard called three functions up the stack, never passed down, is
-    not yet traced -- that is real interprocedural dataflow, not delegation
-    propagation, and is not claimed here.
+    in the sink's function, dominating the sink. A guard called three
+    functions up the stack, never passed down, is not yet traced -- that
+    is real interprocedural dataflow, not delegation propagation, and is
+    not claimed here.
+  - Dominance proves the guard CALL runs before the sink on every path --
+    it does not, and cannot from static structure alone, prove the
+    guard's own internal condition corresponds to attacker-controlled
+    input. This is why a confirmed dominance hit still only promotes to
+    UNRESOLVED_INCONCLUSIVE, never VERIFIED_FALSE -- real CFG dominance
+    was necessary, but was never claimed to be sufficient, for that
+    promotion.
+  - Loop bodies still get one undifferentiated branch tag regardless of
+    how many times (zero or many) the loop actually runs -- not given
+    their own dominance treatment per iteration.
 
 Milestone 7 added a second resolver (JS/TS, via resolvers/js_resolver.py)
 selected with the `language` parameter/CLI arg -- the proof that graph.py's
@@ -120,7 +145,7 @@ from sentinel_zero.ledger_writer import safe_write_text
 from sentinel_zero.probes.sink_reachability_probe import run_sink_reachability_probe
 from sentinel_zero.probes.js_sink_reachability_probe import run_js_sink_reachability_probe
 from sentinel_zero.resolvers.python_resolver import build_project_graph as build_python_project_graph
-from sentinel_zero.resolvers.python_resolver import mutually_exclusive
+from sentinel_zero.resolvers.python_resolver import dominates
 from sentinel_zero.resolvers.js_resolver import build_project_graph as build_js_project_graph
 
 SINK_ATTACK_IDS = {
@@ -418,15 +443,22 @@ def find_finding_plans(
                 attack_id = SINK_ATTACK_IDS[sink_kind]
 
                 # guard precedes sink, same function, by resolved identity + shape,
-                # never by name string.
+                # never by name string. Milestone 19: real CFG dominance
+                # (python_resolver.dominates) in place of the old
+                # order+mutually_exclusive heuristic -- see that function's
+                # docstring for the exact false positive this replaces (a
+                # guard call sitting inside a bare `if`, with no `else`,
+                # used to be wrongly credited with protecting a sink that
+                # sits at an outer, unconditional level and so can run
+                # without the guard ever executing).
                 guard_hit = None
                 for earlier in calls:
                     if earlier.order >= call.order:
                         continue
                     if not isinstance(earlier.target, Symbol):
                         continue
-                    if mutually_exclusive(earlier.branch_path, call.branch_path):
-                        continue  # e.g. an elif sibling -- cannot have actually run
+                    if not dominates(earlier.branch_path, call.branch_path):
+                        continue  # guard is not on EVERY path that reaches this sink
                     if transitively_guard_shaped(earlier.target.qualified_name, graph, callee_index):
                         guard_hit = earlier.target.qualified_name
 
@@ -467,18 +499,21 @@ def find_finding_plans(
                     set_disposition(
                         plan,
                         "UNRESOLVED_INCONCLUSIVE",
-                        reason=f"a resolved call to {guard_hit} precedes this sink in the same function, in a "
-                               f"non-exclusive branch, and {guard_hit} raises (directly, or through a bounded "
-                               "delegation chain) on an early-exit condition -- Milestone 12 tightened this check "
-                               "to require an actual `raise`, not a plain `return`, specifically because a "
-                               "return-shaped delegate's early exit only ends ITS OWN body and does nothing to "
-                               "stop this function's next statement. Same-function call order is still only an "
-                               "approximation of control dependency, not full CFG dominance, and this resolver "
-                               "still does not know whether the condition that triggers the raise corresponds to "
-                               "attacker-controlled input -- never promoted to VERIFIED_FALSE." + _taint_note(call.arg_taint),
-                        residual_uncertainty="Medium: a raise-shaped guard call precedes the sink, but neither "
-                        "full CFG dominance nor the triggering condition's relationship to attacker input is "
-                        "verified.",
+                        reason=f"a resolved call to {guard_hit} genuinely dominates this sink in the same "
+                               f"function -- Milestone 19's real CFG dominance check (python_resolver.dominates) "
+                               f"confirms {guard_hit} executes on EVERY control-flow path that can reach this "
+                               f"sink, not just an approximation of call order, and {guard_hit} raises (directly, "
+                               "or through a bounded delegation chain) on an early-exit condition -- Milestone 12 "
+                               "tightened this to require an actual `raise`, not a plain `return`, specifically "
+                               "because a return-shaped delegate's early exit only ends ITS OWN body and does "
+                               "nothing to stop this function's next statement. Still bounded, still stated "
+                               "plainly: dominance proves the guard CALL runs before the sink on every path -- it "
+                               "does not, and cannot from static structure alone, prove the guard's own internal "
+                               "condition corresponds to attacker-controlled input, so this is still never "
+                               "promoted to VERIFIED_FALSE." + _taint_note(call.arg_taint),
+                        residual_uncertainty="Medium: a raise-shaped guard call is now CONFIRMED to dominate the "
+                        "sink (every path to the sink passes through it), but the triggering condition's "
+                        "relationship to attacker-controlled input is still not verified.",
                     )
                 else:
                     set_disposition(

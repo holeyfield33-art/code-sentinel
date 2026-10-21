@@ -33,10 +33,17 @@ Known, stated limits (do not silently claim more than this does):
     top-level package name only, per Python's actual binding rule, so
     `a.b.c.fn()` is NOT currently resolved through that form -- it falls
     back to Unresolved. Use `from a.b import c` or an explicit alias.
-  - the "guard precedes sink" check is same-function, call order only --
-    an approximation of control dependency, not a real CFG dominance
-    check. A guard that runs but doesn't actually gate the sink (e.g. it's
-    called but its result is ignored) will still read as "guard present."
+  - the "guard precedes sink" check (Milestone 19) is real CFG dominance
+    for If/Try nesting -- see dominates()'s own docstring -- not just an
+    approximation of control dependency anymore. Still bounded: a loop
+    body is one undifferentiated branch tag regardless of iteration count
+    (zero-or-many semantics not modeled), and a guard that runs but
+    doesn't actually gate the sink in a way this resolver can see (e.g.
+    it's called but its boolean result is read and ignored, rather than
+    the guard itself raising) will still read as "guard present" if it
+    structurally raises on an early-exit condition -- dominance proves the
+    CALL happens, not that its condition ties to attacker-controlled
+    input.
   - Milestone 12 tightened WHICH structural shape counts as blocking a
     DELEGATE's caller: callgraph.transitively_guard_shaped now requires
     FunctionInfo.raises_on_guard (an actual `raise`), not the broader
@@ -409,15 +416,77 @@ def _classify_arg_taint(node: ast.expr, param_names: frozenset[str]) -> str:
     return "unknown"  # a call result, comprehension, lambda, walrus, ... -- not modeled
 
 
-def mutually_exclusive(path_a: tuple, path_b: tuple) -> bool:
-    """True if the two branch_paths provably cannot both execute in the
-    same call -- they share an enclosing If/Try but took different arms
-    (an `if` body vs. its `orelse`, or an elif chain's separate branches,
-    which the parser represents as nested If.orelse)."""
-    for (node_a, label_a), (node_b, label_b) in zip(path_a, path_b):
-        if node_a == node_b and label_a != label_b:
-            return True
-    return False
+def dominates(guard_path: tuple, sink_path: tuple) -> bool:
+    """Milestone 19: real CFG dominance for the guard-precedes-sink check,
+    replacing the old order+mutually_exclusive heuristic entirely (that
+    function is gone -- this one subsumes everything it caught, plus the
+    real gap it missed; see below).
+
+    branch_path (graph.py's CallSite.branch_path) is already a root-to-leaf
+    chain of (If/Try node id, branch label) pairs, built by walk_stmts via
+    strict recursive descent -- outermost ancestor first, innermost branch
+    last. Because of that, "does every control-flow path that can reach
+    the sink call also pass through the guard call" reduces to a simple,
+    exact structural test for If/Try nesting (loops are a separate, already
+    -stated approximation -- see module docstring): `guard_path` dominates
+    `sink_path` iff `guard_path` is a literal PREFIX of `sink_path` --
+    i.e. every (node, label) pair the guard call had to pass through to be
+    reached is ALSO on the sink call's own path. An empty guard_path (a
+    top-level, unconditional statement) is trivially a prefix of anything,
+    which is correct: an unconditional statement really does run before
+    any nested one that follows it. The CALLER is still responsible for
+    also checking call ORDER (`earlier.order < call.order`) -- this
+    function only answers "is guard_path a real ancestor scope of
+    sink_path," not "did the guard call happen first" (two calls at
+    exactly the same branch_path, i.e. sequential siblings, still need the
+    order check to tell which ran first).
+
+    This is a strictly more accurate replacement for the bug the old
+    `mutually_exclusive` + order check actually had: `mutually_exclusive`
+    only caught two paths that shared an ancestor node but took DIFFERENT
+    arms (an `if` vs. its `orelse`) -- it said nothing about a guard that
+    is simply MORE nested (less certain to run) than the sink. Confirmed
+    directly before this was written:
+
+        def f(x):
+            if x:
+                require_admin(x)     # branch_path = [(if_node, "body")]
+            sink(x)                   # branch_path = ()
+
+    The old check: `earlier.order < call.order` is True (guard comes
+    first in source), and `mutually_exclusive((if_node,"body"), ())` is
+    False (the zip over mismatched-length tuples never finds a shared
+    node to diverge on) -- so the old code wrongly read this as "guard
+    precedes sink," even though `sink(x)` runs unconditionally and
+    `require_admin` only runs when `x` is truthy. `dominates` correctly
+    returns False here: `()[: len([(if_node,"body")])]` is `()`, which is
+    not equal to `[(if_node,"body")]`, so the guard's path is not a prefix
+    of the sink's path, and the guard is (correctly) not credited with
+    protecting this sink.
+
+    The symmetric, correctly-still-passing case:
+
+        def f(x):
+            require_admin(x)          # branch_path = ()
+            if y:
+                sink(x)                # branch_path = [(if_node, "body")]
+
+    `dominates((), [(if_node,"body")])`: `[(if_node,"body")][:0] == ()` --
+    True. `require_admin` really does run on every path that can reach
+    `sink`, so this still, correctly, reads as a guard hit.
+
+    Still bounded, still stated plainly: this proves the guard CALL
+    genuinely executes before the sink on every path -- it does not (and
+    cannot, from static structure alone) prove the guard's own internal
+    condition corresponds to attacker-controlled input, which is exactly
+    why a dominance hit still only promotes to UNRESOLVED_INCONCLUSIVE,
+    never VERIFIED_FALSE (see dogfood_scan.py's guard_hit reason text).
+    Loop bodies still get one undifferentiated `loop_body` branch tag
+    (zero-or-many-iterations semantics not modeled, per the module
+    docstring's existing stated bound) -- a guard inside a loop and a
+    sink after it are handled the same, approximate way as before.
+    """
+    return sink_path[: len(guard_path)] == guard_path
 
 
 def _resolve_module(
