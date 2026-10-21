@@ -57,6 +57,43 @@ elsewhere in the project passes it only literal-constant arguments
 (Milestone 15's taint classifier says so), those exact values are
 harvested and used to make the probe call, instead of calling with zero
 arguments. See _literal_argument_values/_probe_invocation_for below.
+
+Milestone 18 ported the dynamic probe to JS/TS (probes/js_sink_reachability_probe.py
++ probes/js/_sink_reachability_harness.js), closing the "Python-specific"
+bound stated two paragraphs up for the one call shape this probe already
+knows how to handle (exported, zero-argument). Same safety model as
+Python's (an isolated `node` subprocess, hard timeout, patch sinks before
+require()-ing the target, raise-not-return to short-circuit before the
+real sink runs), same Milestone 16 symbol-match correctness rule (shared
+now via _promote_if_sink_reached, used by both the Python and JS probing
+blocks below) -- but the specific function that is unsafe to patch is
+different per language: Python's is builtins.eval/exec (patching exec
+breaks CPython's own import machinery); JS's is fs.readFileSync (patching
+it breaks Node's own require()). Eligibility is also decided differently:
+Python checks call shape statically from the AST before invoking the
+probe; JS decides it at RUNTIME inside the harness itself, via the real
+exported function's own `fn.length === 0`, because JS silently fills a
+missing argument with `undefined` rather than raising the way Python
+raises TypeError, so a static "requires no arguments" check on the JS
+side would not actually guarantee a safe, nothing-synthesized call.
+
+Honest dogfooding result, not oversold: across two real JS/TS repos
+(runtime-firewall-mvp, vercel-cli), this produced zero actual VERIFIED_TRUE
+promotions, despite the mechanism itself being correct (proven via the
+synthetic tests in tests/test_js_sink_probe.py). Diagnosed causes, both
+pre-existing, expected bounds rather than bugs in this milestone: (1) a
+matched finding inside a self-executing test file (one that runs its own
+assertions at require()-time) can make the whole harness process exit
+nonzero before ours reports cleanly -- this project's directory-skip list
+does not exclude __tests__/test directories, so such files are not
+filtered out of the finding set to begin with; (2) a .ts finding generally
+fails to require() at all under plain Node, either because the file
+exercises ESM/TS-only syntax, or because it imports a dependency that is
+not installed in sentinel-zero's own environment (the probe always runs
+under sentinel-zero's interpreter, never the target's own node_modules --
+the same category of bound already true of Python's own venv isolation).
+Neither is a flaw in the probe's correctness; both are documented in
+README.md's Known Bounds section rather than silently worked around.
 """
 from __future__ import annotations
 
@@ -81,6 +118,7 @@ from sentinel_zero.graph import ProjectGraph, Symbol
 from sentinel_zero.graph_export import export_graph
 from sentinel_zero.ledger_writer import safe_write_text
 from sentinel_zero.probes.sink_reachability_probe import run_sink_reachability_probe
+from sentinel_zero.probes.js_sink_reachability_probe import run_js_sink_reachability_probe
 from sentinel_zero.resolvers.python_resolver import build_project_graph as build_python_project_graph
 from sentinel_zero.resolvers.python_resolver import mutually_exclusive
 from sentinel_zero.resolvers.js_resolver import build_project_graph as build_js_project_graph
@@ -275,6 +313,64 @@ def _probe_invocation_for(
     return (fn_node.name, harvested)
 
 
+def _js_top_level_function_name(module_qualname: str, caller_qualname: str) -> str | None:
+    """Milestone 18: the JS/TS equivalent of _top_level_function_node's
+    shape check, done purely from the qualname string -- no JS parsing
+    needed here, because js_sink_reachability_probe.py's harness decides
+    real eligibility (is it exported? is its arity zero?) at runtime
+    against the actually-required module (see that harness's module
+    docstring for why this is more accurate than static analysis would
+    be). This function only rules out what graph.py's own naming
+    convention already rules out structurally: a class method's qualname
+    is "module.ClassName.methodName" (extract_graph.js builds it that
+    way -- confirmed in its indexClass), so anything with more than one
+    segment past the module prefix is a method, never a plain top-level
+    function, and module scope itself (caller_qualname == "") never
+    matches the prefix at all."""
+    prefix = module_qualname + "."
+    if not caller_qualname.startswith(prefix):
+        return None
+    name = caller_qualname[len(prefix):]
+    if "." in name:
+        return None  # "ClassName.methodName" -- out of scope for this probe
+    return name
+
+
+def _promote_if_sink_reached(plan, probe_result: dict, call, guard_hit: str | None, caller: str, call_desc: str) -> None:
+    """Shared by both the Python and JS/TS probing paths (Milestone 18
+    factored this out so neither language's block could silently drift
+    from the other's correctness rule): promotes `plan` to VERIFIED_TRUE
+    only when the harness reported "sink_reached" AND the reported symbol
+    is THIS finding's own sink -- the Milestone 16 fix, now applied
+    uniformly. `call_desc` is the language-specific clause describing how
+    the probe actually invoked the function ("with zero arguments", or
+    Python's harvested-literal-argument variant) -- written into the
+    reason text so a human reading a finding never has to guess what was
+    actually run."""
+    if probe_result.get("status") != "sink_reached" or probe_result.get("symbol") != call.target.qualified_name:
+        return
+    guard_note = (
+        f" A guard-shaped call ({guard_hit}) was detected statically on this path, "
+        "but the dynamic probe still reached the sink -- this does not mean the guard "
+        "is bypassable by attacker-controlled input, only that it did not block this "
+        "specific call."
+        if guard_hit else ""
+    )
+    set_disposition(
+        plan,
+        "VERIFIED_TRUE",
+        reason=(
+            f"a bounded dynamic probe called {caller}() {call_desc} in an "
+            f"isolated subprocess and observed {probe_result.get('symbol')} invoked "
+            f"(args={probe_result.get('args')}) before the real sink could execute "
+            "(monkeypatched, never actually run). This confirms the call path is live "
+            "and reachable under at least one real invocation." + guard_note
+        ),
+        residual_uncertainty="Low: dynamic reachability confirmed under one benign "
+        "call; no adversarial inputs were attempted (explicitly out of scope for this probe).",
+    )
+
+
 def _taint_note(arg_taint: tuple) -> str:
     """One sentence summarizing a sink call's per-argument taint
     classification (see graph.py's CallSite.arg_taint), appended to a
@@ -431,51 +527,43 @@ def find_finding_plans(
                         probe_result = run_sink_reachability_probe(
                             repo_root, module.module_qualname, fn_name, args_repr
                         )
-                        # Milestone 16 correctness fix: the harness patches
-                        # EVERY known sink at once and reports whichever one
-                        # actually fired first, which is not necessarily THIS
-                        # finding's own sink. Before this check, two different
-                        # sink calls in the same zero-arg function (e.g.
-                        # subprocess.run(...) followed by subprocess.call(...))
-                        # both got promoted to VERIFIED_TRUE off a single probe
-                        # run, even though the second one was never actually
-                        # reached (the first _SinkReached exception aborts the
-                        # call before the second line executes) -- confirmed as
-                        # a real false claim written into the ledger before
-                        # this fix, caught while widening the probe's patch
-                        # table made the same mistake more likely to fire.
-                        if (
-                            probe_result.get("status") == "sink_reached"
-                            and probe_result.get("symbol") == call.target.qualified_name
-                        ):
-                            guard_note = (
-                                f" A guard-shaped call ({guard_hit}) was detected statically on this path, "
-                                "but the dynamic probe still reached the sink -- this does not mean the guard "
-                                "is bypassable by attacker-controlled input, only that it did not block this "
-                                "specific call."
-                                if guard_hit else ""
+                        if harvested_args is not None:
+                            call_desc = (
+                                f"with harvested arguments {tuple(harvested_args)!r} -- values lifted "
+                                "verbatim from a real call site elsewhere in this project that Milestone 15's "
+                                "taint classifier confirmed are literal constants there, never synthesized"
                             )
-                            if harvested_args is not None:
-                                call_desc = (
-                                    f"with harvested arguments {tuple(harvested_args)!r} -- values lifted "
-                                    "verbatim from a real call site elsewhere in this project that Milestone 15's "
-                                    "taint classifier confirmed are literal constants there, never synthesized"
-                                )
-                            else:
-                                call_desc = "with zero arguments"
-                            set_disposition(
-                                plan,
-                                "VERIFIED_TRUE",
-                                reason=(
-                                    f"a bounded dynamic probe called {caller}() {call_desc} in an "
-                                    f"isolated subprocess and observed {probe_result.get('symbol')} invoked "
-                                    f"(args={probe_result.get('args')}) before the real sink could execute "
-                                    "(monkeypatched, never actually run). This confirms the call path is live "
-                                    "and reachable under at least one real invocation." + guard_note
-                                ),
-                                residual_uncertainty="Low: dynamic reachability confirmed under one benign "
-                                "call; no adversarial inputs were attempted (explicitly out of scope for this probe).",
-                            )
+                        else:
+                            call_desc = "with zero arguments"
+                        _promote_if_sink_reached(plan, probe_result, call, guard_hit, caller, call_desc)
+
+                # Milestone 18: the JS/TS mirror of the probe above. Same
+                # sink-kind gating, same "never attempt eval/exec-equivalent
+                # sinks" caution -- but the specific sink that cannot be
+                # safely patched before require() differs on Node
+                # (fs.readFileSync, not eval/exec/vm -- confirmed directly;
+                # see js/_sink_reachability_harness.js's module docstring
+                # for the full comparison against Python's landmine).
+                # Eligibility (is this caller a plain top-level function, is
+                # it actually exported, does it take zero arguments) is
+                # decided at runtime by the harness itself against the real,
+                # already-required module -- see that file's docstring for
+                # why that's more accurate here than static source parsing
+                # would be. Milestone 17's literal-argument harvesting is
+                # NOT mirrored here yet: dogfooding it on the Python side
+                # found it never fires on real code (see Milestone 17's
+                # commit message), so it wasn't worth the added complexity
+                # for this first JS/TS port.
+                if (
+                    language == "javascript"
+                    and sink_kind in ("PROCESS_EXEC", "FILE_IO", "DESERIALIZATION")
+                    and call.target.qualified_name != "fs.readFileSync"
+                    and caller
+                ):
+                    fn_name = _js_top_level_function_name(module.module_qualname, caller)
+                    if fn_name:
+                        probe_result = run_js_sink_reachability_probe(module.file_path, fn_name)
+                        _promote_if_sink_reached(plan, probe_result, call, guard_hit, caller, "with zero arguments")
                 plans.append(plan)
     return plans
 

@@ -56,7 +56,7 @@ specific bugs found in the earlier pipeline:
 | `sentinel_zero/schema_check.py` | Validates a Finding Plan has every required field before it can be trusted downstream. |
 | `sentinel_zero/ledger_writer.py` | Path-confined, size-capped file writer (`resolve_inside` rejects any write that escapes the target root via `..` or a symlink) — what actually puts a ledger on disk. |
 | `sentinel_zero/graph_export.py` | Serializes the in-memory `ProjectGraph` as `graph.json` (nodes + edges), annotated with the finding plans that touch each one. Pure re-serialization of data the resolver already computed and the ledger already reports — never a second, independently computed view of a disposition. The prerequisite for any future 3D rendering or Code Atlas adapter work. |
-| `sentinel_zero/probes/` | Milestone 6's bounded dynamic reachability probe, widened in Milestone 16 past PROCESS_EXEC to also cover FILE_IO and DESERIALIZATION. Python-only, subprocess-isolated (`python -I`), zero-argument-function-only, and can only ever promote to `VERIFIED_TRUE` — never demotes to `VERIFIED_FALSE`, since it never attempts adversarial inputs. `builtins.eval`/`builtins.exec` are excluded from probing entirely (see Known bounds). |
+| `sentinel_zero/probes/` | Milestone 6's bounded dynamic reachability probe, widened in Milestone 16 past PROCESS_EXEC to also cover FILE_IO and DESERIALIZATION, and ported to JS/TS in Milestone 18 (`js_sink_reachability_probe.py` + `js/_sink_reachability_harness.js`, alongside the original Python driver). Subprocess-isolated (`python -I` / `node`), exported-and-zero-argument-only, and can only ever promote to `VERIFIED_TRUE` — never demotes to `VERIFIED_FALSE`, since neither side attempts adversarial inputs. `builtins.eval`/`builtins.exec` (Python) and `fs.readFileSync` (JS) are excluded from probing entirely (see Known bounds). |
 | `sentinel_zero/dogfood_scan.py` | The orchestrator. Wires a resolver + its sink table + the disposition engine + (for Python) the dynamic probe + the ledger writer together into one run. |
 | `sentinel_zero/cli.py` | The `sentinel-zero` command (installed via `pyproject.toml`'s `[project.scripts]`). A thin wrapper over `dogfood_scan.run()` — language auto-detection, the bundled-catalog fallback, and `--format md` rendering live here; no analysis logic. |
 | `sentinel_zero/mcp_server.py` | The `sentinel-zero-mcp` command — same `run()` call, exposed as one MCP tool (`analyze_repository`) so an agent can call this engine as a disposition authority instead of guessing. |
@@ -83,6 +83,7 @@ specific bugs found in the earlier pipeline:
 | 15 | Bounded sink-argument taint classification (each sink call's positional arguments classified `literal`/`parameter`/`unknown` from the real AST node, same-function evidence only, never changes a disposition status — see `graph.py`'s `CallSite.arg_taint` docstring); widened sink tables (`pickle.load`/`loads`, `yaml.load`, `builtins.eval`/`exec` for Python, Node's `vm` module for JS); and a correctness fix found while widening — a bare `open(...)`/`eval(...)`/`exec(...)` call was resolving to the bare name, never `"builtins.X"`, so `"builtins.open"` had been dead data in the sink table since it was added. Fixing it surfaced 154 previously-invisible `builtins.open` call sites in Block-Wise alone (126 → 285 finding plans on a re-scan) | Python, JS, TS |
 | 16 | Widened the Milestone 6 dynamic probe past PROCESS_EXEC-only to also cover FILE_IO and DESERIALIZATION (`builtins.open`, `json.load`/`loads`, `pickle.load`/`loads`, `yaml.load`), and fixed a real bug found while widening it: the probe patches every known sink at once and reports whichever fires first, so a second, never-actually-reached sink in the same zero-arg function was wrongly promoted to `VERIFIED_TRUE` off the first one's evidence — now checked against the specific finding's own sink identity before promoting. `builtins.eval`/`builtins.exec` are deliberately excluded from probing entirely (not just promotion): CPython's import machinery itself runs on the builtin `exec()`, so patching it would either break every import or risk a false positive from a probed function's own nested import. Renamed `process_exec_probe.py` → `sink_reachability_probe.py` to match the real scope. Re-scanning Block-Wise: `VERIFIED_TRUE` findings went from 3 to 39 | Python |
 | 17 | The probe can now call a function that *requires* arguments, not just a zero-arg one — if a real call site elsewhere in the project passes it only literal-constant arguments (Milestone 15's taint classifier says so), those exact values are harvested via `ast.literal_eval` on that call site's own source text and used to make the probe call. Never synthesized, never guessed; a call site that fails this test (parameter-derived, too few values for the required params, a required keyword-only param) is simply not attempted, same as before. Honest result on this project's own repo sample: the mechanism is correct and covered by 6 unit tests, but across 5 real Python repos re-scanned (vibe-check, vibe-explainer, aletheia-redteam-kit, aletheia-sentinel, horos) it never actually fired — real call sites in practice almost always pass a variable, not a literal. Worth having for repos with more "hardcoded driver call" shapes; not a universal lift | Python |
+| 18 | Ported the Milestone 6/16 dynamic probe to JS/TS — closes the "Python-only" bound two rows up, for the exported-and-zero-argument call shape the probe already knows how to handle. Same safety model (isolated `node` subprocess, hard timeout, patch sinks before `require()`, raise-to-short-circuit before the real sink runs) and the same Milestone 16 symbol-match correctness rule, now shared between both languages via one `_promote_if_sink_reached` helper. The one function that is unsafe to patch differs per language and had to be found empirically for each: Python's is `builtins.eval`/`exec` (breaks CPython's import machinery); JS's is `fs.readFileSync` (breaks Node's `require()`) — `eval`, `Function`, and the whole `vm` module are all safe to patch on the JS side, the opposite of Python's pattern. Eligibility is also decided differently: Python checks call shape statically from the AST; JS decides it at runtime inside the harness, via the real exported function's `fn.length === 0`, because JS silently fills a missing argument with `undefined` instead of raising the way Python raises `TypeError` — a static "requires no arguments" check would not actually guarantee a safe call there. Honest result, not oversold: across 2 real JS/TS repos re-scanned (runtime-firewall-mvp, vercel-cli) this produced zero actual `VERIFIED_TRUE` lift — see Known bounds for the two specific, diagnosed reasons (a self-executing test file, and a `.ts` file that can't `require()` cleanly under plain Node). The mechanism itself is correct, proven by 7 unit tests covering promotion, the symbol-mismatch guard, the `fs.readFileSync` exclusion, unexported functions, and non-zero-arg functions | JS, TS |
 
 Every milestone above was dogfooded against ≥2–3 real, unrelated
 repositories before being trusted, and every surprising result was
@@ -136,24 +137,45 @@ These are stated limits, not bugs waiting to be noticed:
 - **Python's `import a.b.c` without an alias** binds only the top-level
   package name, per Python's real binding rule — `a.b.c.fn()` through that
   form resolves to `Unresolved`, not guessed at.
-- **The dynamic probe (Milestone 6, widened in Milestone 16) is Python-only
-  and zero-argument-function-only.** It is gated off entirely for JS/TS
-  scans and for anything it can't safely construct/call (a class method, a
-  function requiring arguments). This means a JS/TS scan can never produce
-  `VERIFIED_TRUE` yet — every finding it reports tops out at
+- **The dynamic probe (Milestone 6, widened in Milestone 16, ported to
+  JS/TS in Milestone 18) only ever calls an exported, zero-argument
+  function** (or, on the Python side only, one reachable via Milestone
+  17's literal-argument harvesting). It is gated off entirely for
+  anything it can't safely construct/call (a class method, a function
+  requiring arguments the harvester can't satisfy, an unexported JS/TS
+  function). Everything outside that shape tops out at
   `UNRESOLVED_INCONCLUSIVE`, which is the correct, honest ceiling for
-  what static analysis alone can claim, not a bug (porting the probe to
-  JS/TS is a planned next step, not done).
-- **`builtins.eval`/`builtins.exec` are never dynamically probed, even
-  though they're in the PROCESS_EXEC sink table.** CPython's own import
-  machinery runs every module's bytecode via the builtin `exec()` —
-  patching it before import breaks every import, not just a target that
-  itself calls eval/exec, and there is no safe "patch after import"
-  workaround either (a probed function's own lazy import would trip it
-  falsely). Probing an eval/exec finding would mean actually executing
-  that real eval/exec in the subprocess, which this probe's whole safety
-  model forbids — so these two stay static-evidence-only, same as before
-  Milestone 16.
+  what static analysis alone can claim, not a bug.
+- **`builtins.eval`/`builtins.exec` (Python) and `fs.readFileSync` (JS)
+  are never dynamically probed, even though they're in their respective
+  sink tables.** CPython's own import machinery runs every module's
+  bytecode via the builtin `exec()`; Node's own `require()` reads the
+  target's source via the real `fs.readFileSync` — patching either before
+  import/require breaks every import, not just a target that itself
+  calls the patched function, and there is no safe "patch after
+  import/require" workaround either (a probed function's own lazy
+  import/require would trip it falsely). Probing a finding whose own
+  sink IS one of these would mean actually executing it for real in the
+  subprocess, which this probe's whole safety model forbids — so these
+  stay static-evidence-only. (Notably the unsafe function is *different
+  per language* — JS's `eval`/`Function`/`vm` are all safe to patch,
+  unlike Python's — confirmed empirically before either harness was
+  written, not assumed by symmetry.)
+- **The JS/TS probe needs a genuinely CommonJS-exported, plain-Node-`require()`-able
+  target.** A top-level function this project's own static resolver finds
+  is not necessarily reachable that way: CommonJS requires an explicit
+  `module.exports`/`exports.x` assignment, and ESM `export` syntax isn't
+  `require()`-able by plain Node at all — so most real `.ts` files (and
+  any `.js` file relying on a bundler/loader) fail at the `require()` step
+  and report `call_failed`, not a false `VERIFIED_TRUE`. Dogfooding against
+  2 real repos surfaced a second, narrower confound worth naming plainly: a
+  target file that self-executes its own test assertions at `require()`
+  time (a test file imported as if it were a plain module) can make the
+  whole harness process exit nonzero before it reports cleanly, because
+  this project's own directory-skip list (`SKIP_DIR_NAMES` in
+  `extract_graph.js`) does not exclude `__tests__`/test directories from
+  scanning in the first place. Neither is fixed in Milestone 18 — both are
+  stated bounds, not silent gaps.
 - **The sink tables are a starting set, not exhaustive.** Python's table
   covers `open`/`json.load(s)`/the `subprocess.*` family; the JS/TS table
   covers `child_process.*`/`eval`/`Function`/`fs.*`/`JSON.parse`. Neither
@@ -233,7 +255,7 @@ pytest tests/ -v
 python3 -m sentinel_zero.cli analyze /path/to/some/repo
 ```
 
-As of this checkpoint: **101 tests, all passing**, covering both
+As of this checkpoint: **108 tests, all passing**, covering both
 resolvers, the shared `callgraph.py` delegation walk, the dynamic probe,
 external-dependency mapping, wrapper-middleware detection, every
 documented gap above, the `cli.py`/`mcp_server.py` transports, the
