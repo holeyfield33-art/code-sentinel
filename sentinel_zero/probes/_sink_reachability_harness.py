@@ -148,6 +148,7 @@ def _patch_sinks() -> None:
     residual bound rather than something this pass claims to have closed.
     """
     import builtins
+    import io
     import json as json_module
     import pickle
 
@@ -160,6 +161,21 @@ def _patch_sinks() -> None:
 
     builtins.open = _recorder("builtins.open")
     os.open = _recorder("os.open")
+
+    # VERIFICATION_LEDGER.md sz-2026-10-21-12/13: a SECOND independent
+    # Verifier round broke the os.open patch above the same way -- not by
+    # finding a new environment-leak vector, but by finding yet another
+    # unpatched file-opening primitive: io.FileIO (a C-implemented class
+    # that issues its own open() syscall directly, never routing through
+    # the Python-level os.open or builtins.open symbols this harness had
+    # already patched) and io.open (a separate module attribute from
+    # builtins.open -- rebinding builtins.open does NOT rebind io.open,
+    # confirmed directly: they are the same underlying function object at
+    # interpreter startup but are two independent, independently-patchable
+    # names). Both are patched here too, confirmed safe the same way
+    # (see tests/test_probe_verification_hardening.py).
+    io.FileIO = _recorder("io.FileIO")
+    io.open = _recorder("io.open")
 
     json_module.load = _recorder("json.load")
     json_module.loads = _recorder("json.loads")

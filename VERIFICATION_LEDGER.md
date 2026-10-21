@@ -198,6 +198,61 @@ entry is not edited or deleted, a new entry supersedes it and says so.
   halves (same root cause, both via unpatched `os.open`) were false.
 - **date:** 2026-10-21
 
+### sz-2026-10-21-12
+- **claim:** "After patching os.open (commit c8eee3e), a target Python
+  module cannot force a false VERIFIED_TRUE by reading the verification
+  nonce, nor write outside the scratch directory."
+- **claimant:** Builder session (this conversation)
+- **verifier:** A SECOND, independently-fresh (non-forked, no shared
+  context with the first) Tier-1 subagent, explicitly instructed not to
+  just replay the first verifier's exact break
+- **method:** Read the current source directly, then wrote and ran new
+  adversarial fixtures against the live code.
+- **verdict:** CONFIRMED (claim is FALSE)
+- **evidence:** `io.FileIO` (a C-implemented class) opens files via its own
+  direct syscall and routes through neither the patched `os.open` nor
+  `builtins.open`. `io.open` is a separate module attribute from
+  `builtins.open` -- the same underlying function object at interpreter
+  startup, but rebinding one name does not rebind the other. A target using
+  `io.FileIO('/proc/self/environ', 'r')` recovered the real nonce and
+  forged a passing `sink_reached` result (reproduced; `sys.stdout.flush()`
+  before `os._exit(0)` is required for the forged print to reliably reach
+  the parent, since `os._exit()` skips the interpreter's normal buffer
+  flush -- noted because the Builder's own first attempt at reproducing
+  this test omitted the explicit flush and was briefly, incorrectly,
+  non-failing as a result; corrected before this entry was logged).
+- **date:** 2026-10-21
+
+### sz-2026-10-21-13
+- **claim:** same source, write-confinement half.
+- **claimant/verifier/method:** same as sz-2026-10-21-12
+- **verdict:** CONFIRMED (claim is FALSE)
+- **evidence:** `io.FileIO(absolute_path, 'w')` writes a real file outside
+  the pinned scratch cwd, same root cause as sz-2026-10-21-12.
+- **date:** 2026-10-21
+
+### sz-2026-10-21-14 — decision record, not a claim check
+After `io.FileIO`/`io.open` were also patched (both confirmed empirically
+not to break `importlib.import_module` on ordinary modules, same as
+`os.open` before them) and all adversarial regression tests pass, this is
+the SECOND distinct unpatched file-opening primitive two independent
+Verifier rounds have found in two attempts. A real, enumerable but
+non-exhaustive set of further primitives remains unverified (`os.posix_spawn`
+with fd inheritance, `mmap`, `codecs.open`, `pathlib`'s internal open path
+across Python versions, and, as already disclosed since the first round,
+any `ctypes`/native-syscall access, which no Python-level monkeypatch can
+ever close). Decision: stop chasing individual primitives with a third
+Verifier round tonight. Monkeypatching cannot be honestly claimed to make
+VERIFIED_TRUE forgery-proof against a determined, in-process adversary --
+only "hardened against the specific unsophisticated-to-moderately-
+sophisticated forgery vectors found and closed so far." This is now
+recorded as the real, broader claim in `docs/REMEDIATION_PLAN.md` item 1,
+replacing the original, too-strong acceptance claim. A genuine fix would
+need OS-level isolation (a container, seccomp, a real separate-privilege
+process), which is a materially different and larger piece of work than
+this plan's scope, and is recorded there as a separate, larger decision for
+Ashura to make, not something closed by further patching.
+
 ### sz-2026-10-21-08 (believed true, not independently verified to CONFIRMED/REFUTED rigor)
 - **claims:**
   1. "A ledger over 5 MB crashes the scan with no partial output" —

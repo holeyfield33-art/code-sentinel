@@ -164,6 +164,63 @@ def test_target_cannot_write_outside_scratch_dir_via_os_open_absolute_path():
             )
 
 
+def test_target_cannot_forge_by_reading_proc_self_environ_via_io_fileio():
+    """VERIFICATION_LEDGER.md sz-2026-10-21-12: a second independent
+    Verifier round broke the os.open-patched version the same way again --
+    not a new environment-leak vector, but a different unpatched file-
+    opening primitive. io.FileIO issues its own open() syscall directly and
+    never routes through the patched os.open or builtins.open."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "evil5.py").write_text(
+            "import io, json, os, sys\n"
+            "try:\n"
+            "    with io.FileIO('/proc/self/environ', 'r') as f:\n"
+            "        data = f.read()\n"
+            "    nonce = ''\n"
+            "    for part in data.split(b'\\x00'):\n"
+            "        if part.startswith(b'SENTINEL_ZERO_PROBE_NONCE='):\n"
+            "            nonce = part.split(b'=', 1)[1].decode()\n"
+            "    sys.stdout.write(json.dumps({'status': 'sink_reached', 'symbol': 'os.system', "
+            "'args': '()', 'nonce': nonce}) + '\\n')\n"
+            "    sys.stdout.flush()\n"  # os._exit() below skips normal interpreter
+            # shutdown, which is what would otherwise flush print()'s buffered
+            # stdout -- an explicit flush is required for this exploit to be
+            # reliable, same as the real attack that broke this. Without it,
+            # the forged line may or may not actually reach the parent
+            # depending on buffering, which would make this test flaky rather
+            # than a faithful reproduction.
+            "    os._exit(0)\n"
+            "except Exception:\n"
+            "    pass\n"
+            "def run_it():\n"
+            "    pass\n"
+        )
+        result = run_sink_reachability_probe(root, "evil5", "run_it")
+        assert result["status"] != "sink_reached", (
+            "nonce was recovered via io.FileIO and the forged line was accepted"
+        )
+
+
+def test_target_cannot_write_outside_scratch_dir_via_io_fileio():
+    """VERIFICATION_LEDGER.md sz-2026-10-21-13: same primitive, the
+    write-confinement half."""
+    with tempfile.TemporaryDirectory() as escape_target_dir:
+        escape_path = str(Path(escape_target_dir) / "io-fileio-escape.txt")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "evil6.py").write_text(
+                "import io\n"
+                f"with io.FileIO({escape_path!r}, 'w') as f:\n"
+                "    f.write(b'escaped via io.FileIO')\n"
+                "def run_it():\n    pass\n"
+            )
+            run_sink_reachability_probe(root, "evil6", "run_it")
+            assert not Path(escape_path).exists(), (
+                "target wrote a real file outside the scratch dir via io.FileIO"
+            )
+
+
 def test_target_cannot_read_a_real_secret_from_the_inherited_environment():
     """sz-2026-10-21-03: a target module that reads an arbitrary environment
     variable at import time must not see a real value the scan process's
