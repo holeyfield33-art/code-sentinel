@@ -1,15 +1,44 @@
 import { loadGraphFromFile, loadGraphFromUrl, GraphValidationError } from "./graphLoader.js";
 import { ForceLayout3D } from "./layout.js";
 import { GraphScene } from "./scene.js";
+import { diffGraphs } from "./diff.js";
 
 const container = document.getElementById("scene-container");
 const statsEl = document.getElementById("stats");
 const inspectorEl = document.getElementById("inspector");
 const emptyStateEl = document.getElementById("empty-state");
 const fileInput = document.getElementById("file-input");
+const searchInput = document.getElementById("search-input");
+const legendEl = document.getElementById("legend");
+const isolateBtn = document.getElementById("isolate-verified-true-btn");
+const resetFilterBtn = document.getElementById("reset-filter-btn");
+const compareInput = document.getElementById("compare-input");
+const compareSummaryEl = document.getElementById("compare-summary");
+const clearCompareBtn = document.getElementById("clear-compare-btn");
+
+// Milestone 22 legend/filter definitions. Each row is one visual swatch
+// in the HUD; its `categories` are the GraphScene.categoryOf() values it
+// covers -- VERIFIED_TRUE and TOOL_FAILURE share one row because they
+// share one color (scene.js's DISPOSITION_COLOR), and toggling the row
+// toggles both together.
+const NORMAL_LEGEND = [
+  { label: "VERIFIED_TRUE / TOOL_FAILURE", color: "#ff5c5c", categories: ["VERIFIED_TRUE", "TOOL_FAILURE"] },
+  { label: "UNRESOLVED_INCONCLUSIVE", color: "#f5c84c", categories: ["UNRESOLVED_INCONCLUSIVE"] },
+  { label: "VERIFIED_FALSE", color: "#5ad1a0", categories: ["VERIFIED_FALSE"] },
+  { label: "no finding attached", color: "#3c4a63", categories: ["none"] },
+];
+const DIFF_LEGEND = [
+  { label: "New since baseline", color: "#d44fe0", categories: ["new"] },
+  { label: "Changed since baseline", color: "#ff9d42", categories: ["changed"] },
+  { label: "Unchanged (dim, own color)", color: "#3c4a63", categories: ["unchanged"] },
+];
 
 const scene = new GraphScene(container);
 scene.onNodeClick = showInspector;
+
+let currentGraph = null; // the validated graph.json doc currently rendered
+let diffMode = false;
+let activeCategories = null; // Set<string> | null -- null = no filter (match GraphScene's own convention)
 
 // Small, deliberate debug surface -- not a throwaway hack: this is what
 // lets an automated smoke test (or a future dev session) drive and
@@ -17,7 +46,13 @@ scene.onNodeClick = showInspector;
 // against a randomized force layout. Read-only from the outside in
 // practice; nothing here grants any capability main.js itself doesn't
 // already have.
-window.__sentinelZeroViewer = { scene };
+window.__sentinelZeroViewer = { scene, get currentGraph() { return currentGraph; } };
+
+function escapeHtml(s) {
+  const div = document.createElement("div");
+  div.textContent = s;
+  return div.innerHTML;
+}
 
 function showInspector(node) {
   inspectorEl.style.display = "block";
@@ -32,17 +67,15 @@ function showInspector(node) {
   }
   rows.push(["Worst disposition", node.worst_disposition ?? "(no finding attached)"]);
   rows.push(["Finding plan IDs", (node.finding_plan_ids ?? []).join(", ") || "—"]);
+  if (diffMode) {
+    const d = scene.diffByNodeId?.get(node.id);
+    if (d) rows.push(["vs. baseline", `${d.classification} (${d.oldStatus ?? "—"} → ${d.newStatus ?? "—"})`]);
+  }
 
   inspectorEl.innerHTML =
     `<h2>${escapeHtml(node.id)}</h2><dl>` +
     rows.map(([label, value]) => `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(String(value))}</dd>`).join("") +
     `</dl>`;
-}
-
-function escapeHtml(s) {
-  const div = document.createElement("div");
-  div.textContent = s;
-  return div.innerHTML;
 }
 
 function setStats(graph, repoName) {
@@ -59,12 +92,69 @@ function setStats(graph, repoName) {
   statsEl.innerHTML = lines.join("<br/>");
 }
 
+function activeLegendDefs() {
+  return diffMode ? DIFF_LEGEND : NORMAL_LEGEND;
+}
+
+function allCategoriesFlat() {
+  return activeLegendDefs().flatMap((row) => row.categories);
+}
+
+function renderLegend() {
+  const defs = activeLegendDefs();
+  legendEl.innerHTML = defs
+    .map((row, i) => {
+      const isActive = activeCategories === null || row.categories.some((c) => activeCategories.has(c));
+      return `<div class="legend-row${isActive ? "" : " inactive"}" data-idx="${i}">` +
+        `<span class="legend-dot" style="background:${row.color}"></span>${escapeHtml(row.label)}</div>`;
+    })
+    .join("");
+  legendEl.querySelectorAll(".legend-row").forEach((rowEl) => {
+    rowEl.addEventListener("click", () => toggleLegendCategory(defs[Number(rowEl.dataset.idx)].categories));
+  });
+}
+
+function toggleLegendCategory(categories) {
+  const all = allCategoriesFlat();
+  if (activeCategories === null) activeCategories = new Set(all);
+  const nowActive = categories.every((c) => activeCategories.has(c));
+  for (const c of categories) {
+    if (nowActive) activeCategories.delete(c);
+    else activeCategories.add(c);
+  }
+  if (activeCategories.size === all.length) activeCategories = null; // everything active again == no filter
+  applyFilter();
+}
+
+function applyFilter() {
+  scene.setFilter(activeCategories, searchInput.value);
+  renderLegend();
+}
+
+function renderCompareSummary({ baselineName, newCount, changedCount, unchangedCount, removedNodes }) {
+  compareSummaryEl.innerHTML =
+    `<div>vs. <strong>${escapeHtml(baselineName)}</strong></div>` +
+    `<div>${newCount} new · ${changedCount} changed · ${unchangedCount} unchanged</div>` +
+    `<div>${removedNodes.length} removed from the baseline (not rendered — this view shows the CURRENT graph's layout; a removed node has nowhere to be drawn)</div>` +
+    (removedNodes.length
+      ? `<div class="removed-list">${removedNodes.map((n) => escapeHtml(n.id)).join("<br/>")}</div>`
+      : "");
+}
+
 async function renderGraphDocument(doc) {
   emptyStateEl.classList.add("hidden");
+  currentGraph = doc;
+  diffMode = false;
+  activeCategories = null;
+  searchInput.value = "";
+  clearCompareBtn.style.display = "none";
+  compareSummaryEl.innerHTML = "";
+
   const layout = new ForceLayout3D(doc.nodes, doc.edges);
   layout.settle();
   scene.render(doc, layout);
   setStats(doc, doc.targetRepository);
+  renderLegend();
 }
 
 fileInput.addEventListener("change", async (ev) => {
@@ -74,12 +164,58 @@ fileInput.addEventListener("change", async (ev) => {
     const doc = await loadGraphFromFile(file);
     await renderGraphDocument(doc);
   } catch (e) {
-    if (e instanceof GraphValidationError) {
-      alert(`Could not load '${file.name}':\n\n${e.message}`);
-    } else {
-      throw e;
-    }
+    if (e instanceof GraphValidationError) alert(`Could not load '${file.name}':\n\n${e.message}`);
+    else throw e;
   }
+});
+
+searchInput.addEventListener("input", applyFilter);
+
+isolateBtn.addEventListener("click", () => {
+  // "Isolate just VERIFIED_TRUE paths": matching nodes plus their direct
+  // callers (GraphScene._rebuildScene's one-hop context expansion) so the
+  // reachability PATH stays visible, not just disconnected dots.
+  activeCategories = diffMode ? new Set(["new", "changed"]) : new Set(["VERIFIED_TRUE"]);
+  applyFilter();
+});
+
+resetFilterBtn.addEventListener("click", () => {
+  activeCategories = null;
+  searchInput.value = "";
+  applyFilter();
+});
+
+compareInput.addEventListener("change", async (ev) => {
+  const file = ev.target.files?.[0];
+  if (!file) return;
+  if (!currentGraph) {
+    alert("Load a graph.json first, then a baseline to compare it against.");
+    compareInput.value = "";
+    return;
+  }
+  try {
+    const baseline = await loadGraphFromFile(file);
+    const { diffByNodeId, removedNodes, newCount, changedCount, unchangedCount } = diffGraphs(currentGraph, baseline);
+    diffMode = true;
+    activeCategories = null;
+    searchInput.value = "";
+    scene.setDiff(diffByNodeId);
+    clearCompareBtn.style.display = "inline-block";
+    renderLegend();
+    renderCompareSummary({ baselineName: file.name, newCount, changedCount, unchangedCount, removedNodes });
+  } catch (e) {
+    if (e instanceof GraphValidationError) alert(`Could not load baseline '${file.name}':\n\n${e.message}`);
+    else throw e;
+  }
+});
+
+clearCompareBtn.addEventListener("click", () => {
+  scene.clearDiff();
+  diffMode = false;
+  activeCategories = null;
+  clearCompareBtn.style.display = "none";
+  compareSummaryEl.innerHTML = "";
+  renderLegend();
 });
 
 // Best-effort: try the bundled sample graph so the viewer isn't a blank

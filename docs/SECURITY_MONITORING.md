@@ -1,6 +1,9 @@
 # Sentinel-Zero — Security Monitoring & Trending (concept)
 
-**Status: design proposal, not yet implemented.** This document describes
+**Status: partially implemented (Milestone 21/22).** Item 2 (stable
+finding identity) and the core of item 3 (a diff report) now exist —
+see the per-section notes below for exactly what landed and what's
+still only proposed. This document describes
 what a "basic security infrastructure that allows monitoring and trending
 of attacks against an organization's applications" means *for this
 project specifically* — Sentinel-Zero is a point-in-time static/bounded-
@@ -38,23 +41,37 @@ run. The proposal is additive, not a replacement:
    per disposition status (`VERIFIED_TRUE`, `VERIFIED_FALSE`,
    `UNRESOLVED_INCONCLUSIVE`, `TOOL_FAILURE`). This is the minimum needed
    to plot a trend line without re-parsing every historical ledger.
-2. **Plan-ID stability across runs** — `plan_id` is currently
-   sequentially assigned per run (`fp_sz_0001`, ...), which means it is
-   *not* stable across two scans of the same repo and cannot be diffed
-   directly today. A durable identity needs to be derived from what
-   actually identifies a finding independent of scan order: the triple
-   `(file_path, lineno, sink qualified_name)` that `graph_export.py`
-   already uses internally as its own lookup key. Before any trending
-   dashboard is built, this triple (or a hash of it) should become the
-   finding's durable identity, so "this exact finding went from
-   `UNRESOLVED_INCONCLUSIVE` to `VERIFIED_TRUE` between run N and run
-   N+1" is answerable by a direct lookup, not a fuzzy match.
-3. **A simple trend/diff report**, built from (1) and (2): given two
-   scan-history entries (or two full ledgers) for the same repo, report
-   which specific findings are new, which disappeared (code removed, or a
-   guard added), and which changed disposition — this is the "trending"
-   half of the checklist item, scoped honestly to what a static/bounded-
-   dynamic analyzer can actually observe.
+   **Still not implemented** — nothing writes this file yet; today, diffing
+   (item 3) requires the operator to have kept two full ledgers/graph
+   exports around themselves.
+2. **Plan-ID stability across runs — IMPLEMENTED, Milestone 21.**
+   `plan_id` is still sequentially assigned per run (`fp_sz_0001`, ...)
+   and still not comparable across two scans — that hasn't changed. What's
+   new: every `FindingPlan.as_dict()` now also carries a `finding_uid`
+   (`sentinel_zero/disposition.py::_compute_finding_uid`), a stable hash
+   of the finding's `(source_node, sink_node)` pair — exactly the
+   identity this section originally proposed, derived from the same
+   pair `graph_export.py` already used as its own lookup key. Two scans
+   of the same unchanged call site always produce the same `finding_uid`,
+   independent of plan_id, target_repository, or disposition. Covered by
+   `tests/test_scan_diff.py`. `graph_export.py` also now carries a
+   `finding_uids` list on every node/edge (alongside the existing
+   `finding_plan_ids`), so a graph-level consumer (e.g. the viewer) can
+   use the same stable identity, not just the ledger.
+3. **A diff report — IMPLEMENTED at the ledger level, Milestone 21:**
+   `sentinel_zero/scan_diff.py::diff_ledgers(old_plans, new_plans)` takes
+   two `verification_ledger.json` `plans` lists and returns which
+   `finding_uid`s are new, removed, changed-disposition, or unchanged.
+   Pure comparison, no re-analysis — see that module's own docstring.
+   Tested in `tests/test_scan_diff.py` (new/removed/changed/unchanged/
+   identical/missing-uid cases). **Also wired into the 3D viewer**
+   (`viewer/src/diff.js` + `viewer/README.md`'s "Comparing two scans"
+   section) as a node-level diff for visualization — load a second
+   `graph.json` as a baseline and the scene recolors by diff
+   classification. **Still not implemented:** nothing calls
+   `diff_ledgers` from the CLI yet (no `sentinel-zero diff a.json b.json`
+   command) — today it's a library function with tests and one consumer
+   (the viewer), not an end-user-facing report on its own.
 
 ## 3. What this explicitly does not do
 
@@ -69,8 +86,11 @@ run. The proposal is additive, not a replacement:
 
 ## 4. Suggested next step
 
-Implement item (2) above first (stable finding identity) — everything
-else in this document depends on it, and it is a small, isolated,
-testable change to `graph_export.py`/`dogfood_scan.py` with no new
-runtime dependency. This is flagged as a candidate for a future
-milestone, not committed to by this document.
+Items 2 and the ledger-diff half of item 3 are done (Milestone 21); the
+viewer's node-level diff consumes them (Milestone 22). What's left,
+in priority order: (a) the scan-history index (item 1) — nothing
+durable is written between runs yet, so a diff today requires the
+operator to have manually kept an old ledger/graph export around; (b) a
+`sentinel-zero diff` CLI subcommand exposing `scan_diff.diff_ledgers`
+directly, so this doesn't stay viewer-only. Neither is committed to by
+this document — both remain proposals.

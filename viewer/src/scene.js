@@ -11,6 +11,17 @@ const NO_FINDING_COLOR = 0x3c4a63;
 const UNRESOLVED_EDGE_COLOR = 0x5a2a2a;
 const RESOLVED_EDGE_COLOR = 0x33415a;
 
+// Milestone 22: diff-mode colors, deliberately distinct from the
+// disposition palette above so "this changed since the baseline" never
+// reads as just another disposition. CONTEXT_COLOR (same slate as
+// "no finding attached") is reused for filter path-context nodes too --
+// both mean the same thing visually: "shown for orientation, not itself
+// a match."
+export const DIFF_COLOR = {
+  new: 0xd44fe0, // a node that did not exist at all in the baseline scan
+  changed: 0xff9d42, // same node, but its finding_uids or worst_disposition differ
+};
+
 function colorForDisposition(status) {
   return DISPOSITION_COLOR[status] ?? NO_FINDING_COLOR;
 }
@@ -21,6 +32,20 @@ function colorForDisposition(status) {
  * one file, built for exactly this viewer's one document shape
  * (graphLoader.js's validated output + layout.js's computed positions),
  * kept simple on purpose per "design what we need."
+ *
+ * Milestone 22 added two orthogonal view modes on top of the base
+ * render:
+ *   - a category+text FILTER (setFilter): non-matching nodes are
+ *     dropped, but a matching node's direct CALLERS (one hop) are kept
+ *     as dim "context" nodes so an isolated node doesn't float with no
+ *     indication of how it's reached -- literally "isolate ... paths",
+ *     not just "isolate ... nodes."
+ *   - a DIFF overlay (setDiff): a node's color is driven by its
+ *     classification against a second, previously-loaded baseline graph
+ *     (new / changed / unchanged) instead of its own disposition.
+ * Both are computed by _rebuildScene(), which is the one place node
+ * visibility and color are decided -- render()/setFilter()/setDiff()/
+ * clearDiff() only update state and call it, never duplicate its logic.
  */
 export class GraphScene {
   constructor(container) {
@@ -51,8 +76,14 @@ export class GraphScene {
 
     this.raycaster = new THREE.Raycaster();
     this.pointer = new THREE.Vector2();
-    this.nodeMeshes = []; // parallel to pickable sphere meshes, each carries userData.nodeId
+    this.nodeMeshes = []; // pickable sphere meshes currently in the scene, each carries userData.nodeId/nodeData
     this.onNodeClick = null; // set by main.js
+
+    this.graph = null;
+    this.layout = null;
+    this.diffByNodeId = null; // Map<nodeId, {classification: "new"|"changed"|"unchanged", oldStatus, newStatus}> | null
+    this.filterCategories = null; // Set<string> | null -- null means "no category filter, show everything"
+    this.searchText = "";
 
     this.renderer.domElement.addEventListener("click", (ev) => this._handleClick(ev));
     window.addEventListener("resize", () => this._handleResize());
@@ -61,30 +92,121 @@ export class GraphScene {
   }
 
   /**
-   * Clears any previously rendered graph and builds a fresh one.
+   * Loads a fresh graph+layout, clearing any filter or diff state from a
+   * previously loaded graph -- a stale filter silently carried over to a
+   * different document would be confusing, not convenient.
    * @param {{nodes: object[], edges: object[]}} graph
    * @param {import('./layout.js').ForceLayout3D} layout
    */
   render(graph, layout) {
+    this.graph = graph;
+    this.layout = layout;
+    this.diffByNodeId = null;
+    this.filterCategories = null;
+    this.searchText = "";
+    this._rebuildScene();
+  }
+
+  /** @param {Map<string, object>} diffByNodeId see class docstring */
+  setDiff(diffByNodeId) {
+    this.diffByNodeId = diffByNodeId;
+    this._rebuildScene();
+  }
+
+  clearDiff() {
+    this.diffByNodeId = null;
+    this._rebuildScene();
+  }
+
+  /**
+   * @param {Set<string>|null} categories -- null clears the category filter
+   * @param {string} searchText -- case-insensitive substring match on node id
+   */
+  setFilter(categories, searchText) {
+    this.filterCategories = categories;
+    this.searchText = (searchText || "").toLowerCase();
+    this._rebuildScene();
+  }
+
+  /** The category a node currently belongs to -- diff classification if a
+   * diff is active, otherwise its own disposition (or "none"). This is
+   * what both the legend and setFilter's categories compare against. */
+  categoryOf(node) {
+    if (this.diffByNodeId) {
+      return this.diffByNodeId.get(node.id)?.classification ?? "unchanged";
+    }
+    return node.worst_disposition ?? "none";
+  }
+
+  _passesOwnFilter(node) {
+    if (this.filterCategories && !this.filterCategories.has(this.categoryOf(node))) return false;
+    if (this.searchText && !node.id.toLowerCase().includes(this.searchText)) return false;
+    return true;
+  }
+
+  _colorAndEmissiveFor(node) {
+    if (this.diffByNodeId) {
+      const cls = this.diffByNodeId.get(node.id)?.classification ?? "unchanged";
+      if (cls === "new") return { color: DIFF_COLOR.new, emissiveIntensity: 0.5 };
+      if (cls === "changed") return { color: DIFF_COLOR.changed, emissiveIntensity: 0.5 };
+      // unchanged: keep the node's own disposition color, but recede --
+      // this is what lets a reviewer still see "this was already
+      // VERIFIED_TRUE" without it competing visually with what's new.
+      return { color: colorForDisposition(node.worst_disposition), emissiveIntensity: 0.12 };
+    }
+    const color = colorForDisposition(node.worst_disposition);
+    return { color, emissiveIntensity: node.worst_disposition ? 0.35 : 0.08 };
+  }
+
+  _rebuildScene() {
     for (const obj of [...this.scene.children]) {
       if (obj.userData?.isGraphContent) this.scene.remove(obj);
     }
     this.nodeMeshes = [];
+    if (!this.graph || !this.layout) return;
+
+    const filteringActive = this.filterCategories !== null || this.searchText !== "";
+
+    const matched = new Set();
+    for (const node of this.graph.nodes) {
+      if (!filteringActive || this._passesOwnFilter(node)) matched.add(node.id);
+    }
+
+    // Path context: a matching node's direct callers (one hop), kept
+    // visible-but-dim so an isolated node isn't shown floating with no
+    // indication of how it's reached. Only computed when filtering --
+    // with no filter active, everything is already visible.
+    const contextOnly = new Set();
+    if (filteringActive) {
+      for (const edge of this.graph.edges) {
+        if (edge.kind === "calls" && edge.target && matched.has(edge.target) && !matched.has(edge.source)) {
+          contextOnly.add(edge.source);
+        }
+      }
+    }
+    const visible = filteringActive ? new Set([...matched, ...contextOnly]) : null; // null = everyone
 
     const nodeGroup = new THREE.Group();
     nodeGroup.userData.isGraphContent = true;
 
-    for (const node of graph.nodes) {
-      const pos = layout.positionOf(node.id);
+    for (const node of this.graph.nodes) {
+      if (visible && !visible.has(node.id)) continue;
+      const pos = this.layout.positionOf(node.id);
       if (!pos) continue;
+
+      const isContext = contextOnly.has(node.id);
       const radius = node.kind === "module" ? 1.8 : 1.0;
       const geometry = new THREE.SphereGeometry(radius, 16, 16);
-      const color = colorForDisposition(node.worst_disposition);
+      const { color, emissiveIntensity } = isContext
+        ? { color: NO_FINDING_COLOR, emissiveIntensity: 0.04 }
+        : this._colorAndEmissiveFor(node);
       const material = new THREE.MeshStandardMaterial({
         color,
         emissive: color,
-        emissiveIntensity: node.worst_disposition ? 0.35 : 0.08,
+        emissiveIntensity,
         roughness: 0.5,
+        transparent: isContext,
+        opacity: isContext ? 0.35 : 1,
       });
       const mesh = new THREE.Mesh(geometry, material);
       mesh.position.set(...pos);
@@ -98,11 +220,13 @@ export class GraphScene {
     edgeGroup.userData.isGraphContent = true;
     const edgePositions = { resolved: [], unresolved: [] };
 
-    for (const edge of graph.edges) {
-      if (edge.kind !== "calls") continue; // "contains" edges (module -> its functions) aren't drawn as call lines
-      const from = layout.positionOf(edge.source);
+    for (const edge of this.graph.edges) {
+      if (edge.kind !== "calls") continue;
+      if (visible && !visible.has(edge.source)) continue;
+      const from = this.layout.positionOf(edge.source);
       if (!from) continue;
-      const to = edge.target ? layout.positionOf(edge.target) : null;
+      const targetVisible = edge.target && (!visible || visible.has(edge.target));
+      const to = targetVisible ? this.layout.positionOf(edge.target) : null;
       const bucket = edge.resolved && to ? edgePositions.resolved : edgePositions.unresolved;
       bucket.push(...from, ...(to ?? [from[0] + 0.6, from[1] + 0.6, from[2] + 0.6]));
     }

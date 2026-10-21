@@ -17,11 +17,40 @@ silent pass-through.
 from __future__ import annotations
 
 import datetime
+import hashlib
 from dataclasses import dataclass, field
 from typing import Any
 
 from sentinel_zero.catalog_loader import load_asi_catalog
 from sentinel_zero.schema_check import require_finding_plan_fields
+
+
+def _compute_finding_uid(hypothesis: dict[str, Any]) -> str:
+    """Milestone 21: a stable identity for a finding, independent of scan
+    order -- unlike plan_id (sequentially assigned per run, e.g.
+    "fp_sz_0003", and therefore NOT comparable across two separate scans
+    of the same repo), this is derived from the same (file_path:lineno,
+    sink qualified_name) pair graph_export.py already uses as its own
+    call-site lookup key (source_node is "file_path:lineno", sink_node is
+    the resolved sink's qualified_name -- see dogfood_scan.find_finding_plans'
+    hypothesis construction). Two scans of the same unchanged call site
+    always produce the same finding_uid, which is exactly what
+    docs/SECURITY_MONITORING.md S2 names as the prerequisite for any
+    scan-to-scan diff/trend report -- see sentinel_zero.scan_diff.
+
+    Deliberately NOT including disposition status, plan_id, generated_at,
+    or target_repository in the hash: those can legitimately change
+    between two scans of the same finding (that's the whole point of a
+    diff), and a stable identity must not change just because what it's
+    attached to changed. Deliberately a hash, not the raw pair itself: a
+    short, fixed-width, URL/filename-safe token is easier to carry
+    through JSON/UI code than re-parsing "source_node" out of the
+    hypothesis every time two finding_uids need to be compared.
+    """
+    source_node = hypothesis.get("source_node", "")
+    sink_node = hypothesis.get("sink_node", "")
+    raw = f"{source_node}|{sink_node}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
 
 
 class UnknownAttackClass(Exception):
@@ -123,6 +152,7 @@ class FindingPlan:
     def as_dict(self) -> dict:
         payload = {
             "plan_id": self.plan_id,
+            "finding_uid": _compute_finding_uid(self.hypothesis),
             "target_repository": self.target_repository,
             "asi_classification": {"attack_id": self.attack_id, "category": self.attack_name},
             "hypothesis": self.hypothesis,

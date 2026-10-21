@@ -91,6 +91,15 @@ def export_graph(graph: ProjectGraph, plans: list[dict[str, Any]], repo_name: st
                 "raises_on_guard": fn.raises_on_guard,
                 "worst_disposition": _worst_status([p["disposition"]["status"] for p in caller_plans]),
                 "finding_plan_ids": [p["plan_id"] for p in caller_plans],
+                # Milestone 21: finding_uid (disposition.py's
+                # _compute_finding_uid) is the STABLE identity across
+                # two separate scans -- finding_plan_ids above is not,
+                # since plan_id is only sequential within one run. A
+                # plan built before Milestone 21 has no finding_uid; .get
+                # keeps this export working against an older ledger
+                # rather than crashing a feature (graph export) that
+                # doesn't itself need the diff capability to function.
+                "finding_uids": [p.get("finding_uid") for p in caller_plans if p.get("finding_uid")],
             }
         )
         module_qualname = qualname.rsplit(".", 1)[0] if "." in qualname else qualname
@@ -115,6 +124,7 @@ def export_graph(graph: ProjectGraph, plans: list[dict[str, Any]], repo_name: st
                     "unresolved_reason": None if resolved else call.target.reason,
                     "lineno": call.lineno,
                     "finding_plan_ids": [p["plan_id"] for p in matching_plans],
+                    "finding_uids": [p.get("finding_uid") for p in matching_plans if p.get("finding_uid")],
                     "worst_disposition": _worst_status([p["disposition"]["status"] for p in matching_plans]),
                 }
             )

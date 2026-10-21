@@ -1,7 +1,8 @@
 # Sentinel-Zero — Architecture
 
-**Status:** living document, kept current as of Milestone 19 (real CFG
-dominance for guard-precedes-sink). If a milestone in `README.md` changes
+**Status:** living document, kept current as of Milestone 22 (scan-to-scan
+diffing, both the engine's `scan_diff.py` and the 3D viewer's node-level
+diff view — see `docs/SECURITY_MONITORING.md` §2-3). If a milestone in `README.md` changes
 how data moves through the system, this document must be updated in the
 same change — an architecture doc that drifts from the code is worse than
 no architecture doc, because it is trusted and wrong.
@@ -98,14 +99,19 @@ recomputed independently of each other:
 
 - **`verification_ledger.json`** — the flat list of Finding Plans. This is
   the audit trail: every hypothesis that was actually investigated, with
-  its disposition and the reason for that disposition.
+  its disposition and the reason for that disposition. As of Milestone 21,
+  each plan also carries a `finding_uid` — a stable identity derived from
+  `(source_node, sink_node)`, independent of the per-run sequential
+  `plan_id` — which is what makes `sentinel_zero/scan_diff.py` possible
+  (see §7 below).
 - **`graph.json`** — the full node/edge graph (every module, every
   function, every resolved *and* unresolved call — far more than what
   made it into the ledger), with each node/edge annotated by which
-  Finding Plan(s) touch it and that node's *worst* disposition. This is
-  the prerequisite data for the 3D rendering work (see `docs/VIEWER.md`
-  once that lands) — the ledger alone cannot reconstruct it, because the
-  ledger only keeps calls that reached a known sink.
+  Finding Plan(s) touch it (both `finding_plan_ids` and, since Milestone
+  21, the stable `finding_uids`) and that node's *worst* disposition.
+  This is the data the `viewer/` 3D renderer (Milestone 20-22) consumes —
+  the ledger alone cannot reconstruct it, because the ledger only keeps
+  calls that reached a known sink.
 
 ## 5. The dynamic reachability probe's safety model
 
@@ -144,3 +150,24 @@ target, and is not a substitute for a human review of anything it
 reports as `UNRESOLVED_INCONCLUSIVE` — which, as of this milestone, is
 still most of what it finds. See §6 of `USE_CASES.md` for the explicit,
 disallowed-use-case list.
+
+## 7. Stable finding identity, scan diffing, and the 3D viewer
+
+Two additions sit on top of the pipeline in §4, consuming its output
+without changing it:
+
+- **`sentinel_zero/scan_diff.py`** (Milestone 21) compares two
+  `verification_ledger.json` plan lists by `finding_uid` and classifies
+  every finding as new, removed, changed-disposition, or unchanged. Pure
+  comparison, no re-analysis — see `docs/SECURITY_MONITORING.md` §2-3 for
+  the full design and what's still only proposed (a scan-history index,
+  a CLI subcommand).
+- **`viewer/`** (Milestone 20, filtering/diffing added in Milestone 22)
+  is a standalone Three.js application that loads `graph.json`, lays it
+  out in 3D with a small dependency-free force simulation, and renders
+  it — color-coded by disposition, filterable by category/name with
+  one-hop path context, and able to diff two loaded `graph.json`
+  documents node-by-node using the same `finding_uids` `scan_diff.py`
+  uses at the ledger level. It is a separate, independent codebase (its
+  own `package.json`, its own test runner) with no dependency on any
+  other visualizer in this account's portfolio — see `viewer/README.md`.

@@ -18,20 +18,36 @@
     #hud {
       position: absolute; top: 16px; left: 16px; z-index: 10;
       background: var(--panel-bg); border: 1px solid var(--panel-border);
-      border-radius: 10px; padding: 14px 16px; max-width: 320px;
+      border-radius: 10px; padding: 14px 16px; width: 300px; max-height: 92vh; overflow-y: auto;
       box-shadow: 0 8px 24px rgba(0,0,0,0.4);
     }
     #hud h1 { font-size: 15px; margin: 0 0 4px; font-weight: 600; letter-spacing: 0.2px; }
     #hud p.sub { margin: 0 0 10px; font-size: 12px; color: var(--text-dim); }
-    #file-input-label {
+    #hud h3 { font-size: 11px; margin: 14px 0 6px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.4px; }
+    .btn {
       display: inline-block; font-size: 13px; padding: 7px 12px; border-radius: 6px;
       background: #1b2230; border: 1px solid var(--panel-border); cursor: pointer; color: var(--text);
     }
-    #file-input-label:hover { border-color: var(--accent); }
-    #file-input { display: none; }
+    .btn:hover { border-color: var(--accent); }
+    .btn.small { font-size: 12px; padding: 5px 10px; }
+    #file-input, #compare-input { display: none; }
     #stats { margin-top: 10px; font-size: 12px; color: var(--text-dim); line-height: 1.5; }
-    #legend { margin-top: 10px; font-size: 12px; line-height: 1.7; }
-    .legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+    #search-input {
+      width: 100%; box-sizing: border-box; margin-top: 4px; padding: 6px 8px; font-size: 13px;
+      background: #0e1420; border: 1px solid var(--panel-border); border-radius: 6px; color: var(--text);
+    }
+    #search-input:focus { outline: none; border-color: var(--accent); }
+    #legend { font-size: 12px; line-height: 1.9; }
+    .legend-row {
+      display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none;
+      padding: 2px 4px; border-radius: 4px; opacity: 1;
+    }
+    .legend-row:hover { background: rgba(255,255,255,0.05); }
+    .legend-row.inactive { opacity: 0.35; }
+    .legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    #filter-actions { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
+    #compare-summary { margin-top: 8px; font-size: 12px; line-height: 1.6; }
+    #compare-summary .removed-list { max-height: 90px; overflow-y: auto; margin-top: 4px; font-size: 11px; color: var(--text-dim); }
     #inspector {
       position: absolute; top: 16px; right: 16px; z-index: 10;
       background: var(--panel-bg); border: 1px solid var(--panel-border);
@@ -62,14 +78,24 @@
   <div id="hud">
     <h1>Sentinel-Zero — Graph Viewer</h1>
     <p class="sub">Standalone 3D view of a scan's node/edge export.</p>
-    <label id="file-input-label" for="file-input">Load graph.json…</label>
+    <label class="btn" id="file-input-label" for="file-input">Load graph.json…</label>
     <input id="file-input" type="file" accept="application/json,.json" />
     <div id="stats"></div>
-    <div id="legend">
-      <div><span class="legend-dot" style="background:#ff5c5c"></span>VERIFIED_TRUE / TOOL_FAILURE</div>
-      <div><span class="legend-dot" style="background:#f5c84c"></span>UNRESOLVED_INCONCLUSIVE</div>
-      <div><span class="legend-dot" style="background:#5ad1a0"></span>VERIFIED_FALSE</div>
-      <div><span class="legend-dot" style="background:#3c4a63"></span>no finding attached</div>
+
+    <h3>Filter</h3>
+    <input id="search-input" type="text" placeholder="Filter by name…" />
+    <div id="legend"></div>
+    <div id="filter-actions">
+      <button class="btn small" id="isolate-verified-true-btn">Isolate VERIFIED_TRUE</button>
+      <button class="btn small" id="reset-filter-btn">Reset filter</button>
+    </div>
+
+    <h3>Compare to another scan</h3>
+    <label class="btn" id="compare-input-label" for="compare-input">Load baseline graph.json…</label>
+    <input id="compare-input" type="file" accept="application/json,.json" />
+    <div id="compare-summary"></div>
+    <div id="filter-actions">
+      <button class="btn small" id="clear-compare-btn" style="display:none">Clear comparison</button>
     </div>
   </div>
 
