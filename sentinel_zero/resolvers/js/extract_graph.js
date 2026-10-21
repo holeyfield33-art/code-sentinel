@@ -48,6 +48,13 @@
  * never imported into the running firewall/target code, no eval of target
  * source -- parsing only.
  *
+ * Milestone 15 added bounded sink-argument taint classification, mirroring
+ * python_resolver.py's _classify_arg_taint exactly (see that file and
+ * graph.py's CallSite.arg_taint docstring for the full statement of what
+ * this is and is not -- same-function evidence only, never interprocedural
+ * taint tracking). Each call's `arg_taint` array classifies its positional
+ * arguments, by real AST shape, as "literal" / "parameter" / "unknown".
+ *
  * Emits one JSON object on stdout: { modules, functions, errors, external_references }.
  */
 const fs = require('fs');
@@ -340,6 +347,100 @@ function isNode(x) {
   return x && typeof x === 'object' && typeof x.type === 'string';
 }
 
+// Milestone 15 (JS/TS mirror of python_resolver.py's _param_names/
+// _classify_arg_taint/_combine_taint -- same bound, same three labels, see
+// graph.py's CallSite.arg_taint docstring for the full statement of what
+// this is and is not). Collects the simple binding names a function's own
+// parameter list introduces -- Identifier, ...rest, and a `= default`
+// wrapper, plus TS parameter-property sugar's own parameter -- so
+// classifyArgTaint can tell "this Identifier is one of THIS function's own
+// parameters" from "it's some other name". Destructured params
+// (ObjectPattern/ArrayPattern) are deliberately not modeled, same
+// "don't guess" bound every other walker in this file already applies to
+// shapes it doesn't resolve -- a destructured parameter's pieces simply
+// classify as "unknown" below, never a wrong "parameter".
+function collectParamName(p, names) {
+  if (!p) return;
+  if (p.type === 'Identifier') {
+    names.add(p.name);
+  } else if (p.type === 'RestElement') {
+    collectParamName(p.argument, names);
+  } else if (p.type === 'AssignmentPattern') {
+    collectParamName(p.left, names);
+  } else if (p.type === 'TSParameterProperty' && p.parameter) {
+    collectParamName(p.parameter, names);
+  }
+}
+
+function paramNamesFromFnNode(fnNode) {
+  const names = new Set();
+  for (const p of fnNode.params) collectParamName(p, names);
+  return names;
+}
+
+// "least safe wins" aggregation, identical priority order to Python's
+// _combine_taint: a composite expression (array/object/template literal/
+// string concatenation) is only as safe as its least-safe piece.
+function combineTaint(classifications) {
+  if (classifications.length === 0) return 'literal';
+  if (classifications.includes('parameter')) return 'parameter';
+  if (classifications.includes('unknown')) return 'unknown';
+  return 'literal';
+}
+
+// Classifies one sink-call argument expression by its real AST shape --
+// never by re-rendering/re-parsing source text -- as "literal" (a constant,
+// or built entirely from constants), "parameter" (traces to the enclosing
+// function's own declared parameter, directly or through a simple member/
+// concatenation/template-interpolation chain), or "unknown" (anything else:
+// a call result, a global/module-level name, a destructured piece).
+function classifyArgTaint(node, paramNames) {
+  if (!isNode(node)) return 'unknown';
+  if (node.type === 'Literal') return 'literal';
+  if (node.type === 'TemplateLiteral') {
+    // The literal text chunks (`quasis`) contribute nothing to taint --
+    // only the `${...}` interpolations (`expressions`) can.
+    return combineTaint(node.expressions.map((e) => classifyArgTaint(e, paramNames)));
+  }
+  if (node.type === 'ArrayExpression') {
+    return combineTaint(
+      node.elements.filter((e) => e !== null).map((e) => classifyArgTaint(e, paramNames))
+    );
+  }
+  if (node.type === 'ObjectExpression') {
+    const parts = [];
+    for (const prop of node.properties) {
+      if (prop.type === 'Property') {
+        parts.push(classifyArgTaint(prop.value, paramNames));
+        if (prop.computed) parts.push(classifyArgTaint(prop.key, paramNames));
+      } else if (prop.type === 'SpreadElement') {
+        parts.push(classifyArgTaint(prop.argument, paramNames));
+      }
+    }
+    return combineTaint(parts);
+  }
+  if (node.type === 'BinaryExpression' && node.operator === '+') {
+    return combineTaint([classifyArgTaint(node.left, paramNames), classifyArgTaint(node.right, paramNames)]);
+  }
+  if (node.type === 'UnaryExpression') {
+    return classifyArgTaint(node.argument, paramNames);
+  }
+  if (node.type === 'Identifier') {
+    return paramNames.has(node.name) ? 'parameter' : 'unknown';
+  }
+  if (node.type === 'MemberExpression') {
+    let base = node.object;
+    while (base && base.type === 'MemberExpression') base = base.object;
+    // ThisExpression as the base (this.foo.bar) is deliberately NOT treated
+    // as "parameter" -- `this` is not one of the enclosing function's own
+    // parameters, same reasoning that keeps a module-level global out of
+    // "parameter" below.
+    if (base && base.type === 'Identifier') return paramNames.has(base.name) ? 'parameter' : 'unknown';
+    return 'unknown';
+  }
+  return 'unknown';
+}
+
 // Collects CallExpression/NewExpression nodes within `node`, WITHOUT
 // descending into a nested function literal's body -- that's a separate
 // scope, not walked as part of the enclosing caller (mirrors Python's
@@ -576,7 +677,7 @@ function walkCalls(
   // below, which must NOT see a stale `this` from a previous class.
   const fileBindings = bindings;
 
-  function recordCallsFromNodes(nodeList, branchPath, callerName, orderCounter) {
+  function recordCallsFromNodes(nodeList, branchPath, callerName, orderCounter, paramNames) {
     const sorted = nodeList.slice().sort((a, b) => a.start - b.start);
     for (const node of sorted) {
       const calleeNode = node.callee;
@@ -619,6 +720,7 @@ function walkCalls(
       } catch (e) {
         argTexts = [];
       }
+      const argTaint = node.arguments.map((a) => classifyArgTaint(a, paramNames));
       orderCounter.n += 1;
       calls.push({
         caller: callerName,
@@ -626,38 +728,41 @@ function walkCalls(
         lineno: node.loc.start.line,
         order: orderCounter.n,
         args: argTexts,
+        arg_taint: argTaint,
         branch_path: branchPath,
       });
     }
   }
 
-  function walkStmts(stmts, branchPath, callerName, orderCounter) {
+  function walkStmts(stmts, branchPath, callerName, orderCounter, paramNames) {
     for (const stmt of stmts) {
       if (stmt.type === 'FunctionDeclaration') continue; // separate scope, indexed on its own
       if (stmt.type === 'IfStatement') {
         const testCalls = [];
         findCallsInExpr(stmt.test, testCalls); // the test always runs
-        recordCallsFromNodes(testCalls, branchPath, callerName, orderCounter);
+        recordCallsFromNodes(testCalls, branchPath, callerName, orderCounter, paramNames);
         const tag = stmt.start;
         const consBody = stmt.consequent.type === 'BlockStatement' ? stmt.consequent.body : [stmt.consequent];
-        walkStmts(consBody, branchPath.concat([[tag, 'body']]), callerName, orderCounter);
+        walkStmts(consBody, branchPath.concat([[tag, 'body']]), callerName, orderCounter, paramNames);
         if (stmt.alternate) {
           const altBody = stmt.alternate.type === 'BlockStatement' ? stmt.alternate.body : [stmt.alternate];
-          walkStmts(altBody, branchPath.concat([[tag, 'orelse']]), callerName, orderCounter);
+          walkStmts(altBody, branchPath.concat([[tag, 'orelse']]), callerName, orderCounter, paramNames);
         }
         continue;
       }
       if (stmt.type === 'BlockStatement') {
-        walkStmts(stmt.body, branchPath, callerName, orderCounter);
+        walkStmts(stmt.body, branchPath, callerName, orderCounter, paramNames);
         continue;
       }
       if (stmt.type === 'TryStatement') {
         // Not given mutual-exclusivity tracking in JS v0 (stated limitation,
         // same as Python's Try handling at this stage) -- try/catch/finally
         // bodies are walked at the same branch_path as the try itself.
-        walkStmts(stmt.block.body, branchPath, callerName, orderCounter);
-        if (stmt.handler && stmt.handler.body) walkStmts(stmt.handler.body.body, branchPath, callerName, orderCounter);
-        if (stmt.finalizer) walkStmts(stmt.finalizer.body, branchPath, callerName, orderCounter);
+        walkStmts(stmt.block.body, branchPath, callerName, orderCounter, paramNames);
+        if (stmt.handler && stmt.handler.body) {
+          walkStmts(stmt.handler.body.body, branchPath, callerName, orderCounter, paramNames);
+        }
+        if (stmt.finalizer) walkStmts(stmt.finalizer.body, branchPath, callerName, orderCounter, paramNames);
         continue;
       }
       // Generic statement (ExpressionStatement, VariableDeclaration, Return,
@@ -667,7 +772,7 @@ function walkCalls(
       // double-count a const-assigned function's own body.
       const found = [];
       findCallsInExpr(stmt, found);
-      recordCallsFromNodes(found, branchPath, callerName, orderCounter);
+      recordCallsFromNodes(found, branchPath, callerName, orderCounter, paramNames);
     }
   }
 
@@ -694,7 +799,7 @@ function walkCalls(
   }
   for (const [qualname, fnNode] of callerFunctions) {
     if (fnNode.body.type === 'BlockStatement') {
-      walkStmts(fnNode.body.body, [], qualname, { n: 0 });
+      walkStmts(fnNode.body.body, [], qualname, { n: 0 }, paramNamesFromFnNode(fnNode));
     }
   }
 
@@ -719,12 +824,12 @@ function walkCalls(
       const methodQualname = `${classQualname}.${methodName}`;
       if (member.value.body.type !== 'BlockStatement') continue;
       bindings = Object.assign({}, fileBindings, { this: classQualname });
-      walkStmts(member.value.body.body, [], methodQualname, { n: 0 });
+      walkStmts(member.value.body.body, [], methodQualname, { n: 0 }, paramNamesFromFnNode(member.value));
       bindings = fileBindings;
     }
   }
 
-  walkStmts(program.body, [], '', { n: 0 }); // module-scope calls, caller = ""
+  walkStmts(program.body, [], '', { n: 0 }, new Set()); // module-scope calls, caller = "", no parameters
 
   return { calls, external_references: externalReferences };
 }

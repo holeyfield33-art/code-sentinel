@@ -38,6 +38,14 @@ relying on a body-walk that could never find it, since the sugar emits no
 assignment statement at all. See tests/test_js_resolver.py and
 tests/test_ts_resolver.py for the regression coverage that replaced the
 old "known gap" pins.
+
+Milestone 15 mirrors python_resolver.py's bounded sink-argument taint
+classification: extract_graph.js's classifyArgTaint walks each call's
+positional-argument AST nodes and reports "literal" / "parameter" /
+"unknown" per argument, exactly the same three labels and the same
+same-function-only bound as the Python side (see graph.py's
+CallSite.arg_taint docstring). This file just carries the `arg_taint`
+array through into CallSite the same way it already carries `args`.
 """
 from __future__ import annotations
 
@@ -113,6 +121,7 @@ def build_project_graph(repo_root: Path) -> ProjectGraph:
                 lineno=c["lineno"],
                 order=c["order"],
                 args=tuple(c.get("args", ())),
+                arg_taint=tuple(c.get("arg_taint", ())),
                 branch_path=tuple(tuple(pair) for pair in c.get("branch_path", ())),
             )
             for c in mod["calls"]
