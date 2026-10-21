@@ -104,9 +104,16 @@ def test_node_worst_disposition_matches_the_least_clean_status_among_its_finding
         root = Path(tmp)
         (root / "mod.py").write_text(
             "import json\n"
-            "def multi():\n"
-            "    json.loads('{}')\n"
-            "    json.loads('{}')\n"
+            # Milestone 16 widened the dynamic probe to cover DESERIALIZATION
+            # sinks too, which would promote a zero-arg version of this to
+            # VERIFIED_TRUE -- taking a required argument keeps this fixture
+            # out of the probe's scope (_zero_arg_top_level_function returns
+            # None for it), isolating this test's real point (worst-status
+            # aggregation over several same-disposition plans) from that
+            # unrelated behavior.
+            "def multi(data):\n"
+            "    json.loads(data)\n"
+            "    json.loads(data)\n"
         )
         graph, plans = _finding_plans_for(root)
         doc = export_graph(graph, plans, root.name)

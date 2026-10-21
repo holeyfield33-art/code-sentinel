@@ -1,6 +1,10 @@
-"""Parent-side driver for the bounded PROCESS_EXEC reachability probe
-(Milestone 6, see _process_exec_harness.py for the actual isolation
-boundary and full scope statement).
+"""Parent-side driver for the bounded dynamic sink-reachability probe
+(Milestone 6, widened in Milestone 16 past its original PROCESS_EXEC-only
+scope to also cover FILE_IO and DESERIALIZATION -- see
+_sink_reachability_harness.py for the actual isolation boundary and full
+scope statement). Renamed from process_exec_probe.py/run_process_exec_probe
+to reflect that widening -- this file was never specific to PROCESS_EXEC
+internally, only in name.
 
 This module never executes target code itself -- it only launches the
 harness as an isolated subprocess with a hard timeout and turns whatever
@@ -16,17 +20,27 @@ import subprocess
 import sys
 from pathlib import Path
 
-_HARNESS_PATH = Path(__file__).parent / "_process_exec_harness.py"
+_HARNESS_PATH = Path(__file__).parent / "_sink_reachability_harness.py"
 PROBE_TIMEOUT_SECONDS = 5
 
 
-def run_process_exec_probe(repo_root: Path, module_qualname: str, function_name: str) -> dict:
+def run_sink_reachability_probe(repo_root: Path, module_qualname: str, function_name: str) -> dict:
     """Runs the harness in an isolated `python -I` subprocess and returns
     one of:
       {"status": "sink_reached", "symbol": ..., "args": ...}
       {"status": "not_reached", "detail": ...}
       {"status": "call_failed", "detail": ...}
     Never raises for any outcome of probing the target; see module docstring.
+
+    `symbol` in a "sink_reached" result is whichever patched sink actually
+    fired first -- it may or may not be the specific sink the caller is
+    currently deciding a disposition for (the harness patches every known
+    sink simultaneously; see its own docstring). The caller MUST compare
+    `symbol` against the specific finding's own sink identity before
+    promoting anything to VERIFIED_TRUE -- see dogfood_scan.py's comment
+    on this, added in Milestone 16 to fix a real bug where a second,
+    never-actually-reached sink in the same function was incorrectly
+    promoted to VERIFIED_TRUE off the first sink's evidence.
     """
     if not _HARNESS_PATH.is_file():
         raise FileNotFoundError(f"sandbox probe harness missing at {_HARNESS_PATH}")

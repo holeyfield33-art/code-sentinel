@@ -42,7 +42,15 @@ _dependency_summary()/ExternalReference machinery below -- no new logic
 needed here, only a JS-populated graph.external_references. Milestone 6's
 dynamic sandbox probe is Python-specific (drives importlib) and is gated
 to `language == "python"` accordingly -- never attempted against a JS
-finding.
+finding. Milestone 16 widened that probe past its original PROCESS_EXEC-
+only scope to also cover FILE_IO and DESERIALIZATION sink kinds (see
+probes/sink_reachability_probe.py, renamed from process_exec_probe.py),
+and fixed a real correctness bug found while widening it: the probe
+patches every known sink simultaneously and reports whichever one fired
+first, so a disposition must check that the reported symbol actually
+matches THIS finding's own sink before promoting to VERIFIED_TRUE -- a
+check that was missing before, and would have gotten worse as more sink
+kinds were added to the same probe run.
 """
 from __future__ import annotations
 
@@ -66,7 +74,7 @@ from sentinel_zero.callgraph import (
 from sentinel_zero.graph import ProjectGraph, Symbol
 from sentinel_zero.graph_export import export_graph
 from sentinel_zero.ledger_writer import safe_write_text
-from sentinel_zero.probes.process_exec_probe import run_process_exec_probe
+from sentinel_zero.probes.sink_reachability_probe import run_sink_reachability_probe
 from sentinel_zero.resolvers.python_resolver import build_project_graph as build_python_project_graph
 from sentinel_zero.resolvers.python_resolver import mutually_exclusive
 from sentinel_zero.resolvers.js_resolver import build_project_graph as build_js_project_graph
@@ -297,19 +305,55 @@ def find_finding_plans(
                         residual_uncertainty="Medium: no in-function guard resolved, no dynamic check run.",
                     )
 
-                # Milestone 6: a bounded dynamic reachability probe, PROCESS_EXEC
-                # only, zero-argument top-level functions only, never attempting
-                # adversarial inputs. It can only ever argue FOR VERIFIED_TRUE
-                # ("this path is live, confirmed by a real call") -- a sink not
-                # reached on this one run proves nothing about other inputs, so
-                # "not_reached" and "call_failed" leave the disposition exactly
-                # as the static analysis above already set it. See
-                # probes/_process_exec_harness.py for the full scope statement.
-                if language == "python" and sink_kind == "PROCESS_EXEC" and caller:
+                # Milestone 6, widened in Milestone 16: a bounded dynamic
+                # reachability probe, zero-argument top-level functions only,
+                # never attempting adversarial inputs. Originally PROCESS_EXEC
+                # only; now also FILE_IO and DESERIALIZATION, since the harness
+                # patches every known sink kind simultaneously (see
+                # probes/_sink_reachability_harness.py for the full scope
+                # statement). It can only ever argue FOR VERIFIED_TRUE ("this
+                # path is live, confirmed by a real call") -- a sink not
+                # reached on this one run proves nothing about other inputs,
+                # so "not_reached" and "call_failed" leave the disposition
+                # exactly as the static analysis above already set it.
+                #
+                # builtins.eval/builtins.exec findings are deliberately
+                # excluded from probing entirely, not just from promotion:
+                # the harness cannot safely patch them (see its own
+                # docstring -- CPython's import machinery itself runs on
+                # the builtin exec()), so probing a function BECAUSE it
+                # contains an eval/exec call would mean actually calling
+                # that real eval/exec in the subprocess -- the one thing
+                # this probe's own safety claim ("no real process is ever
+                # executed by this probe") promises never happens. Static
+                # evidence only for these two, same as before this probe
+                # existed.
+                if (
+                    language == "python"
+                    and sink_kind in ("PROCESS_EXEC", "FILE_IO", "DESERIALIZATION")
+                    and call.target.qualified_name not in ("builtins.eval", "builtins.exec")
+                    and caller
+                ):
                     fn_name = _zero_arg_top_level_function(module.file_path, module.module_qualname, caller)
                     if fn_name:
-                        probe_result = run_process_exec_probe(repo_root, module.module_qualname, fn_name)
-                        if probe_result.get("status") == "sink_reached":
+                        probe_result = run_sink_reachability_probe(repo_root, module.module_qualname, fn_name)
+                        # Milestone 16 correctness fix: the harness patches
+                        # EVERY known sink at once and reports whichever one
+                        # actually fired first, which is not necessarily THIS
+                        # finding's own sink. Before this check, two different
+                        # sink calls in the same zero-arg function (e.g.
+                        # subprocess.run(...) followed by subprocess.call(...))
+                        # both got promoted to VERIFIED_TRUE off a single probe
+                        # run, even though the second one was never actually
+                        # reached (the first _SinkReached exception aborts the
+                        # call before the second line executes) -- confirmed as
+                        # a real false claim written into the ledger before
+                        # this fix, caught while widening the probe's patch
+                        # table made the same mistake more likely to fire.
+                        if (
+                            probe_result.get("status") == "sink_reached"
+                            and probe_result.get("symbol") == call.target.qualified_name
+                        ):
                             guard_note = (
                                 f" A guard-shaped call ({guard_hit}) was detected statically on this path, "
                                 "but the dynamic probe still reached the sink -- this does not mean the guard "

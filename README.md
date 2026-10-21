@@ -56,7 +56,7 @@ specific bugs found in the earlier pipeline:
 | `sentinel_zero/schema_check.py` | Validates a Finding Plan has every required field before it can be trusted downstream. |
 | `sentinel_zero/ledger_writer.py` | Path-confined, size-capped file writer (`resolve_inside` rejects any write that escapes the target root via `..` or a symlink) — what actually puts a ledger on disk. |
 | `sentinel_zero/graph_export.py` | Serializes the in-memory `ProjectGraph` as `graph.json` (nodes + edges), annotated with the finding plans that touch each one. Pure re-serialization of data the resolver already computed and the ledger already reports — never a second, independently computed view of a disposition. The prerequisite for any future 3D rendering or Code Atlas adapter work. |
-| `sentinel_zero/probes/` | Milestone 6's bounded dynamic reachability probe. Python-only, subprocess-isolated (`python -I`), PROCESS_EXEC-only, zero-argument-function-only, and can only ever promote to `VERIFIED_TRUE` — never demotes to `VERIFIED_FALSE`, since it never attempts adversarial inputs. |
+| `sentinel_zero/probes/` | Milestone 6's bounded dynamic reachability probe, widened in Milestone 16 past PROCESS_EXEC to also cover FILE_IO and DESERIALIZATION. Python-only, subprocess-isolated (`python -I`), zero-argument-function-only, and can only ever promote to `VERIFIED_TRUE` — never demotes to `VERIFIED_FALSE`, since it never attempts adversarial inputs. `builtins.eval`/`builtins.exec` are excluded from probing entirely (see Known bounds). |
 | `sentinel_zero/dogfood_scan.py` | The orchestrator. Wires a resolver + its sink table + the disposition engine + (for Python) the dynamic probe + the ledger writer together into one run. |
 | `sentinel_zero/cli.py` | The `sentinel-zero` command (installed via `pyproject.toml`'s `[project.scripts]`). A thin wrapper over `dogfood_scan.run()` — language auto-detection, the bundled-catalog fallback, and `--format md` rendering live here; no analysis logic. |
 | `sentinel_zero/mcp_server.py` | The `sentinel-zero-mcp` command — same `run()` call, exposed as one MCP tool (`analyze_repository`) so an agent can call this engine as a disposition authority instead of guessing. |
@@ -81,6 +81,7 @@ specific bugs found in the earlier pipeline:
 | 13 | Packaging: `pip install`-able with a `sentinel-zero` console command and a `sentinel-zero-mcp` MCP server, a bundled ASI catalog snapshot so a fresh install needs no external file to get started, and explicit regression tests for the three invariants below | — |
 | 14 | `graph.json` export — the full node/edge ISBG, annotated with which finding touches which node/edge, written alongside every ledger. No rendering yet; this is the prerequisite data for that | — |
 | 15 | Bounded sink-argument taint classification (each sink call's positional arguments classified `literal`/`parameter`/`unknown` from the real AST node, same-function evidence only, never changes a disposition status — see `graph.py`'s `CallSite.arg_taint` docstring); widened sink tables (`pickle.load`/`loads`, `yaml.load`, `builtins.eval`/`exec` for Python, Node's `vm` module for JS); and a correctness fix found while widening — a bare `open(...)`/`eval(...)`/`exec(...)` call was resolving to the bare name, never `"builtins.X"`, so `"builtins.open"` had been dead data in the sink table since it was added. Fixing it surfaced 154 previously-invisible `builtins.open` call sites in Block-Wise alone (126 → 285 finding plans on a re-scan) | Python, JS, TS |
+| 16 | Widened the Milestone 6 dynamic probe past PROCESS_EXEC-only to also cover FILE_IO and DESERIALIZATION (`builtins.open`, `json.load`/`loads`, `pickle.load`/`loads`, `yaml.load`), and fixed a real bug found while widening it: the probe patches every known sink at once and reports whichever fires first, so a second, never-actually-reached sink in the same zero-arg function was wrongly promoted to `VERIFIED_TRUE` off the first one's evidence — now checked against the specific finding's own sink identity before promoting. `builtins.eval`/`builtins.exec` are deliberately excluded from probing entirely (not just promotion): CPython's import machinery itself runs on the builtin `exec()`, so patching it would either break every import or risk a false positive from a probed function's own nested import. Renamed `process_exec_probe.py` → `sink_reachability_probe.py` to match the real scope. Re-scanning Block-Wise: `VERIFIED_TRUE` findings went from 3 to 39 | Python |
 
 Every milestone above was dogfooded against ≥2–3 real, unrelated
 repositories before being trusted, and every surprising result was
@@ -134,13 +135,24 @@ These are stated limits, not bugs waiting to be noticed:
 - **Python's `import a.b.c` without an alias** binds only the top-level
   package name, per Python's real binding rule — `a.b.c.fn()` through that
   form resolves to `Unresolved`, not guessed at.
-- **The dynamic probe (Milestone 6) is Python-only, PROCESS_EXEC-only, and
-  zero-argument-function-only.** It is gated off entirely for JS/TS scans
-  and for anything it can't safely construct/call (a class method, a
+- **The dynamic probe (Milestone 6, widened in Milestone 16) is Python-only
+  and zero-argument-function-only.** It is gated off entirely for JS/TS
+  scans and for anything it can't safely construct/call (a class method, a
   function requiring arguments). This means a JS/TS scan can never produce
-  `VERIFIED_TRUE` — every finding it reports tops out at
+  `VERIFIED_TRUE` yet — every finding it reports tops out at
   `UNRESOLVED_INCONCLUSIVE`, which is the correct, honest ceiling for
-  what static analysis alone can claim, not a bug.
+  what static analysis alone can claim, not a bug (porting the probe to
+  JS/TS is a planned next step, not done).
+- **`builtins.eval`/`builtins.exec` are never dynamically probed, even
+  though they're in the PROCESS_EXEC sink table.** CPython's own import
+  machinery runs every module's bytecode via the builtin `exec()` —
+  patching it before import breaks every import, not just a target that
+  itself calls eval/exec, and there is no safe "patch after import"
+  workaround either (a probed function's own lazy import would trip it
+  falsely). Probing an eval/exec finding would mean actually executing
+  that real eval/exec in the subprocess, which this probe's whole safety
+  model forbids — so these two stay static-evidence-only, same as before
+  Milestone 16.
 - **The sink tables are a starting set, not exhaustive.** Python's table
   covers `open`/`json.load(s)`/the `subprocess.*` family; the JS/TS table
   covers `child_process.*`/`eval`/`Function`/`fs.*`/`JSON.parse`. Neither
@@ -220,7 +232,7 @@ pytest tests/ -v
 python3 -m sentinel_zero.cli analyze /path/to/some/repo
 ```
 
-As of this checkpoint: **90 tests, all passing**, covering both
+As of this checkpoint: **95 tests, all passing**, covering both
 resolvers, the shared `callgraph.py` delegation walk, the dynamic probe,
 external-dependency mapping, wrapper-middleware detection, every
 documented gap above, the `cli.py`/`mcp_server.py` transports, the
