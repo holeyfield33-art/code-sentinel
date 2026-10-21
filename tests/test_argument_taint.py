@@ -141,6 +141,61 @@ def test_sink_argument_that_is_an_inline_call_on_a_parameter_traces_one_hop():
         assert _arg_taint_for(root, "risky") == ("traced:parameter",)
 
 
+def test_one_hop_method_call_inspects_its_arguments_not_just_its_receiver():
+    """Regression for a Codex review finding on the PR that introduced
+    _classify_call_result_taint: the inner call is a method call
+    (`receiver.method(arg)`), and the taint-carrying value is the
+    ARGUMENT (`request`), not the receiver (`base64`, which traces to
+    neither a parameter nor a literal). The original implementation only
+    inspected the receiver and missed this, reporting "unknown" instead
+    of "traced:parameter"."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "mod.py").write_text(
+            "import json, base64\n"
+            "def risky(request):\n    json.loads(base64.b64decode(request))\n"
+        )
+        assert _arg_taint_for(root, "risky") == ("traced:parameter",)
+
+
+def test_one_hop_result_with_one_unknown_and_one_literal_constituent_stays_unknown():
+    """Regression for a second Codex review finding: when a plain
+    function call's arguments classify as a mix of "unknown" (an
+    unresolved module global) and "literal", the result must stay
+    "unknown" -- not every constituent is provably literal, so reporting
+    "traced:literal" here would overstate certainty. Mirrors
+    _combine_taint's own parameter > unknown > literal priority, which
+    the original (literal-checked-before-unknown) implementation did
+    not."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "mod.py").write_text(
+            "import json\n"
+            "GLOBAL_VALUE = 'x'\n"
+            "def build(a, b):\n    return a + b\n"
+            "def safe():\n    json.loads(build(GLOBAL_VALUE, 'suffix'))\n"
+        )
+        assert _arg_taint_for(root, "safe") == ("unknown",)
+
+
+def test_traced_parameter_inside_a_composite_propagates_not_downgraded_to_literal():
+    """Regression for a third Codex review finding: a one-hop-traced
+    constituent (here "traced:parameter", from a list element that is
+    itself an inline call on a parameter) must propagate through
+    _combine_taint when the whole composite (a list literal) is
+    classified -- not silently fall through every explicit case and
+    report the weakest possible "literal", which is what happened before
+    _combine_taint recognized the traced:* labels at all."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "mod.py").write_text(
+            "import subprocess\n"
+            "def sanitize(x):\n    return x\n"
+            "def risky(cmd):\n    subprocess.run([sanitize(cmd)])\n"
+        )
+        assert _arg_taint_for(root, "risky") == ("traced:parameter",)
+
+
 def test_two_hop_call_chain_stays_unknown_not_silently_widened_further():
     """Negative test locking in the spec's explicit bound: the inner
     call's own receiver is ITSELF a call result (get_path()), so there is
