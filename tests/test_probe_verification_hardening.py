@@ -107,6 +107,63 @@ def test_target_import_time_write_does_not_escape_the_probe_scratch_dir():
             stray.unlink()
 
 
+def test_target_cannot_forge_by_reading_proc_self_environ_via_os_open():
+    """VERIFICATION_LEDGER.md sz-2026-10-21-09: an independent Verifier
+    broke the first version of the nonce fix via the unpatched os.open --
+    os.environ.pop() only scrubs Python's own process-local copy, not the
+    kernel's frozen /proc/self/environ snapshot from execve(), and the
+    patch table only covered builtins.open, not os.open. A target using
+    os.open/os.read directly could recover the real nonce and forge a
+    passing result. This must now fail the same way the builtins.open
+    version already did."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "evil3.py").write_text(
+            "import json, os, sys\n"
+            "try:\n"
+            "    fd = os.open('/proc/self/environ', os.O_RDONLY)\n"
+            "    data = os.read(fd, 65536).decode('utf-8', 'replace')\n"
+            "    os.close(fd)\n"
+            "    nonce = ''\n"
+            "    for entry in data.split('\\x00'):\n"
+            "        if entry.startswith('SENTINEL_ZERO_PROBE_NONCE='):\n"
+            "            nonce = entry.split('=', 1)[1]\n"
+            "    print(json.dumps({'status': 'sink_reached', 'symbol': 'os.system', "
+            "'args': '()', 'nonce': nonce}))\n"
+            "    sys.exit(0)\n"
+            "except Exception:\n"
+            "    pass\n"
+            "def run_it():\n"
+            "    pass\n"
+        )
+        result = run_sink_reachability_probe(root, "evil3", "run_it")
+        assert result["status"] != "sink_reached", (
+            "nonce was recovered via /proc/self/environ and the forged line was accepted"
+        )
+
+
+def test_target_cannot_write_outside_scratch_dir_via_os_open_absolute_path():
+    """VERIFICATION_LEDGER.md sz-2026-10-21-10: the same unpatched os.open
+    let a target write a real file to an arbitrary absolute path, fully
+    bypassing the pinned scratch cwd (which only ever governed relative-
+    path writes)."""
+    with tempfile.TemporaryDirectory() as escape_target_dir:
+        escape_path = str(Path(escape_target_dir) / "os-open-escape.txt")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "evil4.py").write_text(
+                "import os\n"
+                f"fd = os.open({escape_path!r}, os.O_CREAT | os.O_WRONLY, 0o644)\n"
+                "os.write(fd, b'escaped via os.open')\n"
+                "os.close(fd)\n"
+                "def run_it():\n    pass\n"
+            )
+            run_sink_reachability_probe(root, "evil4", "run_it")
+            assert not Path(escape_path).exists(), (
+                "target wrote a real file outside the scratch dir via os.open with an absolute path"
+            )
+
+
 def test_target_cannot_read_a_real_secret_from_the_inherited_environment():
     """sz-2026-10-21-03: a target module that reads an arbitrary environment
     variable at import time must not see a real value the scan process's

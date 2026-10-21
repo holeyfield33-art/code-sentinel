@@ -71,6 +71,31 @@ process/environment.
 
 ---
 
+## 2a. Related, separate gap surfaced while closing item 1–2 (not yet planned)
+**Ledger:** sz-2026-10-21-09/10/11 (the real Tier-1 Verifier pass on items 1–2)
+
+Closing the forgery/sandbox gap required patching `os.open` in the probe
+harness's sink table, alongside `builtins.open`. That's a probe-isolation
+fix, not a static-analysis one — but it surfaces a real, separate question
+this plan hasn't looked at yet: does `_SINK_KIND_BY_NAME` in
+`dogfood_scan.py` (the STATIC resolver's sink table) even recognize
+`os.open` as a FILE_IO sink at all? If not, a real `os.open(user_path, ...)`
+call in target code — a plausible path-traversal shape — produces no
+finding plan whatsoever, the same invisibility problem as items 5–6, just
+in a different table. Also noted honestly: patching `os.open` closes two
+concrete breaks, not every conceivable one — `ctypes`/native-syscall access
+bypasses any Python-level monkeypatch entirely, since there is no real
+OS-level sandbox boundary here. That's an accepted, disclosed residual
+bound, not something queued to "fix" — closing it for real would mean a
+genuinely different mechanism (container/seccomp isolation), which is a
+different scale of project than this one, not a next item on this list.
+
+Not triaged into a numbered item yet — flagging it here so it isn't lost,
+per IVP's own point about a durable record over a transcript that scrolls
+away.
+
+---
+
 ## 3. Wrong-call promotion (same-sink, different call site)
 **Ledger:** sz-2026-10-21-04
 

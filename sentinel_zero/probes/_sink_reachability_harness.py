@@ -120,6 +120,32 @@ def _patch_sinks() -> None:
     code was written -- a fresh module imports fine with builtins.open
     replaced). json.load/loads and pickle.load/loads are ordinary module
     attributes with no bootstrap role and are safe for the same reason.
+
+    VERIFICATION_LEDGER.md sz-2026-10-21-09/10: an independent Verifier
+    broke the nonce-secrecy fix (sz-2026-10-21-02) and the scratch-dir
+    write confinement (sz-2026-10-21-03) via the SAME unpatched gap --
+    os.open/os.read let a target read /proc/self/environ directly (the
+    kernel's frozen execve()-time snapshot, which os.environ.pop() never
+    touches -- it only scrubs Python's own process-local copy), and
+    os.open/os.write with an absolute path let it write anywhere, bypassing
+    the pinned cwd entirely (cwd only ever governed *relative*-path writes).
+    os.open is also confirmed safe to patch the same way builtins.open is:
+    verified directly (see tests/test_probe_verification_hardening.py) that
+    patching it before import does not break importlib.import_module on
+    ordinary stdlib/project modules -- CPython's own import machinery does
+    not route through the Python-level os.open symbol either.
+
+    Stated honestly, not left implicit: patching os.open closes the two
+    concrete breaks above. It does not, and cannot, close every conceivable
+    native-level escape -- target code using ctypes/cffi to call the C
+    library's open()/read()/write() directly bypasses any Python-level
+    monkeypatch entirely, since there is no real OS-level sandbox boundary
+    between this harness and the code it imports (same process, same
+    privileges). That is a structurally different and harder problem --
+    real isolation needs an OS-level mechanism (a container, seccomp, a
+    genuinely separate restricted process), not more patching here. See
+    docs/REMEDIATION_PLAN.md for this noted as an accepted, disclosed
+    residual bound rather than something this pass claims to have closed.
     """
     import builtins
     import json as json_module
@@ -133,6 +159,7 @@ def _patch_sinks() -> None:
     subprocess.Popen = _recorder("subprocess.Popen")
 
     builtins.open = _recorder("builtins.open")
+    os.open = _recorder("os.open")
 
     json_module.load = _recorder("json.load")
     json_module.loads = _recorder("json.loads")

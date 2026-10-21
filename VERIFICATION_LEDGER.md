@@ -135,6 +135,69 @@ entry is not edited or deleted, a new entry supersedes it and says so.
   label does not reflect this distinction anywhere in the reason text.
 - **date:** 2026-10-21
 
+### sz-2026-10-21-09
+- **claim:** "A target Python module cannot force a false VERIFIED_TRUE by
+  printing a forged result line and exiting first, and cannot recover the
+  verification nonce by reading its own environment, after the
+  nonce+env-allowlist fix (commit 7f39743)."
+- **claimant:** Builder session (this conversation)
+- **verifier:** A genuinely fresh, non-forked Tier-1 subagent, given only
+  the claim and the artifact per `docs/IVP.md` Appendix B
+- **method:** Read `sink_reachability_probe.py` and
+  `_sink_reachability_harness.py` directly, then wrote and ran real
+  adversarial fixture modules against the live code (not just re-running
+  the Builder's own tests).
+- **verdict:** CONFIRMED (claim is FALSE)
+- **evidence:** `_patch_sinks()` patches `builtins.open` but not
+  `os.open`/`os.read`. `os.environ.pop()` only scrubs Python's own
+  process-local copy, not the kernel's frozen `/proc/self/environ`
+  snapshot from `execve()`. A target doing
+  `os.open('/proc/self/environ', os.O_RDONLY)` + `os.read(fd, 65536)`
+  recovers the real nonce, prints a forged `sink_reached` line including it,
+  and `sys.exit(0)`s before the real (no-op) function body runs. The
+  Verifier confirmed `run_sink_reachability_probe()` on this exact fixture
+  returns a false `sink_reached` result. The naive `builtins.open()`-based
+  version of this attack is correctly blocked (confirming the existing
+  regression tests weren't wrong, just not adversarial enough) — the break
+  requires the unpatched `os` module functions specifically.
+- **date:** 2026-10-21
+
+### sz-2026-10-21-10
+- **claim:** "After the scratch-dir/env-allowlist fix, a target module's
+  import-time code cannot write a file outside the per-call scratch
+  directory."
+- **claimant:** Builder session (this conversation)
+- **verifier:** Same fresh Tier-1 subagent as sz-2026-10-21-09
+- **method:** Same as above.
+- **verdict:** CONFIRMED (claim is FALSE)
+- **evidence:** Same root cause as sz-2026-10-21-09 — `os.open` with
+  `O_CREAT|O_WRONLY` and an absolute path, followed by `os.write`, is
+  unpatched and bypasses the scratch-cwd confinement entirely (cwd only
+  governs *relative*-path writes, which was never the full claim as
+  originally stated). The Verifier confirmed a real file was created
+  outside the scratch dir via this path, then deleted it.
+- **date:** 2026-10-21
+
+### sz-2026-10-21-11
+- **claim:** "After the env-allowlist fix, a target module cannot read a
+  real secret from the scan process's own original environment, regardless
+  of which API it uses to read environment variables."
+- **claimant:** Builder session (this conversation)
+- **verifier:** Same fresh Tier-1 subagent as sz-2026-10-21-09/10
+- **method:** Set a real sentinel value in the parent process's actual
+  environment, then tried the same `/proc/self/environ`-via-`os.open`
+  bypass used to break sz-2026-10-21-09, this time to recover that value
+  instead of the nonce.
+- **verdict:** REFUTED (genuinely tried to break it, could not)
+- **evidence:** `subprocess.run(..., env=env)` *replaces* the child's
+  `envp` at `execve()` time rather than merging it with the parent's, so
+  the child's `/proc/self/environ` — inspected directly, not inferred —
+  contained only the small explicit allowlist plus the nonce; no trace of
+  the real secret set in the parent's environment. The env-scrubbing half
+  of the original claim holds; only the nonce-secrecy and write-confinement
+  halves (same root cause, both via unpatched `os.open`) were false.
+- **date:** 2026-10-21
+
 ### sz-2026-10-21-08 (believed true, not independently verified to CONFIRMED/REFUTED rigor)
 - **claims:**
   1. "A ledger over 5 MB crashes the scan with no partial output" —
