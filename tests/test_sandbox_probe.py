@@ -74,9 +74,10 @@ def test_class_method_sink_is_not_probed_but_is_now_a_finding():
     method is no longer invisible -- it produces a real finding plan.
 
     The sandbox probe itself is unchanged and still correctly refuses this
-    case: _zero_arg_top_level_function returns None for any caller_qualname
-    containing a dot beyond the module ("module.Runner.run_it"), so a class
-    method is never probed regardless of its arity -- confirmed by the
+    case: _top_level_function_node (and therefore _probe_invocation_for)
+    returns None for any caller_qualname containing a dot beyond the module
+    ("module.Runner.run_it"), so a class method is never probed regardless
+    of its arity -- confirmed by the
     disposition below being UNRESOLVED_INCONCLUSIVE, not VERIFIED_TRUE."""
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)

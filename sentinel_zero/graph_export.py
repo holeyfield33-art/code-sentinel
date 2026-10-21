@@ -28,6 +28,17 @@ from sentinel_zero.graph import ProjectGraph, Symbol
 # the whole scan on a tool failure instead of reporting one as a finding)
 # -- if it ever did show up here, it must outrank everything else, never
 # be silently sorted below a clean-looking status.
+#
+# Deliberately NOT including "PENDING": disposition.set_disposition()
+# allows it as a transient state on a freshly-built FindingPlan, but every
+# plan dogfood_scan.find_finding_plans() appends to its result list has
+# already had set_disposition() called on it (see that function's two
+# set_disposition call sites, both unconditionally reached before
+# plans.append) -- a plan reaching this module still PENDING, or bearing
+# any other string outside the four above, means that invariant broke
+# upstream, and _worst_status below treats that as the hard error it is
+# rather than silently ranking an unrecognized status by some made-up
+# priority.
 _STATUS_PRIORITY = {
     "TOOL_FAILURE": 0,
     "VERIFIED_TRUE": 1,
@@ -39,7 +50,15 @@ _STATUS_PRIORITY = {
 def _worst_status(statuses: list[str]) -> str | None:
     if not statuses:
         return None
-    return min(statuses, key=lambda s: _STATUS_PRIORITY.get(s, -1))
+    unknown = sorted({s for s in statuses if s not in _STATUS_PRIORITY})
+    if unknown:
+        raise ValueError(
+            f"export_graph found disposition status(es) {unknown!r} that are not one of "
+            f"{sorted(_STATUS_PRIORITY)} -- every Finding Plan must be disposed (set_disposition) "
+            "before it reaches graph export. Refusing to silently rank an unrecognized status "
+            "instead of surfacing this as the bug it is."
+        )
+    return min(statuses, key=lambda s: _STATUS_PRIORITY[s])
 
 
 def export_graph(graph: ProjectGraph, plans: list[dict[str, Any]], repo_name: str) -> dict[str, Any]:

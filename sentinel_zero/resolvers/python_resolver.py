@@ -367,25 +367,55 @@ def _param_names(fn_node: ast.FunctionDef | ast.AsyncFunctionDef | None) -> froz
 
 
 def _combine_taint(classifications: list[str]) -> str:
-    """parameter beats unknown beats literal: if any piece of a composite
-    expression (an f-string, a list literal, a `+` concatenation) traces to
-    a parameter, the whole thing does; otherwise if any piece can't be
-    classified, the whole thing can't either -- only an expression built
-    ENTIRELY from literals is reported as a literal."""
+    """parameter beats traced:parameter beats unknown beats traced:literal
+    beats literal (the same five-tier order _taint_note documents in
+    dogfood_scan.py): if any piece of a composite expression (an f-string,
+    a list literal, a `+` concatenation) traces to a parameter, the whole
+    thing does; a one-hop traced parameter is the next-strongest signal;
+    otherwise if any piece can't be classified, the whole thing can't
+    either; a one-hop traced literal is weaker evidence than that but
+    still stronger than nothing; only an expression built ENTIRELY from
+    literals is reported as a literal. Without this, a composite wrapping
+    a traced:parameter/traced:literal constituent (e.g.
+    `subprocess.run([sanitize(cmd)])` where `cmd` is a parameter) would
+    fall through every explicit check and silently report as the weakest
+    possible "literal" -- found by Codex review on the PR that introduced
+    traced:parameter/traced:literal, confirmed real against this exact
+    case."""
     if not classifications:
         return "literal"  # an empty list/tuple literal has nothing to taint
     if "parameter" in classifications:
         return "parameter"
+    if "traced:parameter" in classifications:
+        return "traced:parameter"
     if "unknown" in classifications:
         return "unknown"
+    if "traced:literal" in classifications:
+        return "traced:literal"
     return "literal"
 
 
-def _classify_arg_taint(node: ast.expr, param_names: frozenset[str]) -> str:
+def _classify_arg_taint(node: ast.expr, param_names: frozenset[str], *, allow_call_unwrap: bool = True) -> str:
     """Classifies one call argument expression by real AST structure --
     never by re-parsing source text. See graph.py's CallSite.arg_taint for
     the full contract and its stated bound (this is not interprocedural
-    taint tracking)."""
+    taint tracking).
+
+    `allow_call_unwrap` gates the one-hop widening added for
+    .spec/arg-taint-one-hop-widening.md: when the argument expression
+    itself IS a call (e.g. `json.loads(path.read_text())` -- the inner
+    call written inline as the argument, not a prior assignment the
+    classifier would have to trace backward through a function body to
+    find), look at what THAT call's own receiver/arguments resolve to,
+    one hop, via _classify_call_result_taint. That helper always recurses
+    with allow_call_unwrap=False, so a receiver/argument that is itself
+    another call result lands on the "unknown" catch-all below rather
+    than being unwrapped a second time -- the explicit, stated bound this
+    spec requires. Deliberately NOT inline/immediate-assignment dataflow
+    either: `data = path.read_text(); json.loads(data)` still classifies
+    `data` as a bare ast.Name ("parameter" if it happens to be one,
+    "unknown" otherwise) exactly as before -- this widening only reaches
+    the inline-nested-call shape, not a prior statement's binding."""
     if isinstance(node, ast.Constant):
         return "literal"
     if isinstance(node, ast.JoinedStr):  # f-string
@@ -413,7 +443,50 @@ def _classify_arg_taint(node: ast.expr, param_names: frozenset[str]) -> str:
         if isinstance(base, ast.Name):
             return "parameter" if base.id in param_names else "unknown"
         return "unknown"
-    return "unknown"  # a call result, comprehension, lambda, walrus, ... -- not modeled
+    if isinstance(node, ast.Call) and allow_call_unwrap:
+        return _classify_call_result_taint(node, param_names)
+    return "unknown"  # a call result (already unwrapped once, or unwrap disallowed), comprehension, lambda, walrus, ... -- not modeled
+
+
+def _classify_call_result_taint(node: ast.Call, param_names: frozenset[str]) -> str:
+    """The one-hop widening itself: classifies the result of a call used
+    directly AS an argument expression, by looking at what that inner
+    call's own receiver AND arguments (`receiver.method(arg, ...)`) or,
+    for a plain function call, just its arguments (`func(arg, ...)`)
+    resolve to -- with allow_call_unwrap=False on that lookup, so a
+    receiver/argument that is itself a call result stays "unknown" rather
+    than recursing past one hop. A method call's own arguments are
+    inspected alongside its receiver (not receiver-only) because the
+    taint-carrying value is routinely the argument, not the receiver --
+    `json.loads(base64.b64decode(request))`'s `request` is exactly this
+    shape, and receiver-only missed it (found by Codex review on the PR
+    that introduced this function, confirmed real against that exact
+    example).
+
+    Priority among the constituents mirrors _combine_taint's own real
+    order (parameter > unknown > literal, not literal before unknown):
+    `parameter` -> `traced:parameter`; else any `unknown` constituent
+    -> plain `unknown` (not every constituent is provably literal, so
+    this must not be reported as the weaker `traced:literal`); only when
+    every constituent is literal -> `traced:literal`. The original
+    (literal-checked-before-unknown) version wrongly reported
+    `json.loads(build(GLOBAL_VALUE, "suffix"))` as `traced:literal` even
+    though `GLOBAL_VALUE` is unresolved -- also found by Codex review,
+    confirmed real against that exact example."""
+    if isinstance(node.func, ast.Attribute):
+        constituents = [node.func.value, *node.args]
+    elif isinstance(node.func, ast.Name):
+        constituents = list(node.args)
+    else:
+        return "unknown"  # e.g. a call on another call's own result, (f())() -- not modeled
+    if not constituents:
+        return "unknown"  # a zero-arg plain function call, e.g. get_path() -- nothing to trace
+    classifications = [_classify_arg_taint(c, param_names, allow_call_unwrap=False) for c in constituents]
+    if "parameter" in classifications:
+        return "traced:parameter"
+    if "unknown" in classifications:
+        return "unknown"
+    return "traced:literal"
 
 
 def dominates(guard_path: tuple, sink_path: tuple) -> bool:

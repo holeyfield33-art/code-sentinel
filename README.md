@@ -15,12 +15,12 @@ modes from that pipeline, not just avoid them by convention:
   against a *live* Agent Security Index catalog export; an unknown ID is
   a hard error (`UnknownAttackClass`), never a silent pass-through.
 
-This document is a **Phase 2 checkpoint** — it describes the project as of
-Milestone 13 (packaging), on top of the correctness fixes landed in
-Milestone 12, locked in with a full passing test suite and dogfooding
-evidence against real, unrelated repositories for every capability below.
-It is not a promise of future scope; see **Known bounds** for what is
-explicitly not done.
+This document is a **living checkpoint** — it describes the project as of
+Milestone 22 (scan-to-scan diffing, both the engine's `scan_diff.py` and
+the 3D viewer's node-level diff view), locked in with a full passing test
+suite and dogfooding evidence against real, unrelated repositories for
+every capability below. It is not a promise of future scope; see
+**Known bounds** for what is explicitly not done.
 
 ## Core idea: the ISBG
 
@@ -85,6 +85,9 @@ specific bugs found in the earlier pipeline:
 | 17 | The probe can now call a function that *requires* arguments, not just a zero-arg one — if a real call site elsewhere in the project passes it only literal-constant arguments (Milestone 15's taint classifier says so), those exact values are harvested via `ast.literal_eval` on that call site's own source text and used to make the probe call. Never synthesized, never guessed; a call site that fails this test (parameter-derived, too few values for the required params, a required keyword-only param) is simply not attempted, same as before. Honest result on this project's own repo sample: the mechanism is correct and covered by 6 unit tests, but across 5 real Python repos re-scanned (vibe-check, vibe-explainer, aletheia-redteam-kit, aletheia-sentinel, horos) it never actually fired — real call sites in practice almost always pass a variable, not a literal. Worth having for repos with more "hardcoded driver call" shapes; not a universal lift | Python |
 | 18 | Ported the Milestone 6/16 dynamic probe to JS/TS — closes the "Python-only" bound two rows up, for the exported-and-zero-argument call shape the probe already knows how to handle. Same safety model (isolated `node` subprocess, hard timeout, patch sinks before `require()`, raise-to-short-circuit before the real sink runs) and the same Milestone 16 symbol-match correctness rule, now shared between both languages via one `_promote_if_sink_reached` helper. The one function that is unsafe to patch differs per language and had to be found empirically for each: Python's is `builtins.eval`/`exec` (breaks CPython's import machinery); JS's is `fs.readFileSync` (breaks Node's `require()`) — `eval`, `Function`, and the whole `vm` module are all safe to patch on the JS side, the opposite of Python's pattern. Eligibility is also decided differently: Python checks call shape statically from the AST; JS decides it at runtime inside the harness, via the real exported function's `fn.length === 0`, because JS silently fills a missing argument with `undefined` instead of raising the way Python raises `TypeError` — a static "requires no arguments" check would not actually guarantee a safe call there. Honest result, not oversold: across 2 real JS/TS repos re-scanned (runtime-firewall-mvp, vercel-cli) this produced zero actual `VERIFIED_TRUE` lift — see Known bounds for the two specific, diagnosed reasons (a self-executing test file, and a `.ts` file that can't `require()` cleanly under plain Node). The mechanism itself is correct, proven by 7 unit tests covering promotion, the symbol-mismatch guard, the `fs.readFileSync` exclusion, unexported functions, and non-zero-arg functions | JS, TS |
 | 19 | Replaced the "guard precedes sink" approximation (same-function call order + a branch-exclusivity check that only caught two paths diverging at a *shared* ancestor node) with real CFG dominance for If/Try nesting (`python_resolver.dominates` — a guard call's `branch_path` must be a literal prefix of the sink call's own `branch_path`, i.e. the guard genuinely executes on *every* path that can reach the sink, not just "comes earlier and isn't on a mutually-exclusive sibling branch"). This closed a real, confirmed false positive the old heuristic could not catch: a guard call sitting inside a bare `if`, with no `else`, used to be wrongly credited with protecting a sink that sits at an outer, unconditional level — the sink runs regardless of whether that `if`'s condition was ever true, so the guard was never actually on its path. Confirmed directly by diffing the old and new checks over the same real call data: Block-Wise had exactly 2 such false positives (`experiments/token-efficiency/reproduce.py:183` and `tests/test_coverage.py:73`, both a conditionally-called `render_blueprint`/`render` wrongly credited as guarding an unconditionally-reached `json.loads`), Horos had 0. This tightens `UNRESOLVED_INCONCLUSIVE` reasoning, not a lever for more `VERIFIED_TRUE` — a confirmed dominance hit still only proves the guard *call* runs before the sink on every path, never that its own condition ties to attacker-controlled input, so it still never promotes to `VERIFIED_FALSE` (see `dominates()`'s own docstring). 5 new unit/end-to-end tests, including the exact false-positive regression case | Python |
+| 20 | `viewer/` — a standalone Three.js app that loads a `graph.json` export, lays it out in 3D with a small dependency-free force simulation, and color-codes every node by its worst disposition. Its own codebase (own `package.json`, own test runner), no dependency on any other visualizer in this account's portfolio. See `viewer/README.md` | — |
+| 21 | `sentinel_zero/scan_diff.py` — compares two `verification_ledger.json` plan lists by a new stable `finding_uid` (derived from `(source_node, sink_node)`, independent of the per-run sequential `plan_id`) and classifies every finding as new / removed / changed-disposition / unchanged. Pure comparison, no re-analysis. See `docs/SECURITY_MONITORING.md` §2-3 | — |
+| 22 | Viewer gets filter/isolate (search by name, "Isolate VERIFIED_TRUE" with one-hop caller context) and scan-diff support (load a baseline `graph.json`, see each node's diff classification using the same `finding_uid`s as `scan_diff.py`) | — |
 
 Every milestone above was dogfooded against ≥2–3 real, unrelated
 repositories before being trusted, and every surprising result was
@@ -262,11 +265,14 @@ pytest tests/ -v
 python3 -m sentinel_zero.cli analyze /path/to/some/repo
 ```
 
-As of this checkpoint: **113 tests, all passing**, covering both
-resolvers, the shared `callgraph.py` delegation walk, the dynamic probe,
-external-dependency mapping, wrapper-middleware detection, every
-documented gap above, the `cli.py`/`mcp_server.py` transports, the
-`graph.json` export, and the three invariants end-to-end.
+As of this checkpoint: **122 Python tests + 19 viewer tests, all
+passing**, covering both resolvers, the shared `callgraph.py` delegation
+walk, the dynamic probe, external-dependency mapping, wrapper-middleware
+detection, every documented gap above, the `cli.py`/`mcp_server.py`
+transports, the `graph.json` export, `scan_diff.py`, and the three
+invariants end-to-end — plus the viewer's own Playwright-driven render/
+filter/diff tests (`viewer/` has its own test runner; see
+`viewer/README.md`).
 
 ### Output shape
 

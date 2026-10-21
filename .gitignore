@@ -4,3 +4,14 @@ __pycache__/
 .pytest_cache/
 build/
 *.egg-info/
+
+# Scan-run output and scratch artifacts — never part of the product itself.
+out/
+results/
+.soak-samples/
+.blockwise/
+
+# Internal agent/process files — not part of the published, user-facing repo.
+CLAUDE.md
+.agent-sdlc.yaml
+.spec/

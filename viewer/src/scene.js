@@ -1,26 +1,22 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { STATUS_COLOR, DIFF_COLOR as DIFF_COLOR_HEX, toThreeHex } from "./colors.js";
 
-const DISPOSITION_COLOR = {
-  VERIFIED_TRUE: 0xff5c5c,
-  TOOL_FAILURE: 0xff5c5c,
-  UNRESOLVED_INCONCLUSIVE: 0xf5c84c,
-  VERIFIED_FALSE: 0x5ad1a0,
-};
-const NO_FINDING_COLOR = 0x3c4a63;
+// Converted once from colors.js's hex strings (the single source of truth
+// shared with main.js's legend) into Three.js color ints -- never a
+// second hardcoded copy of these colors. See colors.js's own docstring.
+const DISPOSITION_COLOR = Object.fromEntries(
+  Object.entries(STATUS_COLOR).map(([status, hex]) => [status, toThreeHex(hex)])
+);
+const NO_FINDING_COLOR = DISPOSITION_COLOR.none;
 const UNRESOLVED_EDGE_COLOR = 0x5a2a2a;
 const RESOLVED_EDGE_COLOR = 0x33415a;
 
-// Milestone 22: diff-mode colors, deliberately distinct from the
-// disposition palette above so "this changed since the baseline" never
-// reads as just another disposition. CONTEXT_COLOR (same slate as
-// "no finding attached") is reused for filter path-context nodes too --
-// both mean the same thing visually: "shown for orientation, not itself
-// a match."
-export const DIFF_COLOR = {
-  new: 0xd44fe0, // a node that did not exist at all in the baseline scan
-  changed: 0xff9d42, // same node, but its finding_uids or worst_disposition differ
-};
+// Milestone 22 diff-mode colors, as Three.js ints -- same single source of
+// truth (colors.js) as DISPOSITION_COLOR above and main.js's DIFF_LEGEND.
+const DIFF_COLOR = Object.fromEntries(
+  Object.entries(DIFF_COLOR_HEX).map(([cls, hex]) => [cls, toThreeHex(hex)])
+);
 
 function colorForDisposition(status) {
   return DISPOSITION_COLOR[status] ?? NO_FINDING_COLOR;
