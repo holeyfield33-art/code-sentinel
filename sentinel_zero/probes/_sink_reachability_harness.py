@@ -53,6 +53,24 @@ two broad `except Exception` blocks below are not silent-failure shortcuts:
 they bound a call into untrusted, unknown target code whose failure modes
 cannot be enumerated in advance, and every one is reported with its real
 exception type and message, not absorbed.
+
+VERIFICATION_LEDGER.md sz-2026-10-21-02: every JSON line this harness emits
+now carries a `nonce` the parent (sink_reachability_probe.py) generated
+per-call and the parent checks on the way back. The nonce arrives via the
+SENTINEL_ZERO_PROBE_NONCE environment variable and is popped out of
+os.environ as the very first action in main() -- before _patch_sinks(),
+before the target module is imported -- specifically so the target's own
+code never finds it by reading os.environ normally. This closes the
+realistic forgery case (target code prints a plausible-looking result line
+and exits early) and the "reads the nonce out of its own environment" case.
+It is not a claim that this defeats a target sophisticated enough to walk
+the call stack with sys._getframe() and read this function's own local
+`nonce` variable directly -- that remains possible in principle, because
+the target executes in the same interpreter/process as this harness (there
+is no OS-level process boundary between them), and is a genuinely different
+and harder problem than the one this fixes. See docs/REMEDIATION_PLAN.md
+item 1 and docs/IVP.md for why this bound is stated rather than left
+implicit.
 """
 import importlib
 import json
@@ -136,6 +154,15 @@ def _patch_sinks() -> None:
 
 
 def main() -> None:
+    # Popped before anything else -- including before the argv shape is even
+    # validated -- so this value is never in os.environ by the time any
+    # target code could possibly run. See module docstring for the full
+    # threat-model statement (sz-2026-10-21-02).
+    nonce = os.environ.pop("SENTINEL_ZERO_PROBE_NONCE", "")
+
+    def emit(payload: dict) -> None:
+        print(json.dumps({**payload, "nonce": nonce}))
+
     # Milestone 17: an optional 5th argv, ARGS_REPR, is the repr() of a
     # tuple of real Python values harvested from a genuine call site
     # elsewhere in the project that calls this exact function with
@@ -147,10 +174,10 @@ def main() -> None:
     # re-embedded as code, never eval()'d. If absent, the call is made
     # with zero arguments, same as Milestone 6's original behavior.
     if len(sys.argv) not in (4, 5):
-        print(json.dumps({
+        emit({
             "status": "call_failed",
             "detail": "usage: _sink_reachability_harness.py REPO_ROOT MODULE_QUALNAME FUNCTION_NAME [ARGS_REPR]",
-        }))
+        })
         return
     repo_root, module_qualname, function_name = sys.argv[1], sys.argv[2], sys.argv[3]
 
@@ -167,10 +194,10 @@ def main() -> None:
             # reported rather than silently falling back to a zero-arg
             # call (that would claim a DIFFERENT, unintended invocation
             # happened).
-            print(json.dumps({
+            emit({
                 "status": "call_failed",
                 "detail": f"could not parse harvested arguments: {type(exc).__name__}: {exc}",
-            }))
+            })
             return
 
     sys.path.insert(0, repo_root)
@@ -182,42 +209,42 @@ def main() -> None:
     except Exception as exc:  # the target module's own import-time behavior
         # is unknown and untrusted -- any failure here is a reported
         # outcome of probing it, not a defect in this harness.
-        print(json.dumps({
+        emit({
             "status": "call_failed",
             "detail": f"import failed: {type(exc).__name__}: {exc}",
-        }))
+        })
         return
 
     fn = getattr(module, function_name, None)
     if fn is None or not callable(fn):
-        print(json.dumps({
+        emit({
             "status": "call_failed",
             "detail": f"{function_name!r} not found or not callable on {module_qualname!r}",
-        }))
+        })
         return
 
     try:
         fn(*call_args)
     except _SinkReached as reached:
-        print(json.dumps({
+        emit({
             "status": "sink_reached",
             "symbol": reached.symbol,
             "args": reached.args_repr,
-        }))
+        })
         return
     except Exception as exc:  # same reasoning as the import try/except above:
         # the target function's own behavior under a zero-argument call is
         # unknown; reported explicitly, never absorbed.
-        print(json.dumps({
+        emit({
             "status": "call_failed",
             "detail": f"call raised: {type(exc).__name__}: {exc}",
-        }))
+        })
         return
 
-    print(json.dumps({
+    emit({
         "status": "not_reached",
         "detail": "function returned without reaching a patched sink",
-    }))
+    })
 
 
 if __name__ == "__main__":
