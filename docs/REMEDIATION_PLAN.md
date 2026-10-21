@@ -127,8 +127,8 @@ away.
 
 ---
 
-## 3. Wrong-call promotion (same-sink, different call site)
-**Ledger:** sz-2026-10-21-04
+## 3. Wrong-call promotion (same-sink, different call site) — STATUS: fixed, pending fresh Verifier pass
+**Ledger:** sz-2026-10-21-04, -15
 
 **Fix direction:** `_promote_if_sink_reached` needs to compare against the
 specific `call` object's identity (its `lineno`/`order` within the caller),

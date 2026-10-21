@@ -253,6 +253,28 @@ process), which is a materially different and larger piece of work than
 this plan's scope, and is recorded there as a separate, larger decision for
 Ashura to make, not something closed by further patching.
 
+### sz-2026-10-21-15
+- **claim:** "A function with two call sites to the same sink symbol, only
+  one of which is actually reachable, does not have its unreachable call
+  site promoted to VERIFIED_TRUE."
+- **claimant:** Builder session (this conversation)
+- **verifier:** pending — fix implemented and self-tested (including
+  confirming by hand, via `git stash`, that the regression test fails
+  pre-fix and passes post-fix), but not yet checked by a fresh non-forked
+  Tier-1 session. Logged now so the claim and its pending status are
+  recorded together, not asserted as done before that check runs.
+- **method:** `dogfood_scan.py`'s `find_finding_plans` now counts, per
+  caller, how many call sites resolve to each sink symbol
+  (`sink_symbol_counts`), and refuses to attempt the dynamic probe at all
+  for a sink symbol with more than one call site in that caller — the
+  disposition reason explains the ambiguity explicitly instead of silently
+  leaving a blanker message.
+- **verdict:** pending
+- **evidence:** `sentinel_zero/dogfood_scan.py` (`find_finding_plans`,
+  `_promote_if_sink_reached` docstring update),
+  `tests/test_ambiguous_sink_promotion.py`
+- **date:** 2026-10-21
+
 ### sz-2026-10-21-08 (believed true, not independently verified to CONFIRMED/REFUTED rigor)
 - **claims:**
   1. "A ledger over 5 MB crashes the scan with no partial output" —

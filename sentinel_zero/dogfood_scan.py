@@ -371,7 +371,16 @@ def _promote_if_sink_reached(plan, probe_result: dict, call, guard_hit: str | No
     the probe actually invoked the function ("with zero arguments", or
     Python's harvested-literal-argument variant) -- written into the
     reason text so a human reading a finding never has to guess what was
-    actually run."""
+    actually run.
+
+    This symbol check is still only a match by resolved NAME, not by which
+    specific call site actually fired (VERIFICATION_LEDGER.md
+    sz-2026-10-21-04): it genuinely cannot tell two call sites to the same
+    sink symbol in one caller apart. find_finding_plans's caller is
+    responsible for never invoking the probe at all in that ambiguous case
+    (see its own sink_symbol_counts gating) -- this function has no way to
+    enforce that itself, since by the time it runs, the probe has already
+    been called with no record of which specific call site asked for it."""
     if probe_result.get("status") != "sink_reached" or probe_result.get("symbol") != call.target.qualified_name:
         return
     guard_note = (
@@ -436,6 +445,24 @@ def find_finding_plans(
             calls_by_caller.setdefault(call.caller, []).append(call)
 
         for caller, calls in calls_by_caller.items():
+            # Milestone (remediation item 3, VERIFICATION_LEDGER.md
+            # sz-2026-10-21-04): _promote_if_sink_reached can only compare
+            # the probe's reported symbol against call.target.qualified_name
+            # -- a match by resolved NAME, not by which specific call site
+            # actually fired. When a caller has more than one call site
+            # resolving to the same sink symbol (e.g. two os.system(...)
+            # calls, only one of them reachable), a single probe run cannot
+            # tell the caller which one it was, so promoting EITHER of them
+            # off that one result is an overclaim -- the probe genuinely
+            # cannot disambiguate here, so the honest fix is to not attempt
+            # promotion at all in this ambiguous case, not to guess. This is
+            # computed once per caller, not per call, since it only depends
+            # on this caller's own call list.
+            sink_symbol_counts: dict[str, int] = {}
+            for c in calls:
+                if isinstance(c.target, Symbol) and c.target.qualified_name in sink_table:
+                    sink_symbol_counts[c.target.qualified_name] = sink_symbol_counts.get(c.target.qualified_name, 0) + 1
+
             for call in calls:
                 if not isinstance(call.target, Symbol) or call.target.qualified_name not in sink_table:
                     continue
@@ -516,11 +543,21 @@ def find_finding_plans(
                         "relationship to attacker-controlled input is still not verified.",
                     )
                 else:
+                    ambiguous_sink_count = sink_symbol_counts.get(call.target.qualified_name, 1)
+                    probe_note = (
+                        f" This caller has {ambiguous_sink_count} separate call sites resolving to "
+                        f"{call.target.qualified_name} -- a single dynamic probe run cannot tell which one it "
+                        "actually reached, so the probe is not attempted for any of them here rather than risk "
+                        "promoting an unreached one off another call site's evidence (VERIFICATION_LEDGER.md "
+                        "sz-2026-10-21-04)."
+                        if ambiguous_sink_count > 1
+                        else " No sandbox probe has run yet for this finding."
+                    )
                     set_disposition(
                         plan,
                         "UNRESOLVED_INCONCLUSIVE",
-                        reason="no resolved, guard-shaped call precedes this sink in the same function. "
-                               "No sandbox probe has run yet for this finding." + _taint_note(call.arg_taint),
+                        reason="no resolved, guard-shaped call precedes this sink in the same function."
+                               + probe_note + _taint_note(call.arg_taint),
                         residual_uncertainty="Medium: no in-function guard resolved, no dynamic check run.",
                     )
 
@@ -554,6 +591,7 @@ def find_finding_plans(
                     and sink_kind in ("PROCESS_EXEC", "FILE_IO", "DESERIALIZATION")
                     and call.target.qualified_name not in ("builtins.eval", "builtins.exec")
                     and caller
+                    and sink_symbol_counts.get(call.target.qualified_name, 1) == 1
                 ):
                     invocation = _probe_invocation_for(module.file_path, module.module_qualname, caller, graph)
                     if invocation:
@@ -594,6 +632,7 @@ def find_finding_plans(
                     and sink_kind in ("PROCESS_EXEC", "FILE_IO", "DESERIALIZATION")
                     and call.target.qualified_name != "fs.readFileSync"
                     and caller
+                    and sink_symbol_counts.get(call.target.qualified_name, 1) == 1
                 ):
                     fn_name = _js_top_level_function_name(module.module_qualname, caller)
                     if fn_name:
