@@ -253,6 +253,58 @@ process), which is a materially different and larger piece of work than
 this plan's scope, and is recorded there as a separate, larger decision for
 Ashura to make, not something closed by further patching.
 
+### sz-2026-10-21-16
+- **claim:** "The dynamic sink-reachability probe harness's own result
+  line (the trusted side of the nonce channel) cannot be forged by a
+  target module that reassigns `json.dumps` or `sys.stdout`/`print` at
+  import time."
+- **claimant:** Codex automated review (chatgpt-codex-connector[bot]) on
+  PR #2, commit `fec251c`, comment_id 4340475510, P1
+- **verifier:** Builder session (this conversation) — independently
+  reproduced by hand with a fixture (`/tmp/codex_verify/target/evil_dumps.py`:
+  a module that reassigns `json.dumps` at import time to rewrite any dict
+  containing a `nonce` key into a fake `sink_reached` payload, then defines
+  a harmless no-op function) BEFORE accepting the finding as real or
+  acting on it, per IVP's "never take a claim on its word" discipline —
+  not a fresh/non-forked Tier-1 session, so this is a Builder-side
+  reproduction, same tier as the Builder's own regression tests, not a
+  substitute for an independent Verifier pass.
+- **method:** Ran the fixture against the pre-fix harness: a function that
+  does nothing produced `{"status": "sink_reached", "symbol": "os.system",
+  ...}`. Fixed by capturing `json.dumps`/`os.write` as local variables in
+  `main()` before `_patch_sinks()` or the target import run, and writing
+  the final line directly to fd 1 via the captured `os.write`, bypassing
+  `print()`/`sys.stdout` entirely. Added
+  `tests/test_probe_verification_hardening.py::test_target_cannot_forge_output_by_hijacking_json_dumps_or_stdout`,
+  confirmed via `git stash` to fail against the pre-fix harness and pass
+  post-fix. Full suite re-run post-fix: 128 passed.
+- **verdict:** CONFIRMED (claim was FALSE pre-fix; fix closes this specific
+  vector) — still pending a fresh, non-forked Verifier pass before this is
+  asserted to the PR thread as closed, per IVP (a Builder's own test for a
+  bug the Builder found and fixed does not close an item on its own).
+- **date:** 2026-10-21
+
+### sz-2026-10-21-17 — decision record, not a claim check
+- **claim under review:** "`_io.FileIO`/`posix.open` module-level aliases
+  bypass the `io.FileIO`/`os.open` patches already in `_patch_sinks()`."
+- **claimant:** Codex automated review on PR #2, commit `fec251c`,
+  comment_id 4340475522, P1
+- **check performed:** Builder session independently reproduced this as
+  real by hand (a target importing `_io` directly and calling `_io.FileIO`
+  bypasses the `io.FileIO` name patched in the `io` module, since they are
+  the same underlying type reachable via two import paths).
+- **decision:** NOT implemented as a new patch. This is the same open-ended
+  primitive-hunting pattern already decided against in sz-2026-10-21-14 —
+  a third instance of "one more unpatched alias/primitive" in the exact
+  same category as `/proc/self/environ` via `os.open` and the `io.FileIO`
+  bypass of `os.open` itself. Folded into item 1's existing "claim
+  downgraded, not closed" status in `docs/REMEDIATION_PLAN.md` rather than
+  treated as a new item or patched piecemeal. Flagged to the user as a
+  judgment call rather than decided unilaterally to patch or to dismiss,
+  per the standing PR-steward policy on borderline/architecturally-
+  significant review findings.
+- **date:** 2026-10-21
+
 ### sz-2026-10-21-08 (believed true, not independently verified to CONFIRMED/REFUTED rigor)
 - **claims:**
   1. "A ledger over 5 MB crashes the scan with no partial output" —
