@@ -64,6 +64,7 @@ from sentinel_zero.callgraph import (
     transitively_guard_shaped,
 )
 from sentinel_zero.graph import ProjectGraph, Symbol
+from sentinel_zero.graph_export import export_graph
 from sentinel_zero.ledger_writer import safe_write_text
 from sentinel_zero.probes.process_exec_probe import run_process_exec_probe
 from sentinel_zero.resolvers.python_resolver import build_project_graph as build_python_project_graph
@@ -357,10 +358,19 @@ def run(
         },
     }
     safe_write_text(str(out_dir), "verification_ledger.json", json.dumps(ledger, indent=2), 5_000_000)
+
+    # Milestone 14: the full node/edge graph, not just the flat findings --
+    # a pure re-serialization of data already in `graph`/`ledger["plans"]`,
+    # so this can never disagree with the ledger for the same finding. See
+    # graph_export.py for why this exists (nothing a future 3D view or a
+    # Code Atlas adapter needs survives past this function otherwise).
+    graph_doc = export_graph(graph, ledger["plans"], repo_root.name)
+    safe_write_text(str(out_dir), "graph.json", json.dumps(graph_doc, indent=2), 20_000_000)
+
     print(
         f"{repo_root.name}: {len(graph.modules)} modules, {len(graph.functions)} functions indexed, "
         f"{unresolved_calls} unresolved call sites, {len(plans)} finding plans -> "
-        f"{out_dir / 'verification_ledger.json'}"
+        f"{out_dir / 'verification_ledger.json'} (graph: {out_dir / 'graph.json'})"
     )
     return 0
 

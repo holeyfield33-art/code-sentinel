@@ -153,7 +153,7 @@ def cmd_analyze(args: argparse.Namespace) -> int:
         safe_write_text(str(out_dir), "report.md", _render_markdown(ledger), 5_000_000)
         print(f"markdown report -> {out_dir / 'report.md'}")
     else:
-        print(f"ledger -> {out_dir / 'verification_ledger.json'}")
+        print(f"ledger -> {out_dir / 'verification_ledger.json'} (graph: {out_dir / 'graph.json'})")
 
     return 0
 

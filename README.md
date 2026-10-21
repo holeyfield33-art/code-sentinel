@@ -55,6 +55,7 @@ specific bugs found in the earlier pipeline:
 | `sentinel_zero/catalog_loader.py` | Loads and indexes the ASI catalog JSON export. |
 | `sentinel_zero/schema_check.py` | Validates a Finding Plan has every required field before it can be trusted downstream. |
 | `sentinel_zero/ledger_writer.py` | Path-confined, size-capped file writer (`resolve_inside` rejects any write that escapes the target root via `..` or a symlink) — what actually puts a ledger on disk. |
+| `sentinel_zero/graph_export.py` | Serializes the in-memory `ProjectGraph` as `graph.json` (nodes + edges), annotated with the finding plans that touch each one. Pure re-serialization of data the resolver already computed and the ledger already reports — never a second, independently computed view of a disposition. The prerequisite for any future 3D rendering or Code Atlas adapter work. |
 | `sentinel_zero/probes/` | Milestone 6's bounded dynamic reachability probe. Python-only, subprocess-isolated (`python -I`), PROCESS_EXEC-only, zero-argument-function-only, and can only ever promote to `VERIFIED_TRUE` — never demotes to `VERIFIED_FALSE`, since it never attempts adversarial inputs. |
 | `sentinel_zero/dogfood_scan.py` | The orchestrator. Wires a resolver + its sink table + the disposition engine + (for Python) the dynamic probe + the ledger writer together into one run. |
 | `sentinel_zero/cli.py` | The `sentinel-zero` command (installed via `pyproject.toml`'s `[project.scripts]`). A thin wrapper over `dogfood_scan.run()` — language auto-detection, the bundled-catalog fallback, and `--format md` rendering live here; no analysis logic. |
@@ -78,6 +79,7 @@ specific bugs found in the earlier pipeline:
 | 11 | Class method bodies walked for call-site recording — closed a gap where a sink call inside *any* Python method was entirely invisible, not even `UNRESOLVED_INCONCLUSIVE` | Python |
 | 12 | Closed the correctness gaps Milestone 11 deferred: Python `cls.foo()` dispatch resolves (not just `self`); JS/TS class method *and constructor* bodies are now walked for call-site recording the same way Python's are; TS parameter-property constructor sugar is detected directly from the constructor's param list; the guard-presence check now requires an actual `raise` for the cross-function delegation case (a bare `return` in a delegate doesn't protect the caller) | Python, JS, TS |
 | 13 | Packaging: `pip install`-able with a `sentinel-zero` console command and a `sentinel-zero-mcp` MCP server, a bundled ASI catalog snapshot so a fresh install needs no external file to get started, and explicit regression tests for the three invariants below | — |
+| 14 | `graph.json` export — the full node/edge ISBG, annotated with which finding touches which node/edge, written alongside every ledger. No rendering yet; this is the prerequisite data for that | — |
 
 Every milestone above was dogfooded against ≥2–3 real, unrelated
 repositories before being trusted, and every surprising result was
@@ -217,11 +219,11 @@ pytest tests/ -v
 python3 -m sentinel_zero.cli analyze /path/to/some/repo
 ```
 
-As of this checkpoint: **57 tests, all passing**, covering both
+As of this checkpoint: **63 tests, all passing**, covering both
 resolvers, the shared `callgraph.py` delegation walk, the dynamic probe,
 external-dependency mapping, wrapper-middleware detection, every
-documented gap above, the `cli.py`/`mcp_server.py` transports, and the
-three invariants end-to-end.
+documented gap above, the `cli.py`/`mcp_server.py` transports, the
+`graph.json` export, and the three invariants end-to-end.
 
 ### Output shape
 
@@ -238,4 +240,16 @@ exactly one of `VERIFIED_TRUE`, `VERIFIED_FALSE`, `UNRESOLVED_INCONCLUSIVE`,
 or `TOOL_FAILURE` — never anything else, and never silently absent for a
 finding that exists. `catalog` records exactly which ASI catalog this run
 checked attack-class IDs against: `path`, `is_bundled_snapshot`, and
+`metadata`.
+
+Every scan also writes `graph.json` next to the ledger: the full
+node/edge graph (every module and function as a node, every resolved or
+unresolved call as an edge), with each node/edge carrying the
+`finding_plan_ids` and `worst_disposition` of any finding that touches
+it. This is a lossless re-serialization of the ledger's own data, not a
+second analysis pass — every `plan_id` in the ledger appears on exactly
+one edge in `graph.json`, never zero and never more than one (see
+`tests/test_graph_export.py`). Nothing renders this yet; it exists so a future 3D view, or an adapter
+into another tool's own graph viewer, has real data to consume instead
+of re-deriving the graph from the flat findings alone.
 `metadata` (the catalog export's own `version`/`generatedAt`/`status`).
