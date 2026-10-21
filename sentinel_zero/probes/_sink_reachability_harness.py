@@ -53,6 +53,24 @@ two broad `except Exception` blocks below are not silent-failure shortcuts:
 they bound a call into untrusted, unknown target code whose failure modes
 cannot be enumerated in advance, and every one is reported with its real
 exception type and message, not absorbed.
+
+VERIFICATION_LEDGER.md sz-2026-10-21-02: every JSON line this harness emits
+now carries a `nonce` the parent (sink_reachability_probe.py) generated
+per-call and the parent checks on the way back. The nonce arrives via the
+SENTINEL_ZERO_PROBE_NONCE environment variable and is popped out of
+os.environ as the very first action in main() -- before _patch_sinks(),
+before the target module is imported -- specifically so the target's own
+code never finds it by reading os.environ normally. This closes the
+realistic forgery case (target code prints a plausible-looking result line
+and exits early) and the "reads the nonce out of its own environment" case.
+It is not a claim that this defeats a target sophisticated enough to walk
+the call stack with sys._getframe() and read this function's own local
+`nonce` variable directly -- that remains possible in principle, because
+the target executes in the same interpreter/process as this harness (there
+is no OS-level process boundary between them), and is a genuinely different
+and harder problem than the one this fixes. See docs/REMEDIATION_PLAN.md
+item 1 and docs/IVP.md for why this bound is stated rather than left
+implicit.
 """
 import importlib
 import json
@@ -102,8 +120,35 @@ def _patch_sinks() -> None:
     code was written -- a fresh module imports fine with builtins.open
     replaced). json.load/loads and pickle.load/loads are ordinary module
     attributes with no bootstrap role and are safe for the same reason.
+
+    VERIFICATION_LEDGER.md sz-2026-10-21-09/10: an independent Verifier
+    broke the nonce-secrecy fix (sz-2026-10-21-02) and the scratch-dir
+    write confinement (sz-2026-10-21-03) via the SAME unpatched gap --
+    os.open/os.read let a target read /proc/self/environ directly (the
+    kernel's frozen execve()-time snapshot, which os.environ.pop() never
+    touches -- it only scrubs Python's own process-local copy), and
+    os.open/os.write with an absolute path let it write anywhere, bypassing
+    the pinned cwd entirely (cwd only ever governed *relative*-path writes).
+    os.open is also confirmed safe to patch the same way builtins.open is:
+    verified directly (see tests/test_probe_verification_hardening.py) that
+    patching it before import does not break importlib.import_module on
+    ordinary stdlib/project modules -- CPython's own import machinery does
+    not route through the Python-level os.open symbol either.
+
+    Stated honestly, not left implicit: patching os.open closes the two
+    concrete breaks above. It does not, and cannot, close every conceivable
+    native-level escape -- target code using ctypes/cffi to call the C
+    library's open()/read()/write() directly bypasses any Python-level
+    monkeypatch entirely, since there is no real OS-level sandbox boundary
+    between this harness and the code it imports (same process, same
+    privileges). That is a structurally different and harder problem --
+    real isolation needs an OS-level mechanism (a container, seccomp, a
+    genuinely separate restricted process), not more patching here. See
+    docs/REMEDIATION_PLAN.md for this noted as an accepted, disclosed
+    residual bound rather than something this pass claims to have closed.
     """
     import builtins
+    import io
     import json as json_module
     import pickle
 
@@ -115,6 +160,22 @@ def _patch_sinks() -> None:
     subprocess.Popen = _recorder("subprocess.Popen")
 
     builtins.open = _recorder("builtins.open")
+    os.open = _recorder("os.open")
+
+    # VERIFICATION_LEDGER.md sz-2026-10-21-12/13: a SECOND independent
+    # Verifier round broke the os.open patch above the same way -- not by
+    # finding a new environment-leak vector, but by finding yet another
+    # unpatched file-opening primitive: io.FileIO (a C-implemented class
+    # that issues its own open() syscall directly, never routing through
+    # the Python-level os.open or builtins.open symbols this harness had
+    # already patched) and io.open (a separate module attribute from
+    # builtins.open -- rebinding builtins.open does NOT rebind io.open,
+    # confirmed directly: they are the same underlying function object at
+    # interpreter startup but are two independent, independently-patchable
+    # names). Both are patched here too, confirmed safe the same way
+    # (see tests/test_probe_verification_hardening.py).
+    io.FileIO = _recorder("io.FileIO")
+    io.open = _recorder("io.open")
 
     json_module.load = _recorder("json.load")
     json_module.loads = _recorder("json.loads")
@@ -136,6 +197,15 @@ def _patch_sinks() -> None:
 
 
 def main() -> None:
+    # Popped before anything else -- including before the argv shape is even
+    # validated -- so this value is never in os.environ by the time any
+    # target code could possibly run. See module docstring for the full
+    # threat-model statement (sz-2026-10-21-02).
+    nonce = os.environ.pop("SENTINEL_ZERO_PROBE_NONCE", "")
+
+    def emit(payload: dict) -> None:
+        print(json.dumps({**payload, "nonce": nonce}))
+
     # Milestone 17: an optional 5th argv, ARGS_REPR, is the repr() of a
     # tuple of real Python values harvested from a genuine call site
     # elsewhere in the project that calls this exact function with
@@ -147,10 +217,10 @@ def main() -> None:
     # re-embedded as code, never eval()'d. If absent, the call is made
     # with zero arguments, same as Milestone 6's original behavior.
     if len(sys.argv) not in (4, 5):
-        print(json.dumps({
+        emit({
             "status": "call_failed",
             "detail": "usage: _sink_reachability_harness.py REPO_ROOT MODULE_QUALNAME FUNCTION_NAME [ARGS_REPR]",
-        }))
+        })
         return
     repo_root, module_qualname, function_name = sys.argv[1], sys.argv[2], sys.argv[3]
 
@@ -167,10 +237,10 @@ def main() -> None:
             # reported rather than silently falling back to a zero-arg
             # call (that would claim a DIFFERENT, unintended invocation
             # happened).
-            print(json.dumps({
+            emit({
                 "status": "call_failed",
                 "detail": f"could not parse harvested arguments: {type(exc).__name__}: {exc}",
-            }))
+            })
             return
 
     sys.path.insert(0, repo_root)
@@ -182,42 +252,42 @@ def main() -> None:
     except Exception as exc:  # the target module's own import-time behavior
         # is unknown and untrusted -- any failure here is a reported
         # outcome of probing it, not a defect in this harness.
-        print(json.dumps({
+        emit({
             "status": "call_failed",
             "detail": f"import failed: {type(exc).__name__}: {exc}",
-        }))
+        })
         return
 
     fn = getattr(module, function_name, None)
     if fn is None or not callable(fn):
-        print(json.dumps({
+        emit({
             "status": "call_failed",
             "detail": f"{function_name!r} not found or not callable on {module_qualname!r}",
-        }))
+        })
         return
 
     try:
         fn(*call_args)
     except _SinkReached as reached:
-        print(json.dumps({
+        emit({
             "status": "sink_reached",
             "symbol": reached.symbol,
             "args": reached.args_repr,
-        }))
+        })
         return
     except Exception as exc:  # same reasoning as the import try/except above:
         # the target function's own behavior under a zero-argument call is
         # unknown; reported explicitly, never absorbed.
-        print(json.dumps({
+        emit({
             "status": "call_failed",
             "detail": f"call raised: {type(exc).__name__}: {exc}",
-        }))
+        })
         return
 
-    print(json.dumps({
+    emit({
         "status": "not_reached",
         "detail": "function returned without reaching a patched sink",
-    }))
+    })
 
 
 if __name__ == "__main__":
