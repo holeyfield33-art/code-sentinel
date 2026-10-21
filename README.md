@@ -80,7 +80,7 @@ specific bugs found in the earlier pipeline:
 | 12 | Closed the correctness gaps Milestone 11 deferred: Python `cls.foo()` dispatch resolves (not just `self`); JS/TS class method *and constructor* bodies are now walked for call-site recording the same way Python's are; TS parameter-property constructor sugar is detected directly from the constructor's param list; the guard-presence check now requires an actual `raise` for the cross-function delegation case (a bare `return` in a delegate doesn't protect the caller) | Python, JS, TS |
 | 13 | Packaging: `pip install`-able with a `sentinel-zero` console command and a `sentinel-zero-mcp` MCP server, a bundled ASI catalog snapshot so a fresh install needs no external file to get started, and explicit regression tests for the three invariants below | — |
 | 14 | `graph.json` export — the full node/edge ISBG, annotated with which finding touches which node/edge, written alongside every ledger. No rendering yet; this is the prerequisite data for that | — |
-| 15 | Bounded sink-argument taint classification: each sink call's positional arguments are classified as `literal` / `parameter` / `unknown` from the real AST node — same-function evidence only, never interprocedural taint tracking (see `graph.py`'s `CallSite.arg_taint` docstring). Narrows which `UNRESOLVED_INCONCLUSIVE` findings are worth a human's time first; never changes a disposition status | Python, JS, TS |
+| 15 | Bounded sink-argument taint classification (each sink call's positional arguments classified `literal`/`parameter`/`unknown` from the real AST node, same-function evidence only, never changes a disposition status — see `graph.py`'s `CallSite.arg_taint` docstring); widened sink tables (`pickle.load`/`loads`, `yaml.load`, `builtins.eval`/`exec` for Python, Node's `vm` module for JS); and a correctness fix found while widening — a bare `open(...)`/`eval(...)`/`exec(...)` call was resolving to the bare name, never `"builtins.X"`, so `"builtins.open"` had been dead data in the sink table since it was added. Fixing it surfaced 154 previously-invisible `builtins.open` call sites in Block-Wise alone (126 → 285 finding plans on a re-scan) | Python, JS, TS |
 
 Every milestone above was dogfooded against ≥2–3 real, unrelated
 repositories before being trusted, and every surprising result was
@@ -220,7 +220,7 @@ pytest tests/ -v
 python3 -m sentinel_zero.cli analyze /path/to/some/repo
 ```
 
-As of this checkpoint: **82 tests, all passing**, covering both
+As of this checkpoint: **90 tests, all passing**, covering both
 resolvers, the shared `callgraph.py` delegation walk, the dynamic probe,
 external-dependency mapping, wrapper-middleware detection, every
 documented gap above, the `cli.py`/`mcp_server.py` transports, the

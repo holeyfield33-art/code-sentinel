@@ -76,8 +76,13 @@ _STDLIB_MODULE_NAMES.add("builtins")
 
 STDLIB_SINKS = {
     "builtins.open",
+    "builtins.eval",
+    "builtins.exec",
     "json.load",
     "json.loads",
+    "pickle.load",
+    "pickle.loads",
+    "yaml.load",
     "os.system",
     "subprocess.run",
     "subprocess.call",
@@ -85,6 +90,21 @@ STDLIB_SINKS = {
     "subprocess.check_output",
     "subprocess.Popen",
 }
+
+# Milestone 15: the bare names of Python builtins this tool treats as
+# sinks. A bare call to one of these (`open(...)`, `eval(...)`, `exec(...)`)
+# has NO import statement to bind it -- it is simply a global name that was
+# never rebound in this module -- so `_resolve_dotted`'s unbound-Name
+# fallback (see its own docstring) correctly returns the bare string
+# "open", never "builtins.open". Before this set existed, that meant
+# "builtins.open" in STDLIB_SINKS was dead data: nothing a bare `open(...)`
+# call ever produced could match it, and there was no test that caught
+# this (confirmed by grepping tests/ for "builtins.open" -- zero hits).
+# record_calls_in_expr below checks this set, for exactly the bare-Name
+# case where _resolve_dotted's fallback fired (the name is not in this
+# function's own binding map), to re-resolve to the builtin's real
+# qualified identity before falling through to the plain bare-name Symbol.
+_BUILTIN_SINK_NAMES = {"open", "eval", "exec"}
 
 SKIP_DIR_NAMES = {".venv", ".git", "__pycache__", "mutants", "node_modules"}
 
@@ -445,6 +465,17 @@ def _resolve_module(
                         if cand in project_functions or cand in STDLIB_SINKS:
                             target = Symbol(cand)
                             break
+                    if (
+                        target is None
+                        and isinstance(node.func, ast.Name)
+                        and node.func.id not in local_bindings
+                        and node.func.id in _BUILTIN_SINK_NAMES
+                    ):
+                        # See _BUILTIN_SINK_NAMES's docstring: a bare, never-
+                        # rebound reference to a sink builtin (open/eval/exec)
+                        # must resolve to its real "builtins.X" identity, or
+                        # it can never match STDLIB_SINKS at all.
+                        target = Symbol(f"builtins.{node.func.id}")
                     if target is None:
                         target = Symbol(dotted)
                 if target is None:

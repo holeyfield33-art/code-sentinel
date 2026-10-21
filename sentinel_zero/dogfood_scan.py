@@ -81,20 +81,39 @@ _SINK_KIND_BY_NAME = {
     "builtins.open": "FILE_IO",
     "json.load": "DESERIALIZATION",
     "json.loads": "DESERIALIZATION",
+    # Milestone 15: widened past the Milestone 2 starting set. pickle's
+    # load/loads can execute arbitrary code during unpickling (the classic
+    # __reduce__ gadget), and PyYAML's yaml.load (without a Safe/FullLoader)
+    # can do the same via its default Loader -- both are DESERIALIZATION,
+    # same category as json.load, not a new SinkKind. Still not claimed
+    # exhaustive -- this is a wider starting set, not a closed list.
+    "pickle.load": "DESERIALIZATION",
+    "pickle.loads": "DESERIALIZATION",
+    "yaml.load": "DESERIALIZATION",
     "os.system": "PROCESS_EXEC",
     "subprocess.run": "PROCESS_EXEC",
     "subprocess.call": "PROCESS_EXEC",
     "subprocess.check_call": "PROCESS_EXEC",
     "subprocess.check_output": "PROCESS_EXEC",
     "subprocess.Popen": "PROCESS_EXEC",
+    # Milestone 15: builtins.eval/exec now actually reachable -- see
+    # python_resolver.py's _BUILTIN_SINK_NAMES, which fixes the bare-name
+    # resolution gap that made "builtins.open" dead data in this table
+    # since the day it was added (a bare `open(...)` call resolved to the
+    # Symbol "open", which can never match a key in this dict spelled
+    # "builtins.open" -- confirmed by grepping tests/ for "builtins.open"
+    # before this milestone: zero hits, nothing ever exercised this path).
+    "builtins.eval": "PROCESS_EXEC",
+    "builtins.exec": "PROCESS_EXEC",
 }
 
 # Milestone 7: the JS/TS equivalent of _SINK_KIND_BY_NAME, keyed by the same
 # kind of resolved dotted identity js_resolver.py produces via require()/
 # import bindings. Node's child_process family + eval/Function cover
 # PROCESS_EXEC; fs's sync+callback read/write cover FILE_IO; JSON.parse
-# covers DESERIALIZATION. Not claimed exhaustive -- the Python table isn't
-# either (no yaml.load, pickle, etc.) -- this is Milestone 7's starting set.
+# covers DESERIALIZATION. Milestone 15 widened both this table (vm module)
+# and the Python one (pickle, yaml.load, builtins.eval/exec) -- still not
+# claimed exhaustive, this is a wider starting set, not a closed list.
 _JS_SINK_KIND_BY_NAME = {
     "child_process.exec": "PROCESS_EXEC",
     "child_process.execSync": "PROCESS_EXEC",
@@ -110,6 +129,15 @@ _JS_SINK_KIND_BY_NAME = {
     "fs.writeFile": "FILE_IO",
     "fs.writeFileSync": "FILE_IO",
     "JSON.parse": "DESERIALIZATION",
+    # Milestone 15: Node's vm module -- runs a string of code (or a
+    # precompiled vm.Script) in a new/existing V8 context. Functionally
+    # the same category as eval/Function above (PROCESS_EXEC), just a
+    # different, less-obvious API surface for the same capability. Still
+    # not claimed exhaustive.
+    "vm.runInThisContext": "PROCESS_EXEC",
+    "vm.runInNewContext": "PROCESS_EXEC",
+    "vm.runInContext": "PROCESS_EXEC",
+    "vm.Script": "PROCESS_EXEC",
 }
 
 _RESOLVERS = {
