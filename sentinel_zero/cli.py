@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -41,9 +42,22 @@ from sentinel_zero.repo_detect import detect_language, js_deps_installed
 
 def _install_js_deps() -> int:
     js_dir = Path(__file__).parent / "resolvers" / "js"
+    # shutil.which (not a bare "npm" argv[0]) is required here: on Windows,
+    # npm is actually npm.cmd, a shim script, not an .exe. subprocess.run
+    # without shell=True resolves argv[0] via CreateProcess directly and
+    # does not apply PATHEXT the way cmd.exe does, so ["npm", "install"]
+    # raises FileNotFoundError even when npm is genuinely installed and on
+    # PATH. shutil.which performs the correct PATHEXT-aware lookup on
+    # Windows (and is a harmless, equivalent which-based lookup on
+    # Linux/macOS), so this is the fix for all three platforms, not a
+    # Windows-only special case.
+    npm_path = shutil.which("npm")
+    if npm_path is None:
+        print("CRITICAL_TOOL_FAILURE: `npm` executable not found -- install Node.js/npm first.", file=sys.stderr)
+        return 3
     print(f"running `npm install` in {js_dir} ...")
     try:
-        completed = subprocess.run(["npm", "install"], cwd=str(js_dir))
+        completed = subprocess.run([npm_path, "install"], cwd=str(js_dir))
     except FileNotFoundError:
         print("CRITICAL_TOOL_FAILURE: `npm` executable not found -- install Node.js/npm first.", file=sys.stderr)
         return 3
