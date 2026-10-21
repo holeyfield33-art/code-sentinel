@@ -134,6 +134,8 @@ from sentinel_zero.disposition import (
     set_disposition,
 )
 from sentinel_zero.callgraph import (
+    build_direct_sink_call_counts,
+    transitive_sink_symbol_counts,
     build_direct_callee_index,
     build_direct_external_index,
     external_packages_reached,
@@ -439,6 +441,15 @@ def find_finding_plans(
     plans = []
     callee_index = build_direct_callee_index(graph)
     external_index = build_direct_external_index(graph)
+    # VERIFICATION_LEDGER.md sz-2026-10-21-04, -18: direct_sink_counts is the
+    # graph-wide "qualified function name -> {sink symbol: direct call-site
+    # count}" table; transitive_sink_symbol_counts (per caller, below) sums
+    # this across a caller and everything it delegates to, so a sink
+    # reached only inside a HELPER the caller calls counts toward the same
+    # ambiguity gate as a second direct call site in the caller itself --
+    # closing the delegated-call gap Codex's review found in item 3's
+    # original, same-function-only version of this count.
+    direct_sink_counts = build_direct_sink_call_counts(graph, sink_table)
     for module in graph.modules.values():
         calls_by_caller: dict[str, list] = {}
         for call in module.calls:
@@ -446,22 +457,35 @@ def find_finding_plans(
 
         for caller, calls in calls_by_caller.items():
             # Milestone (remediation item 3, VERIFICATION_LEDGER.md
-            # sz-2026-10-21-04): _promote_if_sink_reached can only compare
-            # the probe's reported symbol against call.target.qualified_name
-            # -- a match by resolved NAME, not by which specific call site
-            # actually fired. When a caller has more than one call site
-            # resolving to the same sink symbol (e.g. two os.system(...)
-            # calls, only one of them reachable), a single probe run cannot
-            # tell the caller which one it was, so promoting EITHER of them
-            # off that one result is an overclaim -- the probe genuinely
-            # cannot disambiguate here, so the honest fix is to not attempt
-            # promotion at all in this ambiguous case, not to guess. This is
-            # computed once per caller, not per call, since it only depends
-            # on this caller's own call list.
-            sink_symbol_counts: dict[str, int] = {}
-            for c in calls:
-                if isinstance(c.target, Symbol) and c.target.qualified_name in sink_table:
-                    sink_symbol_counts[c.target.qualified_name] = sink_symbol_counts.get(c.target.qualified_name, 0) + 1
+            # sz-2026-10-21-04, widened at -18): _promote_if_sink_reached
+            # can only compare the probe's reported symbol against
+            # call.target.qualified_name -- a match by resolved NAME, not
+            # by which specific call site actually fired. When a caller has
+            # more than one possible SOURCE of that symbol during the probe
+            # run -- whether that's a second direct call site in the same
+            # function, or a call site reached only through a helper this
+            # caller delegates to -- a single probe run cannot tell which
+            # one it was, so promoting any of them off that one result is
+            # an overclaim. sink_symbol_counts here is therefore the
+            # TRANSITIVE count (caller plus everything it calls, directly
+            # or through further delegation), not just this caller's own
+            # direct call sites -- computed once per caller, not per call,
+            # since it only depends on the caller's identity and the
+            # project-wide call graph, never on which specific call is
+            # being decided.
+            if caller:
+                sink_symbol_counts = transitive_sink_symbol_counts(caller, callee_index, direct_sink_counts)
+            else:
+                # Module-level (top-of-file) sink calls have no function
+                # identity to walk a call graph from, so there's no
+                # delegation to account for -- fall back to the original,
+                # same-scope-only count (this scope's own direct calls,
+                # which build_direct_sink_call_counts excludes since it
+                # requires a real caller name).
+                sink_symbol_counts = {}
+                for c in calls:
+                    if isinstance(c.target, Symbol) and c.target.qualified_name in sink_table:
+                        sink_symbol_counts[c.target.qualified_name] = sink_symbol_counts.get(c.target.qualified_name, 0) + 1
 
             for call in calls:
                 if not isinstance(call.target, Symbol) or call.target.qualified_name not in sink_table:

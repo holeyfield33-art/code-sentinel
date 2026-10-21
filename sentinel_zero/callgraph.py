@@ -153,3 +153,67 @@ def transitively_guard_shaped(
         transitively_guard_shaped(callee, graph, callee_index, next_visited, _depth + 1)
         for callee in callee_index.get(name, ())
     )
+
+
+def build_direct_sink_call_counts(graph: ProjectGraph, sink_table: dict[str, str]) -> dict[str, dict[str, int]]:
+    """qualified function name -> {sink_symbol: direct call-site count},
+    counting only calls made directly in that function's own body (not
+    through another project function) that resolve to a symbol present in
+    `sink_table`. The dual of build_direct_external_index above, scoped to
+    sink symbols instead of external packages."""
+    counts: dict[str, dict[str, int]] = {}
+    for call in graph.all_calls():
+        if not call.caller or not isinstance(call.target, Symbol):
+            continue
+        symbol = call.target.qualified_name
+        if symbol not in sink_table:
+            continue
+        per_fn = counts.setdefault(call.caller, {})
+        per_fn[symbol] = per_fn.get(symbol, 0) + 1
+    return counts
+
+
+def transitive_sink_symbol_counts(
+    name: str,
+    callee_index: dict[str, set[str]],
+    direct_sink_counts: dict[str, dict[str, int]],
+    _visited: frozenset[str] = frozenset(),
+    _depth: int = 0,
+) -> dict[str, int]:
+    """VERIFICATION_LEDGER.md sz-2026-10-21-18 (Codex review on PR #3,
+    comment_id 4340617860 -- confirmed real by direct reproduction before
+    this fix was written): docs/REMEDIATION_PLAN.md item 3's original fix
+    only counted a sink symbol's call sites WITHIN the one function being
+    probed. It missed that the probe calls `name` and lets it run
+    completely normally -- including whatever `name` itself calls -- so a
+    sink reached inside a helper `name` delegates to is just as real a
+    source of the probe's reported symbol as a second direct call site in
+    `name` itself. Concretely: `run_it()` calling `helper()` (which has
+    its own, genuinely-reachable `os.system` call), with a SECOND,
+    actually-dead `os.system` call sitting after a `return` in `run_it`
+    itself -- probing `run_it()` observes `os.system` fire (via helper)
+    and the item-3-only fix had no way to know that evidence belongs to
+    helper's call site, not run_it's own dead one, because it only ever
+    counted call sites inside run_it's own body. This function closes that
+    by summing direct sink-symbol counts across `name` and everything
+    transitively reachable from it through the project's own call graph,
+    so the same caller/gate code in dogfood_scan.py sees the TRUE number
+    of places the probe's reported symbol could have come from, not just
+    the count local to one function.
+
+    Same bound and cycle-safety as transitively_guard_shaped and
+    external_packages_reached above, and for the same reason: this is not
+    a precise reachability proof (branch-blind, like build_direct_callee_index
+    itself), only an answer to "how many distinct sources could the
+    probe's report have come from" -- which is exactly what the gate it
+    feeds needs, and no more."""
+    if _depth >= MAX_DEPTH or name in _visited:
+        return {}
+    merged: dict[str, int] = dict(direct_sink_counts.get(name, {}))
+    next_visited = _visited | {name}
+    for callee in callee_index.get(name, ()):
+        for symbol, count in transitive_sink_symbol_counts(
+            callee, callee_index, direct_sink_counts, next_visited, _depth + 1
+        ).items():
+            merged[symbol] = merged.get(symbol, 0) + count
+    return merged

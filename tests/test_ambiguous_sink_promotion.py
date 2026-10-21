@@ -72,6 +72,41 @@ def test_single_call_site_to_a_sink_is_still_probed_and_promoted_normally():
         assert plans[0]["disposition"]["status"] == "VERIFIED_TRUE"
 
 
+def test_unreachable_direct_call_is_not_promoted_off_a_helpers_delegated_reach():
+    """VERIFICATION_LEDGER.md sz-2026-10-21-18 (Codex review on PR #3,
+    comment_id 4340617860, P1): the original fix above only counted call
+    sites WITHIN the same function. It missed that probing run_it() lets
+    it run completely normally, including its call to helper() -- so
+    helper's own, genuinely-reachable os.system call is just as real a
+    source of the probe's "sink_reached: os.system" report as a second
+    direct call site in run_it itself. Before this fix, run_it's own dead
+    os.system call (after an unconditional return) was wrongly promoted
+    to VERIFIED_TRUE off helper's reachable call -- the exact same
+    disambiguation failure item 3 already named, just one hop further
+    out through delegation. helper's own call site must still promote
+    normally (it's genuinely the only possible source for ITS OWN probe
+    run); only run_it's dead direct call site must stay ambiguous."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "delegated.py").write_text(
+            "import os\n"
+            "def helper():\n"
+            "    os.system('echo reached-via-helper')\n"
+            "def run_it():\n"
+            "    helper()\n"
+            "    return\n"
+            "    os.system('echo this-direct-call-site-is-dead')\n"
+        )
+        plans = _run(root)
+        by_line = {p["hypothesis"]["source_node"].split(":")[-1]: p["disposition"]["status"] for p in plans}
+        assert by_line["3"] == "VERIFIED_TRUE", "helper's own, genuinely-reachable call site must still promote"
+        assert by_line["7"] == "UNRESOLVED_INCONCLUSIVE", (
+            "run_it's dead direct call site must NOT be promoted off helper's delegated evidence"
+        )
+        dead_call_plan = next(p for p in plans if p["hypothesis"]["source_node"].endswith(":7"))
+        assert "separate call sites" in dead_call_plan["disposition"]["reason"]
+
+
 def test_two_different_sinks_in_one_caller_are_still_probed_independently():
     """A different-symbol pair (not the same sink twice) is not ambiguous
     at all and must be unaffected -- this is the ORIGINAL Milestone 16

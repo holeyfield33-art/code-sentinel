@@ -297,6 +297,47 @@ Ashura to make, not something closed by further patching.
   `tests/test_ambiguous_sink_promotion.py`
 - **date:** 2026-10-21
 
+### sz-2026-10-21-18
+- **claim:** "`find_finding_plans`'s ambiguity gate (sz-2026-10-21-04/-15)
+  catches every case where a probe run cannot disambiguate which call
+  site produced the observed sink symbol, including when the symbol is
+  reached only through a helper the probed caller delegates to."
+- **claimant:** Codex automated review (chatgpt-codex-connector[bot]) on
+  PR #3, commit `dfb86a1`, comment_id 4340617860, P1
+- **verifier:** Builder session (this conversation) — independently
+  reproduced by hand before accepting the finding (fixture:
+  `helper()` with its own, genuinely-reachable `os.system` call;
+  `run_it()` that calls `helper()` then `return`s, followed by dead-code
+  `os.system` of its own). Confirmed pre-fix: probing `run_it()` observes
+  `os.system` fire (via `helper`) and the then-current gate — which only
+  counted call sites directly inside `run_it`'s own body — saw a count of
+  1 for `run_it`, so `run_it`'s dead call site was wrongly promoted to
+  VERIFIED_TRUE off `helper`'s delegated evidence. Not a fresh/non-forked
+  Tier-1 session, so same tier as the Builder's own regression tests, not
+  a substitute for an independent Verifier pass.
+- **method:** Added `build_direct_sink_call_counts`/
+  `transitive_sink_symbol_counts` to `callgraph.py` (same depth-bounded,
+  cycle-safe pattern as the existing `transitively_guard_shaped`/
+  `external_packages_reached`), summing direct sink-symbol call counts
+  across a caller and everything transitively reachable from it through
+  the project's own call graph, not just that caller's own body.
+  `find_finding_plans` now uses this transitive count for its ambiguity
+  gate at both probe-attempt sites and the disposition-reason text,
+  replacing the same-function-only count from sz-2026-10-21-04/-15 (which
+  is still correct, just too narrow — the transitive count subsumes it:
+  a function with no callees gets the identical count as before).
+  Module-level (no enclosing function) sink calls keep the original
+  same-scope-only count, since there's no function identity to walk a
+  call graph from. Added
+  `test_unreachable_direct_call_is_not_promoted_off_a_helpers_delegated_reach`,
+  confirmed via `git stash` to fail against the pre-fix code and pass
+  after. Full suite re-run post-fix: 131 passed.
+- **verdict:** CONFIRMED (claim was FALSE pre-fix; fix closes this
+  specific delegated-call vector) — still pending a fresh, non-forked
+  Verifier pass before this fix is itself asserted closed, same as every
+  prior round.
+- **date:** 2026-10-21
+
 ### sz-2026-10-21-08 (believed true, not independently verified to CONFIRMED/REFUTED rigor)
 - **claims:**
   1. "A ledger over 5 MB crashes the scan with no partial output" —

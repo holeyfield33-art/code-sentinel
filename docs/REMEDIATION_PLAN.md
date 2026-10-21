@@ -127,19 +127,33 @@ away.
 
 ---
 
-## 3. Wrong-call promotion (same-sink, different call site) — STATUS: CLOSED
-**Ledger:** sz-2026-10-21-04, -15
+## 3. Wrong-call promotion (same-sink, different call site) — STATUS: fixed again, pending fresh Verifier pass
+**Ledger:** sz-2026-10-21-04, -15, -18
 
-**Closed:** a fresh, non-forked Tier-1 Verifier session tried six distinct
-adversarial attacks against the fix (cross-function leakage, an N=3
-off-by-one case, the harvested-literal-argument path, the pre-existing
-Milestone 16 different-sink-symbols case, the JS/TS path, and a
-loop-body call site) and found no break in any of them — REFUTED the
-claim that the fix is broken. See sz-2026-10-21-15 for the full method
-and a note on the Verifier's own self-caught methodology issue
-(concurrent Builder work briefly left a stale checkout in its path; it
-caught this and re-verified against an isolated snapshot of the real
-fix commit instead).
+**Reopened after being marked closed:** a fresh, non-forked Tier-1
+Verifier session tried six distinct adversarial attacks against the
+first fix (cross-function leakage, an N=3 off-by-one case, the
+harvested-literal-argument path, the pre-existing Milestone 16
+different-sink-symbols case, the JS/TS path, and a loop-body call site)
+and found no break in any of them — REFUTED the claim that fix was
+broken (sz-2026-10-21-15). Then Codex's automated review on PR #3 found
+a real gap that verifier round never tested: the first fix's ambiguity
+count only looked at call sites WITHIN the same function being probed.
+A caller that reaches the same sink symbol only through a HELPER it
+calls — not a second direct call site of its own — was still vulnerable
+to the same overclaim, one hop further out through delegation.
+Independently reproduced by hand before acting (sz-2026-10-21-18): a
+helper with its own genuinely-reachable `os.system` call, called from a
+`run_it()` that also has a second, dead `os.system` call of its own
+after an unconditional `return` — `run_it`'s dead call was wrongly
+promoted to VERIFIED_TRUE off helper's delegated evidence. Fixed by
+widening the ambiguity count to sum sink-symbol call sites transitively
+across everything a caller delegates to, not just its own body (see
+`callgraph.py`'s new `build_direct_sink_call_counts`/
+`transitive_sink_symbol_counts`, same depth-bounded, cycle-safe pattern
+already used for guard-delegation and external-dependency checks).
+Pending a fresh Verifier pass on this widened fix before this item is
+marked closed again.
 
 **Fix direction:** `_promote_if_sink_reached` needs to compare against the
 specific `call` object's identity (its `lineno`/`order` within the caller),
