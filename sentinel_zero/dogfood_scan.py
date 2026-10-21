@@ -151,6 +151,28 @@ def _zero_arg_top_level_function(file_path: str, module_qualname: str, caller_qu
     return None
 
 
+def _taint_note(arg_taint: tuple) -> str:
+    """One sentence summarizing a sink call's per-argument taint
+    classification (see graph.py's CallSite.arg_taint), appended to a
+    plan's reason text so the triage signal is visible without having to
+    dig into hypothesis.argument_taint. Never changes what the sentence
+    before it claims -- purely additional evidence."""
+    if not arg_taint:
+        return " This sink call takes no positional arguments."
+    if "parameter" in arg_taint:
+        return (
+            " At least one argument to this sink traces to this function's own parameter "
+            "-- worth checking whether that parameter can be influenced by whatever calls this function "
+            "(this is a same-function trace, not interprocedural taint tracking -- see CallSite.arg_taint)."
+        )
+    if "unknown" in arg_taint:
+        return (
+            " At least one argument to this sink could not be classified as either a literal constant or "
+            "parameter-derived (e.g. it's the result of another call) -- taint is simply unknown here, not ruled out."
+        )
+    return " Every argument to this sink is a literal constant in this call -- lower priority to review by hand."
+
+
 def find_finding_plans(
     graph: ProjectGraph,
     repo_name: str,
@@ -202,6 +224,13 @@ def find_finding_plans(
                         "symbol_binding": caller or "<module scope>",
                         "description": f"resolved call to {call.target.qualified_name} ({sink_kind}).",
                         "external_dependencies_reached": reached_packages,
+                        # Milestone 15: per-argument taint classification (see
+                        # graph.py's CallSite.arg_taint for the full contract
+                        # and stated bound). Pure additive evidence -- it
+                        # narrows which UNRESOLVED_INCONCLUSIVE findings are
+                        # worth a human's time first, it never changes a
+                        # disposition status on its own.
+                        "argument_taint": list(call.arg_taint),
                     },
                     verification_method={
                         "checker_type": f"isbg_{language}_resolver_v0",
@@ -226,7 +255,7 @@ def find_finding_plans(
                                "stop this function's next statement. Same-function call order is still only an "
                                "approximation of control dependency, not full CFG dominance, and this resolver "
                                "still does not know whether the condition that triggers the raise corresponds to "
-                               "attacker-controlled input -- never promoted to VERIFIED_FALSE.",
+                               "attacker-controlled input -- never promoted to VERIFIED_FALSE." + _taint_note(call.arg_taint),
                         residual_uncertainty="Medium: a raise-shaped guard call precedes the sink, but neither "
                         "full CFG dominance nor the triggering condition's relationship to attacker input is "
                         "verified.",
@@ -236,7 +265,7 @@ def find_finding_plans(
                         plan,
                         "UNRESOLVED_INCONCLUSIVE",
                         reason="no resolved, guard-shaped call precedes this sink in the same function. "
-                               "No sandbox probe has run yet for this finding.",
+                               "No sandbox probe has run yet for this finding." + _taint_note(call.arg_taint),
                         residual_uncertainty="Medium: no in-function guard resolved, no dynamic check run.",
                     )
 

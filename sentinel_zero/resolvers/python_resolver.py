@@ -327,6 +327,68 @@ def _alias_rhs_is_trustworthy(
     return resolved_rhs in project_functions or f"{module_qualname}.{resolved_rhs}" in project_functions
 
 
+def _param_names(fn_node: ast.FunctionDef | ast.AsyncFunctionDef | None) -> frozenset[str]:
+    if fn_node is None:
+        return frozenset()
+    args = fn_node.args
+    names = {a.arg for a in args.posonlyargs + args.args + args.kwonlyargs}
+    if args.vararg:
+        names.add(args.vararg.arg)
+    if args.kwarg:
+        names.add(args.kwarg.arg)
+    return frozenset(names)
+
+
+def _combine_taint(classifications: list[str]) -> str:
+    """parameter beats unknown beats literal: if any piece of a composite
+    expression (an f-string, a list literal, a `+` concatenation) traces to
+    a parameter, the whole thing does; otherwise if any piece can't be
+    classified, the whole thing can't either -- only an expression built
+    ENTIRELY from literals is reported as a literal."""
+    if not classifications:
+        return "literal"  # an empty list/tuple literal has nothing to taint
+    if "parameter" in classifications:
+        return "parameter"
+    if "unknown" in classifications:
+        return "unknown"
+    return "literal"
+
+
+def _classify_arg_taint(node: ast.expr, param_names: frozenset[str]) -> str:
+    """Classifies one call argument expression by real AST structure --
+    never by re-parsing source text. See graph.py's CallSite.arg_taint for
+    the full contract and its stated bound (this is not interprocedural
+    taint tracking)."""
+    if isinstance(node, ast.Constant):
+        return "literal"
+    if isinstance(node, ast.JoinedStr):  # f-string
+        return _combine_taint([_classify_arg_taint(v, param_names) for v in node.values])
+    if isinstance(node, ast.FormattedValue):
+        return _classify_arg_taint(node.value, param_names)
+    if isinstance(node, (ast.List, ast.Tuple, ast.Set)):
+        return _combine_taint([_classify_arg_taint(e, param_names) for e in node.elts])
+    if isinstance(node, ast.Dict):
+        parts = [v for v in node.values if v is not None] + [k for k in node.keys if k is not None]
+        return _combine_taint([_classify_arg_taint(p, param_names) for p in parts])
+    if isinstance(node, ast.BinOp):  # e.g. string concatenation with `+`
+        return _combine_taint([
+            _classify_arg_taint(node.left, param_names),
+            _classify_arg_taint(node.right, param_names),
+        ])
+    if isinstance(node, ast.UnaryOp):
+        return _classify_arg_taint(node.operand, param_names)
+    if isinstance(node, ast.Name):
+        return "parameter" if node.id in param_names else "unknown"
+    if isinstance(node, (ast.Attribute, ast.Subscript)):
+        base = node.value
+        while isinstance(base, (ast.Attribute, ast.Subscript)):
+            base = base.value
+        if isinstance(base, ast.Name):
+            return "parameter" if base.id in param_names else "unknown"
+        return "unknown"
+    return "unknown"  # a call result, comprehension, lambda, walrus, ... -- not modeled
+
+
 def mutually_exclusive(path_a: tuple, path_b: tuple) -> bool:
     """True if the two branch_paths provably cannot both execute in the
     same call -- they share an enclosing If/Try but took different arms
@@ -359,6 +421,7 @@ def _resolve_module(
             local_bindings.update(extra_bindings)
         order_counter = [0]
         body = fn_node.body if fn_node else tree.body
+        param_names = _param_names(fn_node)
 
         def record_calls_in_expr(expr: ast.AST, branch_path: tuple) -> None:
             """Find every ast.Call nested in this expression (but not inside
@@ -410,6 +473,7 @@ def _resolve_module(
                     arg_texts = tuple(ast.unparse(a) for a in node.args)
                 except Exception:
                     arg_texts = ()
+                arg_taint = tuple(_classify_arg_taint(a, param_names) for a in node.args)
                 order_counter[0] += 1
                 calls.append(
                     CallSite(
@@ -418,6 +482,7 @@ def _resolve_module(
                         lineno=node.lineno,
                         order=order_counter[0],
                         args=arg_texts,
+                        arg_taint=arg_taint,
                         branch_path=branch_path,
                     )
                 )

@@ -73,6 +73,23 @@ class CallSite:
     args: tuple = ()  # best-effort source text of each positional argument, for
     # the wrapper-construction detector below -- not used for further
     # resolution, only for reporting *what* was passed where.
+    arg_taint: tuple = ()  # Milestone 15: one classification per positional
+    # argument -- "literal" (a constant, or built entirely from constants),
+    # "parameter" (derives from the enclosing function's own parameter,
+    # directly or through a simple attribute/subscript/concatenation chain),
+    # or "unknown" (anything else -- a global, another call's result, a
+    # comprehension). Computed from the real AST node at the call site,
+    # never from re-parsing `args`' source text -- this graph's one rule is
+    # that identity/classification comes from resolved structure, not
+    # strings. Bounded on purpose: this is NOT interprocedural taint
+    # tracking. "parameter" only says the sink's argument traces to a
+    # parameter of the function it's called FROM -- whether that parameter
+    # is itself reachable from real attacker-controlled input (an HTTP
+    # request, argv, stdin) is a separate question this does not answer.
+    # A parameter-derived argument several layers of wrapping away from any
+    # real entry point will still read as "parameter", same as one that
+    # comes straight from a request body -- it narrows "is this worth a
+    # human's time" without claiming to resolve exploitability.
     branch_path: tuple = ()  # sequence of (enclosing If/Try node id, branch label)
     # from the function root down to this call -- lets the "guard precedes
     # sink" check tell an elif/else sibling (mutually exclusive, can never
