@@ -113,6 +113,49 @@ def test_list_literal_mixing_a_literal_and_a_parameter_classifies_as_parameter()
         assert _arg_taint_for(root, "risky") == ("parameter",)
 
 
+def test_sink_argument_that_is_an_inline_method_call_on_a_literal_traces_one_hop():
+    """.spec/arg-taint-one-hop-widening.md, fixture 1: the sink argument
+    is written inline as a method call on a literal receiver, not a bare
+    name -- one hop is enough to see through to it, so this is no longer
+    bare "unknown". (Note: `Path('x').read_text()` would NOT qualify here
+    -- its receiver `Path('x')` is itself a call, which is a second hop
+    this classifier deliberately does not chase; see the negative test
+    below for exactly that case.)"""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "mod.py").write_text(
+            "import json\n"
+            "def safe():\n    json.loads('{\"default\": true}'.strip())\n"
+        )
+        assert _arg_taint_for(root, "safe") == ("traced:literal",)
+
+
+def test_sink_argument_that_is_an_inline_call_on_a_parameter_traces_one_hop():
+    """Fixture 2: same shape, but the inner call's receiver traces to the
+    enclosing function's own parameter instead of a literal."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "mod.py").write_text(
+            "import json\ndef risky(request):\n    json.loads(request.get_json())\n"
+        )
+        assert _arg_taint_for(root, "risky") == ("traced:parameter",)
+
+
+def test_two_hop_call_chain_stays_unknown_not_silently_widened_further():
+    """Negative test locking in the spec's explicit bound: the inner
+    call's own receiver is ITSELF a call result (get_path()), so there is
+    no literal or parameter to find at exactly one hop -- this must stay
+    "unknown", not be chased through a second hop."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "mod.py").write_text(
+            "import json\n"
+            "def get_path():\n    return 'config.json'\n"
+            "def safe():\n    json.loads(get_path().read_text())\n"
+        )
+        assert _arg_taint_for(root, "safe") == ("unknown",)
+
+
 def test_finding_plan_hypothesis_carries_argument_taint_and_a_human_readable_note():
     """End-to-end through dogfood_scan.find_finding_plans: the evidence
     must reach the actual Finding Plan, not just exist inside the resolver."""

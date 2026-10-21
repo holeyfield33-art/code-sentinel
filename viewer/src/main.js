@@ -2,6 +2,7 @@ import { loadGraphFromFile, loadGraphFromUrl, GraphValidationError } from "./gra
 import { ForceLayout3D } from "./layout.js";
 import { GraphScene } from "./scene.js";
 import { diffGraphs } from "./diff.js";
+import { STATUS_COLOR, DIFF_COLOR } from "./colors.js";
 
 const container = document.getElementById("scene-container");
 const statsEl = document.getElementById("stats");
@@ -19,18 +20,20 @@ const clearCompareBtn = document.getElementById("clear-compare-btn");
 // Milestone 22 legend/filter definitions. Each row is one visual swatch
 // in the HUD; its `categories` are the GraphScene.categoryOf() values it
 // covers -- VERIFIED_TRUE and TOOL_FAILURE share one row because they
-// share one color (scene.js's DISPOSITION_COLOR), and toggling the row
-// toggles both together.
+// share one color (colors.js's STATUS_COLOR, the single source of truth
+// also used by scene.js's 3D rendering -- a code-review finding caught
+// these two files each hardcoding their own copy of the same colors),
+// and toggling the row toggles both together.
 const NORMAL_LEGEND = [
-  { label: "VERIFIED_TRUE / TOOL_FAILURE", color: "#ff5c5c", categories: ["VERIFIED_TRUE", "TOOL_FAILURE"] },
-  { label: "UNRESOLVED_INCONCLUSIVE", color: "#f5c84c", categories: ["UNRESOLVED_INCONCLUSIVE"] },
-  { label: "VERIFIED_FALSE", color: "#5ad1a0", categories: ["VERIFIED_FALSE"] },
-  { label: "no finding attached", color: "#3c4a63", categories: ["none"] },
+  { label: "VERIFIED_TRUE / TOOL_FAILURE", color: STATUS_COLOR.VERIFIED_TRUE, categories: ["VERIFIED_TRUE", "TOOL_FAILURE"] },
+  { label: "UNRESOLVED_INCONCLUSIVE", color: STATUS_COLOR.UNRESOLVED_INCONCLUSIVE, categories: ["UNRESOLVED_INCONCLUSIVE"] },
+  { label: "VERIFIED_FALSE", color: STATUS_COLOR.VERIFIED_FALSE, categories: ["VERIFIED_FALSE"] },
+  { label: "no finding attached", color: STATUS_COLOR.none, categories: ["none"] },
 ];
 const DIFF_LEGEND = [
-  { label: "New since baseline", color: "#d44fe0", categories: ["new"] },
-  { label: "Changed since baseline", color: "#ff9d42", categories: ["changed"] },
-  { label: "Unchanged (dim, own color)", color: "#3c4a63", categories: ["unchanged"] },
+  { label: "New since baseline", color: DIFF_COLOR.new, categories: ["new"] },
+  { label: "Changed since baseline", color: DIFF_COLOR.changed, categories: ["changed"] },
+  { label: "Unchanged (dim, own color)", color: DIFF_COLOR.unchanged, categories: ["unchanged"] },
 ];
 
 const scene = new GraphScene(container);

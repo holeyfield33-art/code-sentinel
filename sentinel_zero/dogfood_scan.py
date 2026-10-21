@@ -228,29 +228,11 @@ _SINK_TABLES = {
 }
 
 
-def _zero_arg_top_level_function(file_path: str, module_qualname: str, caller_qualname: str) -> str | None:
-    """Returns the bare function name if `caller_qualname` names a plain
-    module-level function (not a class method, not nested) in this module
-    taking no required arguments -- the only shape Milestone 6's dynamic
-    probe is allowed to call with no inputs. Returns None for anything else
-    (a class method, a function needing real arguments, an unparseable
-    file) -- the probe is simply not attempted for those, never guessed at."""
-    fn_node = _top_level_function_node(file_path, module_qualname, caller_qualname)
-    if fn_node is None:
-        return None
-    args = fn_node.args
-    required_positional = len(args.posonlyargs) + len(args.args) - len(args.defaults)
-    required_kwonly = sum(1 for default in args.kw_defaults if default is None)
-    if required_positional > 0 or required_kwonly > 0:
-        return None
-    return fn_node.name
-
-
 def _top_level_function_node(
     file_path: str, module_qualname: str, caller_qualname: str
 ) -> ast.FunctionDef | ast.AsyncFunctionDef | None:
-    """Shared AST lookup behind both _zero_arg_top_level_function and
-    Milestone 17's literal-argument harvesting: finds caller_qualname's own
+    """Shared AST lookup behind _probe_invocation_for's zero-arg/arity check
+    and Milestone 17's literal-argument harvesting: finds caller_qualname's own
     function definition, but only when it's a plain top-level function in
     this module (not a class method, not nested) -- the shape every probe
     invocation path requires regardless of its arity."""
@@ -401,7 +383,14 @@ def _taint_note(arg_taint: tuple) -> str:
     classification (see graph.py's CallSite.arg_taint), appended to a
     plan's reason text so the triage signal is visible without having to
     dig into hypothesis.argument_taint. Never changes what the sentence
-    before it claims -- purely additional evidence."""
+    before it claims -- purely additional evidence.
+
+    "traced:parameter"/"traced:literal" (.spec/arg-taint-one-hop-widening.md)
+    are checked as their own cases, not matched by the bare "parameter"/
+    membership checks below -- a traced value is weaker evidence than a
+    direct one (it's one hop removed, through a method call's own
+    receiver) and must not be described in the same words as the direct
+    case, or a reader would credit it with more certainty than it has."""
     if not arg_taint:
         return " This sink call takes no positional arguments."
     if "parameter" in arg_taint:
@@ -410,10 +399,22 @@ def _taint_note(arg_taint: tuple) -> str:
             "-- worth checking whether that parameter can be influenced by whatever calls this function "
             "(this is a same-function trace, not interprocedural taint tracking -- see CallSite.arg_taint)."
         )
+    if "traced:parameter" in arg_taint:
+        return (
+            " At least one argument to this sink is the result of an inline call (e.g. `x.method()`) whose "
+            "own receiver traces to this function's own parameter, one hop removed -- worth checking, same "
+            "as a direct parameter trace, just not as immediate (see CallSite.arg_taint's one-hop bound)."
+        )
     if "unknown" in arg_taint:
         return (
             " At least one argument to this sink could not be classified as either a literal constant or "
             "parameter-derived (e.g. it's the result of another call) -- taint is simply unknown here, not ruled out."
+        )
+    if "traced:literal" in arg_taint:
+        return (
+            " At least one argument to this sink is the result of an inline call (e.g. `x.method()`) whose "
+            "own receiver is a literal constant, one hop removed -- not the same certainty as a direct literal "
+            "argument, but still lower priority than an unresolved 'unknown' trace."
         )
     return " Every argument to this sink is a literal constant in this call -- lower priority to review by hand."
 

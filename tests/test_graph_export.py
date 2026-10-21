@@ -107,10 +107,11 @@ def test_node_worst_disposition_matches_the_least_clean_status_among_its_finding
             # Milestone 16 widened the dynamic probe to cover DESERIALIZATION
             # sinks too, which would promote a zero-arg version of this to
             # VERIFIED_TRUE -- taking a required argument keeps this fixture
-            # out of the probe's scope (_zero_arg_top_level_function returns
-            # None for it), isolating this test's real point (worst-status
-            # aggregation over several same-disposition plans) from that
-            # unrelated behavior.
+            # out of the probe's scope (_probe_invocation_for returns None
+            # for it, since no literal-argument harvest exists for `data`),
+            # isolating this test's real point (worst-status aggregation
+            # over several same-disposition plans) from that unrelated
+            # behavior.
             "def multi(data):\n"
             "    json.loads(data)\n"
             "    json.loads(data)\n"
@@ -123,6 +124,35 @@ def test_node_worst_disposition_matches_the_least_clean_status_among_its_finding
         # plan ids attached, not silently left blank because it has >1 finding.
         assert node["worst_disposition"] == "UNRESOLVED_INCONCLUSIVE"
         assert len(node["finding_plan_ids"]) == 2
+
+
+def test_export_graph_refuses_to_silently_rank_an_undisposed_or_unknown_status():
+    """Code-review finding: _worst_status used to fall back to priority -1
+    for any status outside its four known terminal states, which would make
+    an unrecognized status (e.g. a PENDING plan that slipped through
+    without set_disposition ever being called) silently outrank even
+    TOOL_FAILURE as the 'worst' status -- exactly the kind of silent
+    mis-ranking this engine's own stated invariant forbids. This must raise
+    instead, loudly, the moment it happens."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "mod.py").write_text("def runner():\n    helper()\ndef helper():\n    pass\n")
+        graph = build_project_graph(root)
+        bad_plan = {
+            "plan_id": "fp_bad_0001",
+            "hypothesis": {
+                "source_node": f"{root / 'mod.py'}:2",
+                "sink_node": "mod.helper",
+                "symbol_binding": "mod.runner",
+            },
+            "disposition": {"status": "PENDING"},
+        }
+        try:
+            export_graph(graph, [bad_plan], root.name)
+        except ValueError as exc:
+            assert "PENDING" in str(exc)
+        else:
+            raise AssertionError("expected export_graph to raise ValueError on an undisposed status")
 
 
 def test_cli_analyze_writes_graph_json_alongside_the_ledger():

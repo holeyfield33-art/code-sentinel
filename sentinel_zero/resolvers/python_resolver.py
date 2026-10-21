@@ -381,11 +381,27 @@ def _combine_taint(classifications: list[str]) -> str:
     return "literal"
 
 
-def _classify_arg_taint(node: ast.expr, param_names: frozenset[str]) -> str:
+def _classify_arg_taint(node: ast.expr, param_names: frozenset[str], *, allow_call_unwrap: bool = True) -> str:
     """Classifies one call argument expression by real AST structure --
     never by re-parsing source text. See graph.py's CallSite.arg_taint for
     the full contract and its stated bound (this is not interprocedural
-    taint tracking)."""
+    taint tracking).
+
+    `allow_call_unwrap` gates the one-hop widening added for
+    .spec/arg-taint-one-hop-widening.md: when the argument expression
+    itself IS a call (e.g. `json.loads(path.read_text())` -- the inner
+    call written inline as the argument, not a prior assignment the
+    classifier would have to trace backward through a function body to
+    find), look at what THAT call's own receiver/arguments resolve to,
+    one hop, via _classify_call_result_taint. That helper always recurses
+    with allow_call_unwrap=False, so a receiver/argument that is itself
+    another call result lands on the "unknown" catch-all below rather
+    than being unwrapped a second time -- the explicit, stated bound this
+    spec requires. Deliberately NOT inline/immediate-assignment dataflow
+    either: `data = path.read_text(); json.loads(data)` still classifies
+    `data` as a bare ast.Name ("parameter" if it happens to be one,
+    "unknown" otherwise) exactly as before -- this widening only reaches
+    the inline-nested-call shape, not a prior statement's binding."""
     if isinstance(node, ast.Constant):
         return "literal"
     if isinstance(node, ast.JoinedStr):  # f-string
@@ -413,7 +429,34 @@ def _classify_arg_taint(node: ast.expr, param_names: frozenset[str]) -> str:
         if isinstance(base, ast.Name):
             return "parameter" if base.id in param_names else "unknown"
         return "unknown"
-    return "unknown"  # a call result, comprehension, lambda, walrus, ... -- not modeled
+    if isinstance(node, ast.Call) and allow_call_unwrap:
+        return _classify_call_result_taint(node, param_names)
+    return "unknown"  # a call result (already unwrapped once, or unwrap disallowed), comprehension, lambda, walrus, ... -- not modeled
+
+
+def _classify_call_result_taint(node: ast.Call, param_names: frozenset[str]) -> str:
+    """The one-hop widening itself: classifies the result of a call used
+    directly AS an argument expression, by looking at what that inner
+    call's own receiver (`receiver.method(...)`) or arguments
+    (`func(arg, ...)`) resolve to -- with allow_call_unwrap=False on that
+    lookup, so a receiver/argument that is itself a call result stays
+    "unknown" rather than recursing past one hop. `parameter` beats
+    `literal` beats "stays unknown", mirroring _combine_taint's own
+    priority (a traced parameter is still worth flagging first)."""
+    if isinstance(node.func, ast.Attribute):
+        constituents = [node.func.value]
+    elif isinstance(node.func, ast.Name):
+        constituents = list(node.args)
+    else:
+        return "unknown"  # e.g. a call on another call's own result, (f())() -- not modeled
+    if not constituents:
+        return "unknown"  # a zero-arg plain function call, e.g. get_path() -- nothing to trace
+    classifications = [_classify_arg_taint(c, param_names, allow_call_unwrap=False) for c in constituents]
+    if "parameter" in classifications:
+        return "traced:parameter"
+    if "literal" in classifications:
+        return "traced:literal"
+    return "unknown"
 
 
 def dominates(guard_path: tuple, sink_path: tuple) -> bool:
