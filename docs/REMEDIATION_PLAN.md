@@ -127,8 +127,19 @@ away.
 
 ---
 
-## 3. Wrong-call promotion (same-sink, different call site) — STATUS: fixed, pending fresh Verifier pass
+## 3. Wrong-call promotion (same-sink, different call site) — STATUS: CLOSED
 **Ledger:** sz-2026-10-21-04, -15
+
+**Closed:** a fresh, non-forked Tier-1 Verifier session tried six distinct
+adversarial attacks against the fix (cross-function leakage, an N=3
+off-by-one case, the harvested-literal-argument path, the pre-existing
+Milestone 16 different-sink-symbols case, the JS/TS path, and a
+loop-body call site) and found no break in any of them — REFUTED the
+claim that the fix is broken. See sz-2026-10-21-15 for the full method
+and a note on the Verifier's own self-caught methodology issue
+(concurrent Builder work briefly left a stale checkout in its path; it
+caught this and re-verified against an isolated snapshot of the real
+fix commit instead).
 
 **Fix direction:** `_promote_if_sink_reached` needs to compare against the
 specific `call` object's identity (its `lineno`/`order` within the caller),

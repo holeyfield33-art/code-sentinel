@@ -258,18 +258,40 @@ Ashura to make, not something closed by further patching.
   one of which is actually reachable, does not have its unreachable call
   site promoted to VERIFIED_TRUE."
 - **claimant:** Builder session (this conversation)
-- **verifier:** pending — fix implemented and self-tested (including
-  confirming by hand, via `git stash`, that the regression test fails
-  pre-fix and passes post-fix), but not yet checked by a fresh non-forked
-  Tier-1 session. Logged now so the claim and its pending status are
-  recorded together, not asserted as done before that check runs.
-- **method:** `dogfood_scan.py`'s `find_finding_plans` now counts, per
-  caller, how many call sites resolve to each sink symbol
-  (`sink_symbol_counts`), and refuses to attempt the dynamic probe at all
-  for a sink symbol with more than one call site in that caller — the
-  disposition reason explains the ambiguity explicitly instead of silently
-  leaving a blanker message.
-- **verdict:** pending
+- **verifier:** fresh, non-forked Tier-1 session (background agent
+  `aa4464525b06f3cae`, "Independent verifier of wrong-call-promotion fix")
+- **method:** Six adversarial attacks against the real fix (commit
+  `20169ab`, extracted via `git archive` into an isolated scratch
+  directory, specifically to avoid any interference from concurrent work
+  on the live checkout — see verifier's own note below): (1) cross-function
+  leakage — two unambiguous single-call-site functions in one module, both
+  correctly promote independently; (2) N=3 off-by-one — three same-symbol
+  call sites in one function, all three correctly stay
+  UNRESOLVED_INCONCLUSIVE (gate is `count > 1`, not `count == 2`); (3) the
+  harvested-literal-argument path with an ambiguous same-symbol caller —
+  correctly stays UNRESOLVED_INCONCLUSIVE, confirming the gate applies
+  before `_probe_invocation_for` runs, not just on the zero-arg path; (4)
+  Milestone 16 regression check — two DIFFERENT sink symbols in one caller
+  still promote/don't-promote independently, unaffected by the new gate;
+  (5) the JS/TS path — two `child_process.exec` call sites in one exported
+  function, one dead after `return`, both correctly stay
+  UNRESOLVED_INCONCLUSIVE, confirming the gate is applied identically in
+  the JS probing block; (6) a sink call written once inside a loop —
+  correctly treated as one static call site regardless of runtime
+  iteration count.
+- **verdict:** REFUTED (the claim that the fix is broken) — no break found
+  in the real fix across any of the six attacks.
+- **note on method integrity:** the verifier flagged that the live checkout
+  at `/home/claude/code-sentinel` was mid-switch to a different branch
+  during its run (concurrent Builder work in this same session, on
+  `security/verification-hardening`, unrelated to this fix) and that
+  testing against that other branch's code produced a misleading
+  false-positive "break." The verifier caught this itself, did not touch
+  the live repo, and re-ran everything against an isolated
+  `git archive` snapshot of the actual fix commit instead — exactly the
+  kind of self-correction IVP exists to produce. Recorded here rather
+  than silently dropped, per IVP's point about a durable record over a
+  transcript that scrolls away.
 - **evidence:** `sentinel_zero/dogfood_scan.py` (`find_finding_plans`,
   `_promote_if_sink_reached` docstring update),
   `tests/test_ambiguous_sink_promotion.py`
