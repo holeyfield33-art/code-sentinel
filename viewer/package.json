@@ -1,0 +1,18 @@
+{
+  "name": "sentinel-zero-viewer",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Standalone 3D viewer for Sentinel-Zero's graph.json export. Built fresh for this project -- no dependency on, and no code shared with, any other visualizer in this account's portfolio (e.g. CodeVerse). Loads a graph.json produced by `sentinel-zero analyze`, lays it out in 3D with a simple force simulation, and renders it with Three.js so a reviewer can see which modules/functions carry which disposition at a glance.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "three": "^0.169.0"
+  },
+  "devDependencies": {
+    "vite": "^5.4.21"
+  }
+}

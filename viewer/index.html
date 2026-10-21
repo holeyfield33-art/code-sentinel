@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sentinel-Zero — Graph Viewer</title>
+  <style>
+    :root {
+      --bg: #0b0e14;
+      --panel-bg: rgba(16, 20, 28, 0.92);
+      --panel-border: #2a3140;
+      --text: #d7dce3;
+      --text-dim: #8b95a5;
+      --accent: #5aa9ff;
+    }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; }
+    #scene-container { position: absolute; inset: 0; }
+    #hud {
+      position: absolute; top: 16px; left: 16px; z-index: 10;
+      background: var(--panel-bg); border: 1px solid var(--panel-border);
+      border-radius: 10px; padding: 14px 16px; max-width: 320px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    #hud h1 { font-size: 15px; margin: 0 0 4px; font-weight: 600; letter-spacing: 0.2px; }
+    #hud p.sub { margin: 0 0 10px; font-size: 12px; color: var(--text-dim); }
+    #file-input-label {
+      display: inline-block; font-size: 13px; padding: 7px 12px; border-radius: 6px;
+      background: #1b2230; border: 1px solid var(--panel-border); cursor: pointer; color: var(--text);
+    }
+    #file-input-label:hover { border-color: var(--accent); }
+    #file-input { display: none; }
+    #stats { margin-top: 10px; font-size: 12px; color: var(--text-dim); line-height: 1.5; }
+    #legend { margin-top: 10px; font-size: 12px; line-height: 1.7; }
+    .legend-dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+    #inspector {
+      position: absolute; top: 16px; right: 16px; z-index: 10;
+      background: var(--panel-bg); border: 1px solid var(--panel-border);
+      border-radius: 10px; padding: 14px 16px; width: 320px; max-height: 70vh; overflow-y: auto;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4); display: none;
+      font-size: 13px;
+    }
+    #inspector h2 { font-size: 14px; margin: 0 0 8px; word-break: break-all; }
+    #inspector dl { margin: 0; }
+    #inspector dt { color: var(--text-dim); font-size: 11px; text-transform: uppercase; margin-top: 8px; }
+    #inspector dd { margin: 2px 0 0; word-break: break-word; }
+    #empty-state {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 14px; z-index: 5; pointer-events: none;
+    }
+    #empty-state.hidden { display: none; }
+    #empty-state p { color: var(--text-dim); font-size: 14px; max-width: 420px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div id="scene-container"></div>
+
+  <div id="empty-state">
+    <p>Load a <code>graph.json</code> produced by <code>sentinel-zero analyze</code> to begin.
+    Nothing is sent anywhere — the file is read in your browser only.</p>
+  </div>
+
+  <div id="hud">
+    <h1>Sentinel-Zero — Graph Viewer</h1>
+    <p class="sub">Standalone 3D view of a scan's node/edge export.</p>
+    <label id="file-input-label" for="file-input">Load graph.json…</label>
+    <input id="file-input" type="file" accept="application/json,.json" />
+    <div id="stats"></div>
+    <div id="legend">
+      <div><span class="legend-dot" style="background:#ff5c5c"></span>VERIFIED_TRUE / TOOL_FAILURE</div>
+      <div><span class="legend-dot" style="background:#f5c84c"></span>UNRESOLVED_INCONCLUSIVE</div>
+      <div><span class="legend-dot" style="background:#5ad1a0"></span>VERIFIED_FALSE</div>
+      <div><span class="legend-dot" style="background:#3c4a63"></span>no finding attached</div>
+    </div>
+  </div>
+
+  <div id="inspector"></div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
