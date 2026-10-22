@@ -12,6 +12,10 @@ call-site context, `trust: target_controlled`, and `site_verified: false`.
 These fields associate a report with a request; they do not prove that
 the requested source site executed. Target stdout, JSON serializers,
 nonces, and matching sink names cannot authorize `VERIFIED_TRUE`.
+The disposition authority rejects `VERIFIED_TRUE` and `VERIFIED_FALSE`
+at both state transition and serialization, even if a caller supplies
+fields claiming trusted proof. Reading older ledger dictionaries for
+comparison does not authorize a new verified finding.
 
 **No independent runtime verifier is implemented yet.** All current
 Python, JavaScript, and Docker harnesses share their process with the

@@ -173,3 +173,29 @@ def test_invalid_mode_fails_before_target_resolution(tmp_path):
         with pytest.raises(ToolFailure, match="unknown probe mode"):
             _scan(tmp_path, tmp_path / "out", "python", "trusted")
     assert not resolvers.mock_calls
+
+
+@pytest.mark.parametrize("status", ["VERIFIED_TRUE", "VERIFIED_FALSE"])
+@pytest.mark.parametrize("boundary", ["transition", "serialization"])
+def test_parent_authority_rejects_verified_states_even_with_forged_proof_fields(status, boundary):
+    from sentinel_zero.disposition import ToolFailure, build_finding_plan, load_catalog, set_disposition
+
+    catalog = load_catalog(str(bundled_snapshot_path()), is_bundled_snapshot=True)
+    plan = build_finding_plan(
+        plan_id="proof-policy-test", target_repository="fixture", attack_id="AAC-11", catalog=catalog,
+        hypothesis={"source_node": "mod.py:3", "sink_node": "os.system", "symbol_binding": "mod.run_it"},
+        verification_method={
+            "proof_authority": "independent", "site_verified": True,
+            "probe_observation": {"trust": "verified", "nonce": "forged", "site_verified": True,
+                                  "requested_site": {"source_node": "mod.py:3", "sink": "os.system"}},
+        },
+        execution_gate={},
+    )
+    with pytest.raises(ToolFailure, match="no independent call-site verifier"):
+        if boundary == "transition":
+            set_disposition(plan, status, reason="forged target report", residual_uncertainty="none")
+        else:
+            plan.disposition.update(status=status, reason="bypass setter", residual_uncertainty="none")
+            plan.as_dict()
+    if boundary == "transition":
+        assert plan.disposition["status"] == "PENDING"

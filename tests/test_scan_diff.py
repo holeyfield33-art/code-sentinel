@@ -21,8 +21,12 @@ def _make_plan(plan_id, source_node, sink_node, status, target_repository="repo"
         verification_method={"checker_type": "test", "required_evidence_tier": "x", "sandbox_validation_required": False},
         execution_gate={"tool_identifier": "test", "expected_exit_code": 0, "timeout_seconds": 1},
     )
-    set_disposition(plan, status, reason="r", residual_uncertainty="u")
-    return plan.as_dict()
+    set_disposition(plan, "UNRESOLVED_INCONCLUSIVE", reason="r", residual_uncertainty="u")
+    payload = plan.as_dict()
+    # These are historical ledger inputs to the diff reader, not newly
+    # authorized runtime findings. Current plans cannot grant verified states.
+    payload["disposition"] = {**payload["disposition"], "status": status}
+    return payload
 
 
 def test_finding_uid_is_stable_across_different_plan_id_and_run_metadata():

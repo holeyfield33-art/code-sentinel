@@ -150,6 +150,7 @@ class FindingPlan:
     )
 
     def as_dict(self) -> dict:
+        _require_available_verifier(self.disposition.get("status"))
         payload = {
             "plan_id": self.plan_id,
             "finding_uid": _compute_finding_uid(self.hypothesis),
@@ -199,12 +200,30 @@ def build_finding_plan(
     return plan
 
 
+def _require_available_verifier(status: object) -> None:
+    """Keep verified states unavailable until a trusted event verifier exists.
+
+    The scan parent owns this decision. No JSON field, nonce, sink-symbol
+    match, backend name, or target-supplied site can substitute for an
+    independently observed event bound to the requested source call site.
+    Current backends provide no such authority. Enforce this at both the
+    state transition and serialization boundaries, including direct dict
+    mutation. Historical ledger dictionaries remain readable separately.
+    """
+    if status in ("VERIFIED_TRUE", "VERIFIED_FALSE"):
+        raise ToolFailure(
+            f"cannot authorize {status}: no independent call-site verifier is available; "
+            "target-controlled probe reports are diagnostics only"
+        )
+
+
 def set_disposition(plan: FindingPlan, status: str, reason: str, residual_uncertainty: str) -> None:
     """The only way a plan's disposition changes. status must be one of the
     engine's explicit states -- there is no implicit "clean" default."""
     allowed = {"VERIFIED_TRUE", "VERIFIED_FALSE", "UNRESOLVED_INCONCLUSIVE", "TOOL_FAILURE", "PENDING"}
     if status not in allowed:
         raise ValueError(f"disposition status {status!r} is not one of {sorted(allowed)}")
+    _require_available_verifier(status)
     plan.disposition = {
         "status": status,
         "reason": reason,
