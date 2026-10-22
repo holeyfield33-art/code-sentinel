@@ -603,3 +603,124 @@ Ashura to make, not something closed by further patching.
   equally to the subprocess backend's own nonce protocol, already
   covered by the existing sz-2026-10-21-14/-17 decision record.
 - **date:** 2026-10-22
+
+### sz-2026-10-22-01
+- **claim:** From sz-2026-10-21-08 claim 1 / `docs/REMEDIATION_PLAN.md` item 7:
+  "A ledger over 5 MB crashes the scan with no partial output" —
+  `dogfood_scan.py`'s hardcoded `5_000_000`-byte cap passed to
+  `safe_write_text` raises a bare `ValueError` when exceeded, and neither
+  `dogfood_scan.run()` nor `cli.cmd_analyze()` caught that specific
+  exception, so it propagated as an uncaught traceback instead of this
+  project's own `CRITICAL_TOOL_FAILURE` convention.
+- **claimant:** External audit (previously UNABLE_TO_VERIFY in
+  sz-2026-10-21-08, not reproduced with an actual oversized run).
+- **check performed:** Reproduced for real, not just reasoned about.
+  Built a synthetic 3500-module Python repo, each module with its own
+  `os.system(user_input)` sink call, and ran
+  `python -m sentinel_zero.cli analyze` against it. The scan found 3500
+  real sink findings, serialized them to a genuine 5,548,527-byte ledger,
+  and crashed with:
+  `ValueError: refused: 5548527 bytes is over the 5000000-byte limit`
+  as an uncaught traceback through `dogfood_scan.py:687` ->
+  `ledger_writer.py:24` — exactly the mechanism sz-2026-10-21-08 predicted,
+  now confirmed with a real run rather than left as a plausible read of
+  the source.
+- **fix:** Added `_write_or_fail_cleanly()` in `dogfood_scan.py`, a thin
+  wrapper around `safe_write_text()` that catches the specific
+  oversize `ValueError` and re-raises it as a `ToolFailure` naming the
+  real byte count, the cap, and that the scan's own results were real
+  but too large to write out — never silently truncated, never a bare
+  traceback. Applied to both the `verification_ledger.json` write and the
+  `graph.json` write in `run()`. The equivalent `report.md` write in
+  `cli.cmd_analyze()` had the identical gap (it sat entirely outside the
+  `except (ToolFailure, UnknownAttackClass)` block) — moved inside that
+  block and wrapped the same way, so a report.md over its own 5MB cap
+  now also produces a clean `CRITICAL_TOOL_FAILURE` and exit code 3,
+  with the already-written ledger left intact rather than lost.
+- **tests added:** `tests/test_tool_failure.py`:
+  `test_run_raises_tool_failure_not_a_bare_valueerror_when_the_ledger_is_too_big`
+  (monkeypatches `safe_write_text` to reproduce the exact oversize raise
+  cheaply, asserts `ToolFailure` not `ValueError`, asserts the real byte
+  count and cap appear in the message),
+  `test_write_or_fail_cleanly_still_writes_normally_sized_output`
+  (regression guard: the common case is unaffected), and
+  `test_cmd_analyze_reports_a_clean_critical_tool_failure_when_the_markdown_report_is_too_big`
+  (same shape for the `report.md` path, also asserts the ledger file
+  itself was written successfully first — this is not a total loss).
+- **stash confirmation:** `git stash push -- sentinel_zero/dogfood_scan.py
+  sentinel_zero/cli.py`; all 3 new tests failed pre-fix with the exact
+  predicted shape (an uncaught `ValueError` propagating out of
+  `cli.cmd_analyze`, visible in the pytest traceback); `git stash pop`;
+  all 10 tests in the file passed post-fix; full suite (154 tests) passed.
+  Also re-ran the original 3500-module real-world repro end-to-end
+  against the fixed code: now prints a single `CRITICAL_TOOL_FAILURE:
+  could not write the verification ledger to verification_ledger.json:
+  ...` line to stderr and exits 3 — no traceback.
+- **verdict:** CONFIRMED (claim) / fixed, pending fresh Verifier pass.
+- **date:** 2026-10-22
+
+### sz-2026-10-22-03
+- **claim:** Codex P2 review on PR #9, commit `0f833fc`: "Preserve
+  non-size write refusal reasons" — `write_or_fail_cleanly()`'s blanket
+  `except ValueError` assumes every `ValueError` from `safe_write_text`
+  is the byte-cap refusal and always says "too large... were
+  discarded", but `safe_write_text` can also raise a plain `ValueError`
+  from `resolve_inside`'s path-containment check (a symlink escaping
+  `out_dir`) or from a `UnicodeEncodeError` (a `ValueError` subclass)
+  encoding `text`. For either, the original wrapper's message would be
+  flatly wrong about why the write failed.
+- **claimant:** `chatgpt-codex-connector[bot]`, PR #9 review comment
+  (comment_id 4348521066).
+- **check performed:** Confirmed real by reading `ledger_writer.py`
+  directly: `resolve_inside` raises `ValueError(f'refused: {relative}
+  is not inside {root}')` on a path-containment failure, a distinct
+  branch from the byte-cap check, and both are plain `ValueError`
+  (`UnicodeEncodeError` is a `ValueError` subclass in the standard
+  library). The original `write_or_fail_cleanly` caught `ValueError`
+  generically with no way to tell the two apart, so it would mislabel
+  either case as a size refusal. Confirmed this is currently
+  unreachable from this project's own call sites specifically (every
+  `relative` argument at every call site is a fixed literal with no
+  `..`, so `resolve_inside`'s escape branch can't fire; `json.dumps(...,
+  indent=2)` defaults to `ensure_ascii=True`, which escapes everything
+  outside ASCII, so the `.encode('utf-8')` it's piped into can't raise)
+  -- but a latent correctness bug worth fixing cheaply regardless, since
+  mislabeling a future path-containment refusal (a genuinely
+  security-relevant signal) as an innocuous "too large" is exactly the
+  kind of wrong-but-plausible-sounding message this project's own
+  CRITICAL_TOOL_FAILURE convention exists to prevent.
+- **fix:** `write_or_fail_cleanly()` now independently recomputes
+  `len(text.encode("utf-8")) > max_bytes` before choosing which message
+  to raise, rather than assuming every `ValueError` is the size refusal.
+  Only the oversize case gets the "too large... discarded" framing;
+  anything else gets an honest message naming the real cause, still
+  wrapped as `ToolFailure` (not re-introducing the original item-7 bug
+  for those cases). Also deduplicated `cli.cmd_analyze()`'s separate
+  copy of the same wrapping logic around the `report.md` write -- it
+  had the identical flaw and would have needed the identical fix a
+  second time -- by having it call `dogfood_scan.write_or_fail_cleanly()`
+  directly instead of maintaining its own copy (renamed from
+  `_write_or_fail_cleanly` to `write_or_fail_cleanly` to be
+  cross-module-callable).
+- **tests added:** `tests/test_tool_failure.py`:
+  `test_write_or_fail_cleanly_does_not_mislabel_a_non_size_valueerror_as_too_big`
+  (monkeypatches `safe_write_text` to raise the path-containment
+  `ValueError` with `text` well under the cap, asserts the message
+  names the real reason and contains neither "too large" nor
+  "discarded"); updated the two existing report.md-path tests to patch
+  `dogfood_scan.safe_write_text` instead of a now-removed
+  `cli.safe_write_text`, since `cli.cmd_analyze` no longer imports
+  `safe_write_text` directly.
+- **stash confirmation:** `git stash push -- sentinel_zero/dogfood_scan.py
+  sentinel_zero/cli.py`; all 3 touched/added tests failed pre-fix (the
+  mislabel test and the still-writes-normally test failed because
+  `write_or_fail_cleanly` didn't exist yet under that name; the
+  report.md test failed because `cli.cmd_analyze` didn't yet route
+  through the shared helper, so the monkeypatch on
+  `dogfood_scan.safe_write_text` had no effect on cli.py's separate,
+  then-still-direct call); `git stash pop`; full suite (155 tests)
+  passed. Re-ran the original 3500-module real-world repro end-to-end
+  again post-fix: unchanged clean `CRITICAL_TOOL_FAILURE` output, exit
+  code 3.
+- **verdict:** CONFIRMED (claim) / fixed, pending fresh Verifier pass.
+- **date:** 2026-10-22
