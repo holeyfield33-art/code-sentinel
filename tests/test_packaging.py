@@ -23,6 +23,7 @@ Two layers of regression guard, cheapest-and-always-on first:
 from __future__ import annotations
 
 import fnmatch
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -80,17 +81,68 @@ def test_every_probe_harness_file_is_covered_by_a_declared_package_data_glob():
         )
 
 
+_BUILD_ARTIFACT_DIR_NAMES = {"build", "dist", "__pycache__", ".git", "node_modules", ".pytest_cache"}
+
+
+def _is_stale_build_metadata_dir(name: str) -> bool:
+    """`*.egg-info` directories (setuptools' own package-metadata cache,
+    e.g. `sentinel_zero.egg-info/SOURCES.txt`) turned out to be just as
+    load-bearing a leak as `build/` itself: confirmed while fixing this
+    very Codex finding -- excluding only `build/` from the copy was NOT
+    enough, because setuptools used a leftover `sentinel_zero.egg-info`
+    in the copy to decide the wheel's file list instead of re-deriving it
+    from `pyproject.toml`, and the "clean copy" test kept passing anyway.
+    Only excluding both made the test actually fail against a broken
+    pyproject.toml, which is the whole point of this test existing."""
+    return name.endswith(".egg-info")
+
+
+def _copy_clean_source_tree(dest: Path) -> Path:
+    """VERIFICATION_LEDGER.md sz-2026-10-22-04 (Codex P2 on PR #10): this
+    test must build from a source tree with no leftover build artifacts
+    of its own, never from `REPO_ROOT` directly. setuptools' incremental
+    build cache (`build/lib`) and its package-metadata cache
+    (`*.egg-info`) both live inside the source tree `python -m build` is
+    pointed at, and both are keyed by file identity rather than by the
+    current package-data declaration -- so either one left over from an
+    earlier, correctly-configured build can silently carry a
+    since-removed asset into a *new* wheel built against a now-broken
+    pyproject.toml, letting this exact test pass even though the real,
+    fresh-checkout build would fail. This happened for real, twice, while
+    fixing item 8 and then this very finding in this session (see the
+    sz-2026-10-22-02 stash-confirmation note, and
+    `_is_stale_build_metadata_dir`'s docstring for the second one this
+    test's own first draft missed). Copying into an isolated temp
+    directory first (excluding both kinds, belt-and-suspenders in case
+    REPO_ROOT itself has stale ones) guarantees setuptools has nothing to
+    find and reuse."""
+    def _ignore(_dir: str, names: list[str]) -> set[str]:
+        return {n for n in names if n in _BUILD_ARTIFACT_DIR_NAMES or _is_stale_build_metadata_dir(n)}
+
+    shutil.copytree(REPO_ROOT, dest, ignore=_ignore, dirs_exist_ok=True)
+    return dest
+
+
 @pytest.mark.skipif(
     __import__("importlib").util.find_spec("build") is None,
     reason="the 'build' package is not installed in this environment",
 )
 def test_a_real_built_wheel_actually_contains_the_js_probe_harness():
     """The strongest check: build the actual artifact end users install
-    and look inside it, rather than trusting the glob declaration alone."""
+    and look inside it, rather than trusting the glob declaration alone.
+    Builds from an isolated copy of the source tree, not REPO_ROOT
+    directly -- see `_copy_clean_source_tree` for why that distinction is
+    load-bearing, not cosmetic."""
     with tempfile.TemporaryDirectory() as tmp:
+        clean_source = _copy_clean_source_tree(Path(tmp) / "src")
+        assert not (clean_source / "build").exists(), "the copy must start with no build/ directory"
+        assert not any(clean_source.glob("*.egg-info")), (
+            "the copy must start with no leftover *.egg-info metadata directory either"
+        )
+
         dist_dir = Path(tmp) / "dist"
         result = subprocess.run(
-            [sys.executable, "-m", "build", "--wheel", "-o", str(dist_dir), str(REPO_ROOT)],
+            [sys.executable, "-m", "build", "--wheel", "-o", str(dist_dir), str(clean_source)],
             capture_output=True,
             text=True,
             timeout=120,

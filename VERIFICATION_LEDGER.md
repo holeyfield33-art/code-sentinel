@@ -515,3 +515,54 @@ Ashura to make, not something closed by further patching.
   counted in the prior 154-test baseline since it's new) passed.
 - **verdict:** CONFIRMED (claim) / fixed, pending fresh Verifier pass.
 - **date:** 2026-10-22
+
+### sz-2026-10-22-04
+- **claim:** Codex P2 review on PR #10, commit `afbac38`: "Build the
+  wheel from a clean source tree" — `test_a_real_built_wheel_actually_
+  contains_the_js_probe_harness` built directly from `REPO_ROOT`, so a
+  leftover `build/` directory from an earlier build could let setuptools
+  silently reuse a previously-included asset and make the test report
+  the wheel contains the harness when the current `pyproject.toml` would
+  not actually produce that. Codex cited this session's own
+  sz-2026-10-22-02 stash-confirmation note (which flagged exactly this
+  happening) as evidence.
+- **claimant:** `chatgpt-codex-connector[bot]`, PR #10 review comment
+  (comment_id 4348580782).
+- **check performed:** Reproduced for real, twice. First: added a
+  `_copy_clean_source_tree()` helper excluding `build/`, `dist/`,
+  `__pycache__/`, `.git/`, `node_modules/`, re-ran the test against
+  `pyproject.toml` with the item-8 fix line manually removed while a
+  stale `build/lib` (containing the harness from an earlier correct
+  build) was still present in `REPO_ROOT` — the test still falsely
+  passed. Root cause: a leftover `sentinel_zero.egg-info/` directory
+  (setuptools' own package-metadata cache, specifically its
+  `SOURCES.txt`) was *also* copied into the "clean" tree and let
+  setuptools reuse its previously-recorded file list instead of
+  re-deriving one from the now-broken `pyproject.toml` -- the exact same
+  bug class Codex flagged, in a second, not-yet-excluded cache directory
+  this fix's first draft missed. Excluding `*.egg-info` directories too
+  (via `_is_stale_build_metadata_dir`) and re-running the same broken-
+  config-plus-stale-cache scenario: both `test_every_probe_harness_...`
+  and `test_a_real_built_wheel_...` now correctly failed, pinning the
+  real break for the first time.
+- **fix:** `_copy_clean_source_tree()` now copies `REPO_ROOT` into an
+  isolated temp directory before invoking `python -m build`, excluding
+  both known build-artifact directories (`build`, `dist`, `__pycache__`,
+  `.git`, `node_modules`, `.pytest_cache`) and any `*.egg-info`
+  directory. The test asserts neither kind is present in the copy before
+  building, as a self-check that the exclusion actually worked (this is
+  what caught the `.egg-info` gap during development).
+- **tests added/changed:** `tests/test_packaging.py` — the real-wheel
+  test now builds from the isolated copy rather than `REPO_ROOT`
+  directly; added the two pre-build assertions above.
+- **stash confirmation:** `git stash` doesn't apply cleanly here since
+  the relevant "stash" is really "leave `pyproject.toml`'s fix in place
+  but reintroduce the exact stale-cache conditions Codex described" --
+  manually removed the `package-data` line, left a real stale `build/`
+  and `sentinel_zero.egg-info/` in `REPO_ROOT` (both produced by a real
+  prior `python -m build` run in this same session), and confirmed both
+  tests failed with the exclusion fix in place and the config broken, as
+  shown above. Restored `pyproject.toml`, cleared the stale directories,
+  reran: both tests pass. Full suite (153 tests) passed.
+- **verdict:** CONFIRMED (claim) / fixed, pending fresh Verifier pass.
+- **date:** 2026-10-22
