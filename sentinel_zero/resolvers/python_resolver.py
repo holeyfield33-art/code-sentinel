@@ -239,6 +239,14 @@ def _direct_nested_function_defs(
             found += _direct_nested_function_defs(stmt.orelse)
         elif isinstance(stmt, (ast.With, ast.AsyncWith)):
             found += _direct_nested_function_defs(stmt.body)
+        elif isinstance(stmt, ast.Match):
+            # Codex review, PR #7: `match value: case ...: def inner():
+            # ...` is real, supported Python 3.10+ syntax -- a case body is
+            # just another list of statements, same as an If branch, and a
+            # function def inside one still belongs to the enclosing
+            # scope, not a separate one.
+            for case in stmt.cases:
+                found += _direct_nested_function_defs(case.body)
     return found
 
 
@@ -746,9 +754,29 @@ def _resolve_module(
                     # module prefix -- a real duplicate-CallSite regression
                     # caught by the existing test suite, not a hypothetical.
                     if fn_node is not None:
+                        nested_qualname = f"{caller_name}.<locals>.{stmt.name}"
+                        # Codex review, PR #7 (ledger sz-2026-10-21-21's own
+                        # follow-up): a call to the nested function BY ITS
+                        # LOCAL NAME -- `inner()`, the normal way to call it,
+                        # whether from a sibling statement in this same
+                        # scope or recursively from inside the nested
+                        # function itself -- must resolve to this qualname,
+                        # not the bare name "inner". Without this binding,
+                        # _resolve_dotted falls through to an unbound bare
+                        # Symbol("inner") that never matches project_functions
+                        # (keyed by the qualified name), so
+                        # build_direct_callee_index silently drops the edge
+                        # and transitive guard/dependency propagation never
+                        # sees it. Bound in `local_bindings` (this scope's
+                        # own dict, mutated in place) BEFORE walking the
+                        # nested function's own body, so the binding is
+                        # already present in the `extra_bindings` snapshot
+                        # the nested scope inherits -- covering self-
+                        # recursion too, not just sibling calls after it.
+                        local_bindings[stmt.name] = nested_qualname
                         walk_fn(
                             stmt,
-                            f"{caller_name}.<locals>.{stmt.name}",
+                            nested_qualname,
                             extra_bindings=local_bindings,
                             enclosing_param_names=param_names,
                         )
@@ -796,6 +824,24 @@ def _resolve_module(
                     for item in stmt.items:
                         record_calls_in_expr(item.context_expr, branch_path)
                     walk_stmts(stmt.body, branch_path)
+                    continue
+                if isinstance(stmt, ast.Match):
+                    # Codex review, PR #7: mirrors the If/Try/For treatment
+                    # above -- without this branch, a Match statement fell
+                    # through to the generic record_calls_in_expr(stmt, ...)
+                    # case below, which calls plain ast.walk(stmt) and
+                    # attributes every call inside every case body to THIS
+                    # scope directly, bypassing the FunctionDef branch at
+                    # the top of this loop entirely -- so a function nested
+                    # inside a case body was never recursed into as its own
+                    # scope, and calls made from inside it were silently
+                    # misattributed to the enclosing function instead.
+                    record_calls_in_expr(stmt.subject, branch_path)  # the matched subject always evaluates
+                    tag = id(stmt)
+                    for i, case in enumerate(stmt.cases):
+                        if case.guard is not None:
+                            record_calls_in_expr(case.guard, branch_path + ((tag, f"case{i}"),))
+                        walk_stmts(case.body, branch_path + ((tag, f"case{i}"),))
                     continue
                 # simple statement (Expr, Return, Raise, Assert, AugAssign, ...):
                 # record every call nested in it at the current branch_path.

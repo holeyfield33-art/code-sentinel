@@ -374,3 +374,62 @@ Ashura to make, not something closed by further patching.
   anyone outside this session, per IVP (a Builder's own regression tests
   for a bug the Builder found and fixed do not close an item on their own).
 - **date:** 2026-10-21
+
+### sz-2026-10-21-23
+- **claims:**
+  1. "A call to a nested function by its local name (`inner()`) is never
+     bound to its qualified name in `local_bindings`, so it resolves to
+     an unbound bare `Symbol('inner')` instead of
+     `Symbol('mod.outer.<locals>.inner')`; `build_direct_callee_index`
+     silently drops the edge, so transitive guard and dependency
+     propagation never see a nested function's own callers."
+  2. "`match value: case ...: def inner(): ...` (Python 3.10+) is not
+     traversed by `_direct_nested_function_defs` at all, so `inner` is
+     absent from `project_functions` entirely; the statement walker also
+     has no `Match` branch and falls through to a generic `ast.walk`,
+     attributing calls inside a case body to the OUTER function instead
+     of the nested scope."
+- **claimant:** Codex automated review on PR #7 (sz-2026-10-21-21's own
+  PR), commit `2c9cb60`, comment_ids 4344153384 (claim 1) and 4344153390
+  (claim 2), both P2
+- **check performed:** Builder session independently reproduced both by
+  hand before accepting them, per IVP. Claim 1: `/tmp/codex_verify7/mod.py`
+  (`outer()` defining and calling `inner()`) — confirmed `graph.all_calls()`
+  held `mod.outer -> Symbol('inner')` (bare, unqualified) and
+  `build_direct_callee_index(graph).get('mod.outer')` was `None`. Claim 2:
+  `/tmp/codex_verify7/match_mod.py` (`dispatch()` with a nested `inner()`
+  inside a `case 'run':` body) — confirmed `graph.functions` had no
+  `match_mod.dispatch.<locals>.inner` key at all.
+- **fix:** Claim 1: in `walk_stmts`'s `FunctionDef`/`AsyncFunctionDef`
+  branch, `local_bindings[stmt.name]` is now bound to the nested
+  function's qualname BEFORE recursing into its body — covers both a
+  sibling call after the def and the nested function calling itself
+  recursively (the binding is already present in the `extra_bindings`
+  snapshot the nested scope inherits). Claim 2: added an `ast.Match`
+  branch to both `_direct_nested_function_defs` (walks every `case.body`,
+  mirroring the existing If/Try/For treatment) and `walk_stmts` (records
+  calls in the match subject and each case's guard, then recurses into
+  each case body at its own `branch_path` tag, instead of falling
+  through to the generic `record_calls_in_expr(stmt, ...)` case that
+  bypassed the `FunctionDef` branch entirely).
+- **tests added:** 4 tests appended to
+  `tests/test_nested_function_visibility.py` —
+  `test_a_call_to_a_nested_function_by_its_local_name_resolves_to_its_qualname`
+  (asserts the exact `build_direct_callee_index` edge Codex's claim 1
+  said was dropped), `test_a_nested_function_calling_itself_recursively_also_resolves`
+  (the self-recursion half of the same fix), `test_a_function_nested_inside_a_match_case_body_is_indexed_and_walked`
+  (claim 2's own shape, both at the finding-plan level and the raw
+  `CallSite` level), and `test_a_guard_shaped_function_nested_inside_a_match_case_is_still_guard_shaped`
+  (confirms the Match fix covers the actual motivating
+  `callgraph.transitively_guard_shaped` concern, not just attribution).
+- **`git stash` confirmation:** stashing just the `python_resolver.py`
+  change and rerunning the 4 new tests: all 4 failed against the pre-fix
+  code (the 6 pre-existing tests in the same file passed unaffected).
+  Popping the stash and rerunning: 10/10 pass. Full suite: **145 passed,
+  0 failed** (141 + 4 new).
+- **verdict:** CONFIRMED (both claims were real). Both fixes implemented,
+  tested, and pushed to PR #7 — **still pending the same fresh,
+  non-forked Verifier pass** sz-2026-10-21-21 was already waiting on; this
+  entry does not advance that status, it closes two specific Codex
+  findings against the same unmerged PR.
+- **date:** 2026-10-21

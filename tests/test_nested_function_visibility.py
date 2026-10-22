@@ -11,9 +11,11 @@ parameter, not just the nested function's own parameters.
 import tempfile
 from pathlib import Path
 
+from sentinel_zero.callgraph import build_direct_callee_index, transitively_guard_shaped
 from sentinel_zero.dogfood_scan import find_finding_plans
 from sentinel_zero.disposition import load_catalog
 from sentinel_zero.catalog_loader import bundled_snapshot_path
+from sentinel_zero.graph import Symbol
 from sentinel_zero.resolvers.python_resolver import build_project_graph
 
 _CATALOG_PATH = str(bundled_snapshot_path())
@@ -138,3 +140,108 @@ def test_class_methods_are_not_duplicated_by_the_nested_function_fix():
         plans = _run(root)
         assert len(plans) == 1
         assert plans[0]["hypothesis"]["symbol_binding"] == "mod.Runner.run_it"
+
+
+def test_a_call_to_a_nested_function_by_its_local_name_resolves_to_its_qualname():
+    """Codex review, PR #7 (ledger sz-2026-10-21-21's own follow-up): a
+    call to a nested function by its local name -- `inner()`, the normal
+    way to call it, whether from a sibling statement in the enclosing
+    scope or recursively from inside the nested function itself -- must
+    resolve to its real qualname (`mod.outer.<locals>.inner`), not an
+    unbound bare `Symbol("inner")`. Before this fix, build_direct_callee_
+    index silently dropped the edge entirely (the bare symbol never
+    matched any key in project_functions), so transitive guard and
+    dependency propagation never saw a nested function's own callers at
+    all."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "mod.py").write_text(
+            "import os\n"
+            "def outer():\n"
+            "    def inner():\n"
+            "        os.system('echo hi')\n"
+            "    inner()\n"
+        )
+        graph = build_project_graph(root)
+        outer_calls = [c for c in graph.all_calls() if c.caller == "mod.outer"]
+        assert len(outer_calls) == 1
+        assert outer_calls[0].target == Symbol("mod.outer.<locals>.inner")
+        callee_index = build_direct_callee_index(graph)
+        assert callee_index.get("mod.outer") == {"mod.outer.<locals>.inner"}
+
+
+def test_a_nested_function_calling_itself_recursively_also_resolves():
+    """The self-recursion half of the same fix: a nested function calling
+    itself by its own local name must also resolve to its own qualname,
+    confirming the local-name binding is visible from inside the nested
+    scope too, not just from sibling statements in the enclosing one."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "mod.py").write_text(
+            "import os\n"
+            "def outer(n):\n"
+            "    def countdown(k):\n"
+            "        if k <= 0:\n"
+            "            os.system('echo done')\n"
+            "            return\n"
+            "        countdown(k - 1)\n"
+            "    countdown(n)\n"
+        )
+        graph = build_project_graph(root)
+        inner_calls = [c for c in graph.all_calls() if c.caller == "mod.outer.<locals>.countdown"]
+        self_calls = [c for c in inner_calls if c.target == Symbol("mod.outer.<locals>.countdown")]
+        assert len(self_calls) == 1
+
+
+def test_a_function_nested_inside_a_match_case_body_is_indexed_and_walked():
+    """Codex review, PR #7: `match value: case ...: def inner(): ...` is
+    real, supported Python 3.10+ syntax. Before this fix,
+    _direct_nested_function_defs never descended into a case body (no
+    Match branch at all), so `inner` was absent from project_functions
+    entirely; separately, the statement walker's generic ast.walk
+    fallback for Match attributed any call inside a case body to the
+    OUTER function directly, bypassing the nested-scope recursion."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "mod.py").write_text(
+            "import os\n"
+            "def dispatch(value):\n"
+            "    match value:\n"
+            "        case 'run':\n"
+            "            def inner():\n"
+            "                os.system('echo hi')\n"
+            "            inner()\n"
+            "        case _:\n"
+            "            pass\n"
+        )
+        plans = _run(root)
+        assert len(plans) == 1
+        assert plans[0]["hypothesis"]["symbol_binding"] == "mod.dispatch.<locals>.inner"
+        graph = build_project_graph(root)
+        dispatch_calls = [c for c in graph.all_calls() if c.caller == "mod.dispatch"]
+        assert len(dispatch_calls) == 1
+        assert dispatch_calls[0].target == Symbol("mod.dispatch.<locals>.inner")
+
+
+def test_a_guard_shaped_function_nested_inside_a_match_case_is_still_guard_shaped():
+    """Confirms the Match fix covers the actual motivating callgraph.py
+    concern (transitively_guard_shaped), not just CallSite attribution:
+    a guard-shaped function defined inside a case body must still be
+    found by _direct_nested_function_defs and correctly classified."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "mod.py").write_text(
+            "def dispatch(value, user):\n"
+            "    match value:\n"
+            "        case 'run':\n"
+            "            def require_admin():\n"
+            "                if not user.is_admin:\n"
+            "                    raise PermissionError('forbidden')\n"
+            "            require_admin()\n"
+            "        case _:\n"
+            "            pass\n"
+        )
+        graph = build_project_graph(root)
+        assert graph.functions["mod.dispatch.<locals>.require_admin"].is_guard_shaped is True
+        callee_index = build_direct_callee_index(graph)
+        assert transitively_guard_shaped("mod.dispatch", graph, callee_index) is True
