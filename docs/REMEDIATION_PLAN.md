@@ -264,23 +264,42 @@ over-narrow fix that only handles the single-argument pattern.
 
 ---
 
-## 7–8. Output-cap crash and missing wheel asset
-**Ledger:** sz-2026-10-21-08 — not yet independently verified to be real.
+## 7. Output-cap crash — STATUS: fixed, pending fresh Verifier pass
+**Ledger:** sz-2026-10-21-08 claim 1 (UNABLE_TO_VERIFY) -> sz-2026-10-22-01
+(CONFIRMED, fixed). See PR #9 (`fix/ledger-output-cap-crash`).
 
-**Before writing any fix:** reproduce both, for real, in this session or the
-next one:
-- Run a scan that genuinely produces a ledger over 5 MB and confirm what
-  actually happens (clean `CRITICAL_TOOL_FAILURE` message, or an uncaught
-  traceback — the ledger entry only has a plausible mechanism, not a
-  reproduction).
-- Build the actual wheel (`python -m build` or equivalent) in a clean venv,
-  install it, and try to run a scan that needs the JS probe harness from the
-  installed package rather than the source checkout.
+Reproduced for real before any fix was written: a synthetic 3500-module
+repo, each with its own `os.system(user_input)` sink call, produced a
+genuine 5,548,527-byte ledger and crashed `sentinel-zero analyze` with an
+uncaught `ValueError` traceback instead of this project's own
+`CRITICAL_TOOL_FAILURE` convention.
 
-Only once each is reproduced does it get its own ledger entry and its own
-item in this plan with a fix direction — writing a fix for an unreproduced
-claim is exactly the self-certification pattern this whole plan exists to
-avoid.
+**Fix:** `dogfood_scan._write_or_fail_cleanly()` catches that specific
+`ValueError` at the ledger/graph.json write sites and re-raises it as a
+`ToolFailure`; `cli.cmd_analyze()`'s `report.md` write moved inside the
+same try/except. Byte caps themselves unchanged. See sz-2026-10-22-01 for
+full detail.
+
+---
+
+## 8. Missing wheel asset for the JS probe harness — STATUS: fixed, pending fresh Verifier pass
+**Ledger:** sz-2026-10-21-08 claim 2 (UNABLE_TO_VERIFY) -> sz-2026-10-22-02
+(CONFIRMED, fixed).
+
+Reproduced for real before any fix was written: built the actual wheel
+with `python -m build`, installed it into a fresh venv, and called
+`run_js_sink_reachability_probe()` against it — a genuine
+`FileNotFoundError` for
+`.../site-packages/sentinel_zero/probes/js/_sink_reachability_harness.js`,
+because `pyproject.toml`'s `package-data` list covered
+`resolvers/js/*.js` but never `probes/js/*.js`, where the JS probe
+harness actually lives.
+
+**Fix:** added `"probes/js/*.js"` to `pyproject.toml`'s `package-data`
+list for `sentinel_zero`. The Python-side harness was never affected --
+it ships as ordinary package source, not a package-data asset. See
+sz-2026-10-22-02 for full detail (two-layer test: a fast glob-coverage
+check plus a skippable real-wheel-build check).
 
 ---
 

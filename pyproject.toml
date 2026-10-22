@@ -29,4 +29,5 @@ sentinel_zero = [
     "resolvers/js/*.js",
     "resolvers/js/package.json",
     "resolvers/js/package-lock.json",
+    "probes/js/*.js",
 ]

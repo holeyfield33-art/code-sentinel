@@ -465,3 +465,53 @@ Ashura to make, not something closed by further patching.
   equally to the subprocess backend's own nonce protocol, already
   covered by the existing sz-2026-10-21-14/-17 decision record.
 - **date:** 2026-10-22
+
+### sz-2026-10-22-02
+- **claim:** From sz-2026-10-21-08 claim 2 / `docs/REMEDIATION_PLAN.md` item 8:
+  "The distributed wheel omits the JS probe harness, so the installed
+  probe raises FileNotFoundError."
+- **claimant:** External audit (previously UNABLE_TO_VERIFY in
+  sz-2026-10-21-08, not checked against an actual built wheel).
+- **check performed:** Reproduced for real. `pyproject.toml`'s
+  `[tool.setuptools.package-data]` list for `sentinel_zero` covered
+  `resolvers/js/*.js` but not `probes/js/*.js`, where
+  `probes/js/_sink_reachability_harness.js` actually lives (the file
+  `js_sink_reachability_probe.py`'s `_HARNESS_PATH` points at). Built the
+  real wheel with `python -m build --wheel` from a clean working tree,
+  confirmed `sentinel_zero/probes/js/_sink_reachability_harness.js` was
+  absent from its file list, installed that wheel into a fresh venv, and
+  called `run_js_sink_reachability_probe()` directly against it:
+  `FileNotFoundError: JS sandbox probe harness missing at
+  .../site-packages/sentinel_zero/probes/js/_sink_reachability_harness.js`
+  — the exact failure mode claimed, now confirmed end-to-end rather than
+  left as an unverified read of the config.
+- **fix:** Added `"probes/js/*.js"` to the `package-data` list in
+  `pyproject.toml`, alongside the existing `resolvers/js/*.js` entry.
+  The Python-side harness (`probes/_sink_reachability_harness.py`) was
+  never affected — it ships automatically as package source via
+  `[tool.setuptools.packages.find]`, since it's a `.py` module, not a
+  package-data asset; only the JS file depended on an explicit glob.
+- **tests added:** `tests/test_packaging.py`, two layers:
+  1. `test_every_probe_harness_file_is_covered_by_a_declared_package_data_glob`
+     — fast, always-on: walks both probe modules' own `_HARNESS_PATH`
+     constants and asserts every non-`.py` one is covered by a declared
+     package-data glob (fnmatch against the real `pyproject.toml`
+     content). This is the one that would have caught the original bug
+     immediately.
+  2. `test_a_real_built_wheel_actually_contains_the_js_probe_harness` —
+     skipped if the `build` package isn't installed; actually builds the
+     wheel with `python -m build` and inspects its real `zipfile` file
+     list for the harness path, the same method used for the
+     reproduction above.
+- **stash confirmation:** `git stash push -- pyproject.toml`; also
+  removed the stale local `build/` cache directory first (an earlier
+  manual build left an incremental `build/lib` tree that silently
+  carried the fixed file forward across builds and produced a false
+  pass — cleaning it was necessary for the stash test to mean anything).
+  With the cache cleared and the fix stashed, both new tests failed with
+  the exact predicted shape (glob-coverage assertion naming the missing
+  file; built wheel's real file list missing the harness path);
+  `git stash pop`; both passed; full suite (153 tests, this file not yet
+  counted in the prior 154-test baseline since it's new) passed.
+- **verdict:** CONFIRMED (claim) / fixed, pending fresh Verifier pass.
+- **date:** 2026-10-22
