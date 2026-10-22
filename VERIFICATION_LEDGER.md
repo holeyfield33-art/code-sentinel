@@ -319,3 +319,33 @@ Ashura to make, not something closed by further patching.
 - **verifier:** UNABLE_TO_VERIFY (this session did not build the package or
   reproduce an oversized run)
 - **date:** 2026-10-21
+
+### sz-2026-10-21-20
+- **claim:** "Reading the disposition reason text for a
+  harvested-literal-argument VERIFIED_TRUE finding, a reader cannot
+  reasonably conclude the finding demonstrates attacker-controlled
+  input reaching the sink." (docs/REMEDIATION_PLAN.md item 4's
+  acceptance claim)
+- **claimant:** Builder session (this conversation)
+- **verifier:** pending — fix implemented and self-tested (including
+  confirming by hand, via `git stash`, that the new regression tests
+  fail pre-fix and pass post-fix), but not yet checked by a fresh
+  non-forked Tier-1 session. Logged now so the claim and its pending
+  status are recorded together, not asserted as done before that check
+  runs.
+- **method:** `_promote_if_sink_reached` now takes a
+  `harvested_literal_args` flag. When set, both the `reason` text and
+  `residual_uncertainty` explicitly say the call used a non-attacker-
+  controlled literal value and that the result says nothing about
+  reachability under attacker-controlled input — the harvested-argument
+  call site in `find_finding_plans` now passes this flag; the zero-arg
+  and JS/TS call sites (which have no harvested value to disclaim)
+  leave it `False`, the default, so the unambiguous case gets no added
+  noise. `tests/test_literal_arg_harvesting.py` gained two tests: one
+  confirming the disclaimer appears for the harvested case, one
+  confirming it's absent for the zero-arg case. Full suite: 137 passed.
+- **verdict:** pending
+- **evidence:** `sentinel_zero/dogfood_scan.py`
+  (`_promote_if_sink_reached`, its Python call site),
+  `tests/test_literal_arg_harvesting.py`
+- **date:** 2026-10-21
