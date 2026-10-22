@@ -343,7 +343,16 @@ def _js_top_level_function_name(module_qualname: str, caller_qualname: str) -> s
     return name
 
 
-def _promote_if_sink_reached(plan, probe_result: dict, call, guard_hit: str | None, caller: str, call_desc: str) -> None:
+def _promote_if_sink_reached(
+    plan,
+    probe_result: dict,
+    call,
+    guard_hit: str | None,
+    caller: str,
+    call_desc: str,
+    *,
+    harvested_literal_args: bool = False,
+) -> None:
     """Shared by both the Python and JS/TS probing paths (Milestone 18
     factored this out so neither language's block could silently drift
     from the other's correctness rule): promotes `plan` to VERIFIED_TRUE
@@ -353,7 +362,20 @@ def _promote_if_sink_reached(plan, probe_result: dict, call, guard_hit: str | No
     the probe actually invoked the function ("with zero arguments", or
     Python's harvested-literal-argument variant) -- written into the
     reason text so a human reading a finding never has to guess what was
-    actually run."""
+    actually run.
+
+    `harvested_literal_args` (remediation item 4, VERIFICATION_LEDGER.md
+    sz-2026-10-21-07): set only by the Milestone 17 harvested-literal-
+    argument path. A zero-argument call has nothing a reader could
+    mistake for attacker input, but a harvested call passes real,
+    non-trivial-looking values (a path, a command fragment) -- and
+    "VERIFIED_TRUE" next to "args=('/etc/passwd',)" reads, to a skimming
+    human, like proof the sink is exploitable with that value. It is not:
+    the value is a literal constant lifted from elsewhere in the project,
+    confirmed non-attacker-controlled, never synthesized or adversarial.
+    This flag makes both the reason text and residual_uncertainty say so
+    explicitly, rather than relying on call_desc's own wording alone to
+    carry that distinction."""
     if probe_result.get("status") != "sink_reached" or probe_result.get("symbol") != call.target.qualified_name:
         return
     guard_note = (
@@ -363,6 +385,13 @@ def _promote_if_sink_reached(plan, probe_result: dict, call, guard_hit: str | No
         "specific call."
         if guard_hit else ""
     )
+    exploitability_note = (
+        " This demonstrates the call path is reachable under this exact, "
+        "non-attacker-controlled value -- it does NOT demonstrate that the sink is "
+        "reachable under attacker-controlled input, and must never be read as proof "
+        "of exploitability."
+        if harvested_literal_args else ""
+    )
     set_disposition(
         plan,
         "VERIFIED_TRUE",
@@ -371,10 +400,16 @@ def _promote_if_sink_reached(plan, probe_result: dict, call, guard_hit: str | No
             f"isolated subprocess and observed {probe_result.get('symbol')} invoked "
             f"(args={probe_result.get('args')}) before the real sink could execute "
             "(monkeypatched, never actually run). This confirms the call path is live "
-            "and reachable under at least one real invocation." + guard_note
+            "and reachable under at least one real invocation." + exploitability_note + guard_note
         ),
-        residual_uncertainty="Low: dynamic reachability confirmed under one benign "
-        "call; no adversarial inputs were attempted (explicitly out of scope for this probe).",
+        residual_uncertainty=(
+            "Low: dynamic reachability confirmed under one benign, harvested-literal "
+            "call; this says nothing about reachability under attacker-controlled "
+            "input, which was never attempted (explicitly out of scope for this probe)."
+            if harvested_literal_args
+            else "Low: dynamic reachability confirmed under one benign call; no "
+            "adversarial inputs were attempted (explicitly out of scope for this probe)."
+        ),
     )
 
 
@@ -571,7 +606,10 @@ def find_finding_plans(
                             )
                         else:
                             call_desc = "with zero arguments"
-                        _promote_if_sink_reached(plan, probe_result, call, guard_hit, caller, call_desc)
+                        _promote_if_sink_reached(
+                            plan, probe_result, call, guard_hit, caller, call_desc,
+                            harvested_literal_args=harvested_args is not None,
+                        )
 
                 # Milestone 18: the JS/TS mirror of the probe above. Same
                 # sink-kind gating, same "never attempt eval/exec-equivalent

@@ -78,6 +78,24 @@ before being acted on, same discipline as every prior round:
    as a new patch. This is a judgment call (patch further vs. accept the
    documented bound), surfaced to the user rather than decided alone.
 
+**Option (a) now exists, opt-in, unverified end-to-end (ledger
+sz-2026-10-21-19):** the "build genuine OS-level isolation" option this
+item's sz-2026-10-21-14 decision left unstarted now has a real
+implementation — `sentinel_zero/probes/docker_sink_executor.py`, ported
+by hand (no code dependency taken) from the lock-down pattern in
+Ashura's own readme-tester project: network segmentation, dropped
+capabilities, read-only root, non-root user, resource caps, same
+already-hardened harness file underneath. Selected via
+`SENTINEL_ZERO_PROBE_BACKEND=docker`; the default is unchanged. This is
+explicitly NOT a claim that the forgeability problem is now closed —
+no Docker daemon was reachable in the session that wrote it, so the
+actual container-isolation behavior has never been exercised, only the
+argument construction and parsing around it. It needs a real smoke test
+wherever Docker runs before it's trusted for any real finding, let
+alone made the default — until then, option (b) (the honest, narrower
+claim stated above) is still the operative status for anyone reading a
+probe-only VERIFIED_TRUE today.
+
 **This item does not get a "done" entry in this plan.** It gets this
 status note instead, which is itself the IVP working as intended: a
 claim that got weaker, not stronger, the more it was actually checked.
@@ -172,7 +190,8 @@ have its unreachable call site promoted to VERIFIED_TRUE."
 
 ---
 
-## 4. Literal-argument probe path mislabels reachability as exploit
+## 4. Literal-argument probe path mislabels reachability as exploit — STATUS: fixed, pending fresh Verifier pass
+**Ledger:** sz-2026-10-21-07, -20
 **Ledger:** sz-2026-10-21-07
 
 **Fix direction:** the harvested-literal-argument path proves something real
@@ -197,18 +216,27 @@ read only the reason text (not the code), and judge whether it overclaims.
 ---
 
 ## 5. Nested Python functions are invisible to the resolver
-**Ledger:** sz-2026-10-21-05
+**Status: fixed, pending fresh Verifier pass.** Ledger: sz-2026-10-21-05
+(original finding), sz-2026-10-21-21 (fix).
 
-**Fix direction:** `walk_stmts()`'s skip of nested `FunctionDef` needs a
-matching "and also walk it, as its own scope" step — the same shape as the
-existing class-method pass (lines 745–752), but recursive: a nested function
-needs a qualname of its own (e.g. `module.outer.<locals>.inner`, mirroring
-Python's own `__qualname__` convention) and its own `walk_fn` invocation.
-Watch for the obvious recursion case (a function nested three deep) and for
-closures that reference the *enclosing* function's parameters, not just
-their own — `_param_names` likely needs to accumulate across nesting levels,
-not reset per scope, or a parameter captured by closure will misclassify as
-"unknown" taint instead of "parameter."
+Branch `fix/nested-function-invisibility`. Added
+`_direct_nested_function_defs`/`_index_function_and_nested` to index a
+nested `FunctionDef`/`AsyncFunctionDef` with a `module.outer.<locals>.inner`
+qualname (mirroring Python's own `__qualname__` convention), wired into both
+the top-level and class-method indexing loops. Extended `walk_fn` with an
+`enclosing_param_names` accumulator and `walk_stmts` to recurse into a
+nested function as a real scope of its own — guarded so this recursion only
+fires when walking inside a real function scope, never the module's own
+top-level walk (which already indexes top-level functions itself; without
+the guard, every top-level function got double-counted — caught by the
+existing suite during development, 26 failures, fixed before any new tests
+were written). 6 new tests in
+`tests/test_nested_function_visibility.py` cover one-level nesting, a
+closure over the *enclosing* function's own parameter (classifies as
+`parameter` taint, not `unknown`), three-deep nesting, a nested def inside
+an `if` block, and two regression guards against the double-counting bug.
+Confirmed via `git stash`: 4/6 new tests fail against the pre-fix resolver,
+6/6 pass post-fix. Full suite: 141 passed, 0 failed.
 
 **Acceptance claim for the Verifier:** "A sink call inside a function nested
 inside another function produces a finding plan, with correct parameter
@@ -216,7 +244,13 @@ taint classification for a variable captured from the enclosing scope."
 
 **Verifier method hint:** the ledger's own fixture (a closure with a real
 `os.system` call) plus a second fixture where the sink argument is a
-parameter of the *outer* function, referenced inside the inner one.
+parameter of the *outer* function, referenced inside the inner one — both
+are now covered by the committed test file, but a fresh Verifier should
+still try to break the fix with its own adversarial fixtures (e.g. a
+closure over a *loop variable* from the enclosing scope, or a nested
+function that itself has a nested function with a sink call two levels
+removed from the parameter it closes over) rather than only re-running the
+Builder's own tests.
 
 ---
 
