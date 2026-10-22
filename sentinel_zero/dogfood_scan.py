@@ -134,6 +134,8 @@ from sentinel_zero.disposition import (
     set_disposition,
 )
 from sentinel_zero.callgraph import (
+    build_direct_sink_call_counts,
+    transitive_sink_symbol_counts,
     build_direct_callee_index,
     build_direct_external_index,
     external_packages_reached,
@@ -371,7 +373,16 @@ def _promote_if_sink_reached(plan, probe_result: dict, call, guard_hit: str | No
     the probe actually invoked the function ("with zero arguments", or
     Python's harvested-literal-argument variant) -- written into the
     reason text so a human reading a finding never has to guess what was
-    actually run."""
+    actually run.
+
+    This symbol check is still only a match by resolved NAME, not by which
+    specific call site actually fired (VERIFICATION_LEDGER.md
+    sz-2026-10-21-04): it genuinely cannot tell two call sites to the same
+    sink symbol in one caller apart. find_finding_plans's caller is
+    responsible for never invoking the probe at all in that ambiguous case
+    (see its own sink_symbol_counts gating) -- this function has no way to
+    enforce that itself, since by the time it runs, the probe has already
+    been called with no record of which specific call site asked for it."""
     if probe_result.get("status") != "sink_reached" or probe_result.get("symbol") != call.target.qualified_name:
         return
     guard_note = (
@@ -430,12 +441,52 @@ def find_finding_plans(
     plans = []
     callee_index = build_direct_callee_index(graph)
     external_index = build_direct_external_index(graph)
+    # VERIFICATION_LEDGER.md sz-2026-10-21-04, -18: direct_sink_counts is the
+    # graph-wide "qualified function name -> {sink symbol: direct call-site
+    # count}" table; transitive_sink_symbol_counts (per caller, below) sums
+    # this across a caller and everything it delegates to, so a sink
+    # reached only inside a HELPER the caller calls counts toward the same
+    # ambiguity gate as a second direct call site in the caller itself --
+    # closing the delegated-call gap Codex's review found in item 3's
+    # original, same-function-only version of this count.
+    direct_sink_counts = build_direct_sink_call_counts(graph, sink_table)
     for module in graph.modules.values():
         calls_by_caller: dict[str, list] = {}
         for call in module.calls:
             calls_by_caller.setdefault(call.caller, []).append(call)
 
         for caller, calls in calls_by_caller.items():
+            # Milestone (remediation item 3, VERIFICATION_LEDGER.md
+            # sz-2026-10-21-04, widened at -18): _promote_if_sink_reached
+            # can only compare the probe's reported symbol against
+            # call.target.qualified_name -- a match by resolved NAME, not
+            # by which specific call site actually fired. When a caller has
+            # more than one possible SOURCE of that symbol during the probe
+            # run -- whether that's a second direct call site in the same
+            # function, or a call site reached only through a helper this
+            # caller delegates to -- a single probe run cannot tell which
+            # one it was, so promoting any of them off that one result is
+            # an overclaim. sink_symbol_counts here is therefore the
+            # TRANSITIVE count (caller plus everything it calls, directly
+            # or through further delegation), not just this caller's own
+            # direct call sites -- computed once per caller, not per call,
+            # since it only depends on the caller's identity and the
+            # project-wide call graph, never on which specific call is
+            # being decided.
+            if caller:
+                sink_symbol_counts = transitive_sink_symbol_counts(caller, callee_index, direct_sink_counts)
+            else:
+                # Module-level (top-of-file) sink calls have no function
+                # identity to walk a call graph from, so there's no
+                # delegation to account for -- fall back to the original,
+                # same-scope-only count (this scope's own direct calls,
+                # which build_direct_sink_call_counts excludes since it
+                # requires a real caller name).
+                sink_symbol_counts = {}
+                for c in calls:
+                    if isinstance(c.target, Symbol) and c.target.qualified_name in sink_table:
+                        sink_symbol_counts[c.target.qualified_name] = sink_symbol_counts.get(c.target.qualified_name, 0) + 1
+
             for call in calls:
                 if not isinstance(call.target, Symbol) or call.target.qualified_name not in sink_table:
                     continue
@@ -516,11 +567,21 @@ def find_finding_plans(
                         "relationship to attacker-controlled input is still not verified.",
                     )
                 else:
+                    ambiguous_sink_count = sink_symbol_counts.get(call.target.qualified_name, 1)
+                    probe_note = (
+                        f" This caller has {ambiguous_sink_count} separate call sites resolving to "
+                        f"{call.target.qualified_name} -- a single dynamic probe run cannot tell which one it "
+                        "actually reached, so the probe is not attempted for any of them here rather than risk "
+                        "promoting an unreached one off another call site's evidence (VERIFICATION_LEDGER.md "
+                        "sz-2026-10-21-04)."
+                        if ambiguous_sink_count > 1
+                        else " No sandbox probe has run yet for this finding."
+                    )
                     set_disposition(
                         plan,
                         "UNRESOLVED_INCONCLUSIVE",
-                        reason="no resolved, guard-shaped call precedes this sink in the same function. "
-                               "No sandbox probe has run yet for this finding." + _taint_note(call.arg_taint),
+                        reason="no resolved, guard-shaped call precedes this sink in the same function."
+                               + probe_note + _taint_note(call.arg_taint),
                         residual_uncertainty="Medium: no in-function guard resolved, no dynamic check run.",
                     )
 
@@ -554,6 +615,7 @@ def find_finding_plans(
                     and sink_kind in ("PROCESS_EXEC", "FILE_IO", "DESERIALIZATION")
                     and call.target.qualified_name not in ("builtins.eval", "builtins.exec")
                     and caller
+                    and sink_symbol_counts.get(call.target.qualified_name, 1) == 1
                 ):
                     invocation = _probe_invocation_for(module.file_path, module.module_qualname, caller, graph)
                     if invocation:
@@ -594,6 +656,7 @@ def find_finding_plans(
                     and sink_kind in ("PROCESS_EXEC", "FILE_IO", "DESERIALIZATION")
                     and call.target.qualified_name != "fs.readFileSync"
                     and caller
+                    and sink_symbol_counts.get(call.target.qualified_name, 1) == 1
                 ):
                     fn_name = _js_top_level_function_name(module.module_qualname, caller)
                     if fn_name:
