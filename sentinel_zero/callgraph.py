@@ -153,3 +153,47 @@ def transitively_guard_shaped(
         transitively_guard_shaped(callee, graph, callee_index, next_visited, _depth + 1)
         for callee in callee_index.get(name, ())
     )
+
+
+def build_direct_sink_call_counts(graph: ProjectGraph, sink_table: dict[str, str]) -> dict[str, dict[str, int]]:
+    """Count resolved sink call sites in each function's own body."""
+    counts: dict[str, dict[str, int]] = {}
+    for call in graph.all_calls():
+        if not call.caller or not isinstance(call.target, Symbol):
+            continue
+        symbol = call.target.qualified_name
+        if symbol in sink_table:
+            per_function = counts.setdefault(call.caller, {})
+            per_function[symbol] = per_function.get(symbol, 0) + 1
+    return counts
+
+
+def transitive_sink_symbol_counts(
+    name: str,
+    callee_index: dict[str, set[str]],
+    direct_sink_counts: dict[str, dict[str, int]],
+) -> dict[str, int]:
+    """Count distinct sink sites in a caller and its resolved callees.
+
+    A probe reports a sink symbol, not the source location that fired.
+    Delegated sites therefore compete with the caller's own sites for
+    the same evidence. Visit each function once so cycles terminate and
+    diamond-shaped delegation does not count a shared site twice.
+
+    Unlike guard propagation, do not truncate at MAX_DEPTH: overlooking
+    a deeper competing site would incorrectly authorize promotion. This
+    iterative walk is bounded by the finite resolved project graph. It
+    remains branch-blind and cannot account for unresolved callees.
+    """
+    counts: dict[str, int] = {}
+    visited: set[str] = set()
+    pending = [name]
+    while pending:
+        caller = pending.pop()
+        if caller in visited:
+            continue
+        visited.add(caller)
+        for symbol, count in direct_sink_counts.get(caller, {}).items():
+            counts[symbol] = counts.get(symbol, 0) + count
+        pending.extend(callee_index.get(caller, ()))
+    return counts

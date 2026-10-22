@@ -136,8 +136,10 @@ from sentinel_zero.disposition import (
 from sentinel_zero.callgraph import (
     build_direct_callee_index,
     build_direct_external_index,
+    build_direct_sink_call_counts,
     external_packages_reached,
     transitively_guard_shaped,
+    transitive_sink_symbol_counts,
 )
 from sentinel_zero.graph import ProjectGraph, Symbol
 from sentinel_zero.graph_export import export_graph
@@ -414,6 +416,8 @@ def _promote_if_sink_reached(
     This flag makes both the reason text and residual_uncertainty say so
     explicitly, rather than relying on call_desc's own wording alone to
     carry that distinction."""
+    # The caller must first exclude competing sites in its resolved
+    # delegation graph: a matching symbol alone cannot identify a site.
     if probe_result.get("status") != "sink_reached" or probe_result.get("symbol") != call.target.qualified_name:
         return
     guard_note = (
@@ -504,12 +508,14 @@ def find_finding_plans(
     plans = []
     callee_index = build_direct_callee_index(graph)
     external_index = build_direct_external_index(graph)
+    direct_sink_counts = build_direct_sink_call_counts(graph, sink_table)
     for module in graph.modules.values():
         calls_by_caller: dict[str, list] = {}
         for call in module.calls:
             calls_by_caller.setdefault(call.caller, []).append(call)
 
         for caller, calls in calls_by_caller.items():
+            sink_symbol_counts = transitive_sink_symbol_counts(caller, callee_index, direct_sink_counts)
             for call in calls:
                 if not isinstance(call.target, Symbol) or call.target.qualified_name not in sink_table:
                     continue
@@ -597,6 +603,25 @@ def find_finding_plans(
                                "No sandbox probe has run yet for this finding." + _taint_note(call.arg_taint),
                         residual_uncertainty="Medium: no in-function guard resolved, no dynamic check run.",
                     )
+
+                # A helper can reach this symbol before the caller's own
+                # site does. Preserve static evidence, but do not run a
+                # probe whose symbol-only result cannot distinguish them.
+                ambiguous_sink_count = sink_symbol_counts.get(call.target.qualified_name, 0)
+                if caller and ambiguous_sink_count > 1:
+                    set_disposition(
+                        plan,
+                        "UNRESOLVED_INCONCLUSIVE",
+                        reason=plan.disposition["reason"] + (
+                            f" There are {ambiguous_sink_count} separate call sites resolving to "
+                            f"{call.target.qualified_name} in this caller and its resolved callees. "
+                            "A single dynamic probe cannot identify which site fired, so the probe "
+                            "is not attempted and no site is promoted from ambiguous evidence."
+                        ),
+                        residual_uncertainty="Medium: multiple resolved sites could produce the same sink-symbol evidence.",
+                    )
+                    plans.append(plan)
+                    continue
 
                 # Milestone 6, widened in Milestone 16 (FILE_IO/DESERIALIZATION
                 # sink kinds) and Milestone 17 (harvested-literal-argument
