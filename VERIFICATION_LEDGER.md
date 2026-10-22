@@ -319,3 +319,56 @@ Ashura to make, not something closed by further patching.
 - **verifier:** UNABLE_TO_VERIFY (this session did not build the package or
   reproduce an oversized run)
 - **date:** 2026-10-21
+
+### sz-2026-10-21-19
+- **claim:** "The probe can run with real OS-level isolation (network
+  segmentation, dropped capabilities, read-only root, non-root user,
+  resource caps) instead of the in-process monkeypatch table, closing
+  the gap recorded in sz-2026-10-21-14."
+- **claimant:** Builder session (this conversation), at the user's
+  direction to port the execution-sandbox logic from their own
+  readme-tester project (no code dependency taken on that repo — the
+  security-flag pattern was read and re-implemented by hand in a new,
+  standalone file)
+- **verifier:** UNABLE_TO_VERIFY end-to-end in this session — `docker`
+  the CLI is present but no daemon is reachable here
+  (`docker_available()` genuinely returns `False`, confirmed by a real
+  call, not assumed). What WAS checked in this session: argument/flag
+  construction for the execute phase (every lock-down flag present:
+  `--network none`, `--cap-drop ALL`, `--security-opt
+  no-new-privileges`, `--read-only`, `--pids-limit`, `--cpus`,
+  `--memory`, `--user 1000:1000`), the env-allowlist discipline (a
+  non-allowlisted real value never appears in the constructed args),
+  the nonce-authenticated result parser (accepts a correctly-nonced
+  line, rejects a forged/mismatched one, handles empty output), and the
+  backend dispatcher (requesting `docker` without a reachable daemon
+  returns a clear `call_failed`, never a silent fallback to the
+  subprocess backend; an unknown backend name is rejected the same way;
+  the default, unset-env-var path is unchanged and still produces a
+  real `sink_reached` result).
+- **method:** New module `sentinel_zero/probes/docker_sink_executor.py`
+  (standalone — no import of readme-tester's package), wired in as an
+  opt-in backend via `SENTINEL_ZERO_PROBE_BACKEND=docker` in
+  `sink_reachability_probe.py`'s now-dispatching
+  `run_sink_reachability_probe`; the original subprocess logic moved,
+  byte-for-byte, into `_run_sink_reachability_probe_subprocess` and
+  remains the untouched default. Two-phase design (install with network
+  on, best-effort `pip install` from a manifest if one exists; execute
+  with network off and the lock-down flags above) runs the project's
+  own, already-hardened `_sink_reachability_harness.py` completely
+  unchanged — none of this evening's nonce/trusted-output hardening had
+  to be reimplemented, only re-launched under a different isolation
+  boundary. `tests/test_docker_sink_probe.py` (10 tests, all passing).
+  Full suite: 145 passed.
+- **verdict:** CONFIRMED at the construction/parsing/dispatch level
+  tested; UNABLE_TO_VERIFY for the actual container-isolation claim
+  itself, for lack of a reachable Docker daemon in this session. Not
+  default, not claimed production-ready. Needs a real smoke test
+  (actually launching a container against a real target) wherever
+  Docker runs — the user's own machine or CI — before this backend is
+  trusted for any real finding, let alone promoted to the default.
+- **disclosed gap vs. the ported pattern's own source:** no pinned image
+  digest yet (`python:3.12-slim`, a floating tag) — readme-tester's own
+  executor pins by digest; this is a real, intentional narrowing stated
+  here rather than silently matched to the stronger claim.
+- **date:** 2026-10-21
