@@ -320,116 +320,148 @@ Ashura to make, not something closed by further patching.
   reproduce an oversized run)
 - **date:** 2026-10-21
 
-### sz-2026-10-21-21
-- **claim:** "A nested Python function (a `def` inside another `def`) is
-  invisible to the static resolver: it is never indexed into
-  `project_functions` and its own body is never walked for `CallSite`s, so a
-  sink call inside one produces zero finding plans — not even
-  `UNRESOLVED_INCONCLUSIVE` — the worst possible outcome, since it does not
-  even surface as something to triage." (Remediation plan item 5.)
-- **claimant:** `docs/REMEDIATION_PLAN.md` item 5 (originally from the
-  external audit)
-- **check performed:** Builder session on branch
-  `fix/nested-function-invisibility`. Added `_direct_nested_function_defs`
-  (recurses through if/try/for/while/with to find a `FunctionDef`/
-  `AsyncFunctionDef` belonging to the current scope, stopping at a nested
-  function/class boundary) and `_index_function_and_nested` (indexes a
-  function, then its nested defs, qualnamed the way Python's own
-  `__qualname__` does: `module.outer.<locals>.inner`), wired into both the
-  top-level and class-method indexing loops in
-  `sentinel_zero/resolvers/python_resolver.py`. Extended `walk_fn` with an
-  `enclosing_param_names` accumulator so a nested function's own
-  `param_names` set includes every enclosing function's parameters too
-  (closure-correct taint classification), and extended `walk_stmts` to
-  recurse into a nested `FunctionDef`/`AsyncFunctionDef` as a real scope of
-  its own — but ONLY when walking inside a real function scope
-  (`fn_node is not None`), not when walking the true module scope, which
-  already has its own dedicated top-level loop.
-- **regression hit during implementation:** the first version of the
-  `walk_stmts` change had no such guard, so the module-level walk's own
-  pass over `tree.body` ALSO matched every top-level `FunctionDef` as a
-  "nested" def, producing a second, duplicate `CallSite` per top-level
-  function under a qualname missing the module prefix. Caught immediately
-  by the existing suite (`26 failed, 109 passed`), root-caused to that
-  scope conflation, fixed with the `fn_node is not None` guard. Full suite
-  returned to green before any new tests were even written.
-- **tests added:** `tests/test_nested_function_visibility.py` (6 tests) —
-  a sink call in a one-level-nested function now produces exactly one
-  finding plan (`mod.outer.<locals>.inner`); a closure over the ENCLOSING
-  function's own parameter classifies as `parameter` taint, not `unknown`;
-  three levels of nesting resolve to the correctly-chained qualname; a
-  nested def buried inside an `if` block is still found; and two explicit
-  regression guards confirm a plain top-level function and a plain class
-  method each still produce exactly one finding with their original,
-  unmodified qualname (no spurious `.<locals>.` duplicate).
-- **`git stash` confirmation:** stashing just the
-  `python_resolver.py` change and rerunning the new test file: 4 of 6
-  failed (the two scoped on pre-existing behavior still passed, as
-  expected) — `assert 0 == 1` on every nested-function case, confirming the
-  bug was real and the tests actually exercise the fix. Popping the stash
-  and rerunning: 6/6 pass. Full suite: **141 passed, 0 failed** (135
-  pre-existing + 6 new).
-- **verdict:** CONFIRMED by the Builder's own testing — **pending a fresh,
-  non-forked Tier-1 Verifier pass** before this is asserted as closed to
-  anyone outside this session, per IVP (a Builder's own regression tests
-  for a bug the Builder found and fixed do not close an item on their own).
+### sz-2026-10-21-19
+- **claim:** "The probe can run with real OS-level isolation (network
+  segmentation, dropped capabilities, read-only root, non-root user,
+  resource caps) instead of the in-process monkeypatch table, closing
+  the gap recorded in sz-2026-10-21-14."
+- **claimant:** Builder session (this conversation), at the user's
+  direction to port the execution-sandbox logic from their own
+  readme-tester project (no code dependency taken on that repo — the
+  security-flag pattern was read and re-implemented by hand in a new,
+  standalone file)
+- **verifier:** UNABLE_TO_VERIFY end-to-end in this session — `docker`
+  the CLI is present but no daemon is reachable here
+  (`docker_available()` genuinely returns `False`, confirmed by a real
+  call, not assumed). What WAS checked in this session: argument/flag
+  construction for the execute phase (every lock-down flag present:
+  `--network none`, `--cap-drop ALL`, `--security-opt
+  no-new-privileges`, `--read-only`, `--pids-limit`, `--cpus`,
+  `--memory`, `--user 1000:1000`), the env-allowlist discipline (a
+  non-allowlisted real value never appears in the constructed args),
+  the nonce-authenticated result parser (accepts a correctly-nonced
+  line, rejects a forged/mismatched one, handles empty output), and the
+  backend dispatcher (requesting `docker` without a reachable daemon
+  returns a clear `call_failed`, never a silent fallback to the
+  subprocess backend; an unknown backend name is rejected the same way;
+  the default, unset-env-var path is unchanged and still produces a
+  real `sink_reached` result).
+- **method:** New module `sentinel_zero/probes/docker_sink_executor.py`
+  (standalone — no import of readme-tester's package), wired in as an
+  opt-in backend via `SENTINEL_ZERO_PROBE_BACKEND=docker` in
+  `sink_reachability_probe.py`'s now-dispatching
+  `run_sink_reachability_probe`; the original subprocess logic moved,
+  byte-for-byte, into `_run_sink_reachability_probe_subprocess` and
+  remains the untouched default. Two-phase design (install with network
+  on, best-effort `pip install` from a manifest if one exists; execute
+  with network off and the lock-down flags above) runs the project's
+  own, already-hardened `_sink_reachability_harness.py` completely
+  unchanged — none of this evening's nonce/trusted-output hardening had
+  to be reimplemented, only re-launched under a different isolation
+  boundary. `tests/test_docker_sink_probe.py` (10 tests, all passing).
+  Full suite: 145 passed.
+- **verdict:** CONFIRMED at the construction/parsing/dispatch level
+  tested; UNABLE_TO_VERIFY for the actual container-isolation claim
+  itself, for lack of a reachable Docker daemon in this session. Not
+  default, not claimed production-ready. Needs a real smoke test
+  (actually launching a container against a real target) wherever
+  Docker runs — the user's own machine or CI — before this backend is
+  trusted for any real finding, let alone promoted to the default.
+- **disclosed gap vs. the ported pattern's own source:** no pinned image
+  digest yet (`python:3.12-slim`, a floating tag) — readme-tester's own
+  executor pins by digest; this is a real, intentional narrowing stated
+  here rather than silently matched to the stronger claim.
 - **date:** 2026-10-21
 
-### sz-2026-10-21-23
+### sz-2026-10-21-24
 - **claims:**
-  1. "A call to a nested function by its local name (`inner()`) is never
-     bound to its qualified name in `local_bindings`, so it resolves to
-     an unbound bare `Symbol('inner')` instead of
-     `Symbol('mod.outer.<locals>.inner')`; `build_direct_callee_index`
-     silently drops the edge, so transitive guard and dependency
-     propagation never see a nested function's own callers."
-  2. "`match value: case ...: def inner(): ...` (Python 3.10+) is not
-     traversed by `_direct_nested_function_defs` at all, so `inner` is
-     absent from `project_functions` entirely; the statement walker also
-     has no `Match` branch and falls through to a generic `ast.walk`,
-     attributing calls inside a case body to the OUTER function instead
-     of the nested scope."
-- **claimant:** Codex automated review on PR #7 (sz-2026-10-21-21's own
-  PR), commit `2c9cb60`, comment_ids 4344153384 (claim 1) and 4344153390
-  (claim 2), both P2
-- **check performed:** Builder session independently reproduced both by
-  hand before accepting them, per IVP. Claim 1: `/tmp/codex_verify7/mod.py`
-  (`outer()` defining and calling `inner()`) — confirmed `graph.all_calls()`
-  held `mod.outer -> Symbol('inner')` (bare, unqualified) and
-  `build_direct_callee_index(graph).get('mod.outer')` was `None`. Claim 2:
-  `/tmp/codex_verify7/match_mod.py` (`dispatch()` with a nested `inner()`
-  inside a `case 'run':` body) — confirmed `graph.functions` had no
-  `match_mod.dispatch.<locals>.inner` key at all.
-- **fix:** Claim 1: in `walk_stmts`'s `FunctionDef`/`AsyncFunctionDef`
-  branch, `local_bindings[stmt.name]` is now bound to the nested
-  function's qualname BEFORE recursing into its body — covers both a
-  sibling call after the def and the nested function calling itself
-  recursively (the binding is already present in the `extra_bindings`
-  snapshot the nested scope inherits). Claim 2: added an `ast.Match`
-  branch to both `_direct_nested_function_defs` (walks every `case.body`,
-  mirroring the existing If/Try/For treatment) and `walk_stmts` (records
-  calls in the match subject and each case's guard, then recurses into
-  each case body at its own `branch_path` tag, instead of falling
-  through to the generic `record_calls_in_expr(stmt, ...)` case that
-  bypassed the `FunctionDef` branch entirely).
-- **tests added:** 4 tests appended to
-  `tests/test_nested_function_visibility.py` —
-  `test_a_call_to_a_nested_function_by_its_local_name_resolves_to_its_qualname`
-  (asserts the exact `build_direct_callee_index` edge Codex's claim 1
-  said was dropped), `test_a_nested_function_calling_itself_recursively_also_resolves`
-  (the self-recursion half of the same fix), `test_a_function_nested_inside_a_match_case_body_is_indexed_and_walked`
-  (claim 2's own shape, both at the finding-plan level and the raw
-  `CallSite` level), and `test_a_guard_shaped_function_nested_inside_a_match_case_is_still_guard_shaped`
-  (confirms the Match fix covers the actual motivating
-  `callgraph.transitively_guard_shaped` concern, not just attribution).
-- **`git stash` confirmation:** stashing just the `python_resolver.py`
-  change and rerunning the 4 new tests: all 4 failed against the pre-fix
-  code (the 6 pre-existing tests in the same file passed unaffected).
-  Popping the stash and rerunning: 10/10 pass. Full suite: **145 passed,
-  0 failed** (141 + 4 new).
-- **verdict:** CONFIRMED (both claims were real). Both fixes implemented,
-  tested, and pushed to PR #7 — **still pending the same fresh,
-  non-forked Verifier pass** sz-2026-10-21-21 was already waiting on; this
-  entry does not advance that status, it closes two specific Codex
-  findings against the same unmerged PR.
-- **date:** 2026-10-21
+  1. (P2) "On a host where Sentinel runs under a UID other than 1000,
+     the install container creates `/env/src` and the venv inside the
+     bind-mounted temp dir as UID 1000 at mode 0755, so the host
+     process cannot remove their contents on cleanup, and an otherwise-
+     completed probe raises `PermissionError`."
+  2. (P2) "`|| true` on either pip install line defeats `set -e`, makes
+     the install container exit successfully even when pip genuinely
+     fails, and causes `_install()` to report success — the harness
+     then probes a partial environment, which can produce misleading
+     reachability evidence instead of the promised `call_failed`."
+  3. (P2) "`test_docker_is_genuinely_unavailable_in_this_environment`
+     unconditionally asserts `docker_available()` is `False`, which
+     fails outright on any developer or CI machine with a reachable
+     Docker daemon — exactly the environment this backend is supposed
+     to be smoke-tested in."
+  4. (P1, separately flagged to the user rather than decided
+     unilaterally — see below) "The nonce is exposed in the target's own
+     process environment; the already-documented
+     `_io.FileIO('/proc/self/environ')` bypass can recover it and forge
+     a nonced result, since the container isolates the shared process
+     from the HOST, not the harness from the imported target it shares
+     a process with."
+- **claimant:** Codex automated review on PR #5 (sz-2026-10-21-19's own
+  PR), commit `0245b11`, comment_ids 4344098481 (claim 1), 4344098475
+  (claim 2), 4344098486 (claim 3), 4344098471 (claim 4)
+- **check performed (claims 1-3):** fixed directly, each a small, local,
+  confident fix on the Builder's own PR, per the standing PR-steward
+  policy. Claim 1: `_install_user()` added, returning the host's own
+  `os.getuid():os.getgid()` (falling back to the previous `1000:1000`
+  only when `os.getuid`/`getgid` don't exist, i.e. non-Linux/macOS),
+  used for the INSTALL phase's `--user` flag only — the EXECUTE phase
+  intentionally keeps its hardcoded non-root `1000:1000` for security,
+  unaffected by this (it mounts `/env` read-only, so it never writes
+  anything the host needs to clean up). Claim 2: both `|| true`s
+  removed from `_INSTALL_SCRIPT`; the "never hard-fail just because
+  there's nothing to install" bound is untouched since those `pip`
+  lines are inside `if [ -f ... ]` branches skipped entirely when no
+  manifest exists. Claim 3: the test now self-skips (via
+  `pytest.skip`) when Docker IS actually reachable, instead of
+  asserting a machine-specific fact; a new mocked test
+  (`test_dispatcher_reports_a_clear_failure_when_docker_is_unavailable_mocked`)
+  covers the exact same dispatcher path deterministically regardless of
+  the real host, per Codex's own suggested fix.
+- **tests added:** `test_install_script_never_swallows_a_real_pip_failure`,
+  `test_install_user_matches_the_host_uid_so_cleanup_can_remove_its_files`,
+  `test_install_user_falls_back_to_a_fixed_uid_without_getuid`, and the
+  mocked dispatcher test above — 4 new, plus the renamed/skip-guarded
+  existing one. `git stash` confirmation: stashing just
+  `docker_sink_executor.py` made the test module fail to even COLLECT
+  (`ImportError: cannot import name '_install_user'`) — the strongest
+  possible "fails pre-fix" signal — and independently, the stashed
+  file's `_INSTALL_SCRIPT` was confirmed (by direct `grep`) to still
+  contain both `|| true` lines. Popping the stash: full suite **149
+  passed, 0 failed**.
+- **check performed (claim 4):** independently reproduced as describing
+  a real, architecturally significant gap — NOT fixed unilaterally.
+  This is the same root-cause class already recorded in
+  sz-2026-10-21-14 (two independent Verifier rounds breaking the
+  subprocess backend's in-process monkeypatch sandbox via different
+  unpatched primitives) and sz-2026-10-21-17 (the `_io.FileIO`/`os.open`
+  bypass specifically, folded into that decision rather than patched
+  piecemeal). Codex's point is sharper than a restatement, though: the
+  Docker backend's whole reason for existing was to replace in-process
+  monkeypatching with real OS-level isolation, but containerizing the
+  process does nothing for the harness/target boundary WITHIN that one
+  process — the nonce still crosses no boundary the target can't
+  inspect, so the container's isolation claim and the nonce's
+  authentication claim are independent, and this backend currently only
+  delivers the first. A real fix needs the harness and the target to
+  run in genuinely separate processes with the nonce confined to the
+  one the target never touches (e.g. a supervising parent process that
+  never lets the nonce enter the child's environment at all, appending
+  it to the child's raw, un-authenticated result only after reading it
+  back) — a real architecture change to `_sink_reachability_harness.py`,
+  shared with the subprocess backend, not a local patch to this file.
+- **decision:** put to the user per the standing PR-steward policy for
+  an ambiguous/architecturally-significant finding on a PR the Builder
+  opened, rather than deciding unilaterally whether to invest in that
+  redesign now or accept and re-disclose the gap. **User decision:
+  accept and disclose — merge as-is, no harness redesign now.** The
+  module docstring's own "Explicit, disclosed gap in this module's OWN
+  isolation claim" section (added in the same commit as the other three
+  fixes, 4adc640) already states this plainly for anyone reading the
+  code, consistent with the module's existing "STATED PLAINLY, NOT
+  GLOSSED OVER" posture on its other known gaps (no pinned image digest,
+  no real-daemon smoke test yet). This remains a real, open limitation —
+  accepting it is not the same as closing it — and the same gap applies
+  equally to the subprocess backend's own nonce protocol, already
+  covered by the existing sz-2026-10-21-14/-17 decision record.
+- **date:** 2026-10-22

@@ -78,6 +78,24 @@ before being acted on, same discipline as every prior round:
    as a new patch. This is a judgment call (patch further vs. accept the
    documented bound), surfaced to the user rather than decided alone.
 
+**Option (a) now exists, opt-in, unverified end-to-end (ledger
+sz-2026-10-21-19):** the "build genuine OS-level isolation" option this
+item's sz-2026-10-21-14 decision left unstarted now has a real
+implementation — `sentinel_zero/probes/docker_sink_executor.py`, ported
+by hand (no code dependency taken) from the lock-down pattern in
+Ashura's own readme-tester project: network segmentation, dropped
+capabilities, read-only root, non-root user, resource caps, same
+already-hardened harness file underneath. Selected via
+`SENTINEL_ZERO_PROBE_BACKEND=docker`; the default is unchanged. This is
+explicitly NOT a claim that the forgeability problem is now closed —
+no Docker daemon was reachable in the session that wrote it, so the
+actual container-isolation behavior has never been exercised, only the
+argument construction and parsing around it. It needs a real smoke test
+wherever Docker runs before it's trusted for any real finding, let
+alone made the default — until then, option (b) (the honest, narrower
+claim stated above) is still the operative status for anyone reading a
+probe-only VERIFIED_TRUE today.
+
 **This item does not get a "done" entry in this plan.** It gets this
 status note instead, which is itself the IVP working as intended: a
 claim that got weaker, not stronger, the more it was actually checked.
@@ -172,7 +190,8 @@ have its unreachable call site promoted to VERIFIED_TRUE."
 
 ---
 
-## 4. Literal-argument probe path mislabels reachability as exploit
+## 4. Literal-argument probe path mislabels reachability as exploit — STATUS: fixed, pending fresh Verifier pass
+**Ledger:** sz-2026-10-21-07, -20
 **Ledger:** sz-2026-10-21-07
 
 **Fix direction:** the harvested-literal-argument path proves something real
