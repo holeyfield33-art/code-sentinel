@@ -190,7 +190,8 @@ have its unreachable call site promoted to VERIFIED_TRUE."
 
 ---
 
-## 4. Literal-argument probe path mislabels reachability as exploit
+## 4. Literal-argument probe path mislabels reachability as exploit — STATUS: fixed, pending fresh Verifier pass
+**Ledger:** sz-2026-10-21-07, -20
 **Ledger:** sz-2026-10-21-07
 
 **Fix direction:** the harvested-literal-argument path proves something real
