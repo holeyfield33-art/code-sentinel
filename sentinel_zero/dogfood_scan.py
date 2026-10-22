@@ -203,6 +203,7 @@ SINK_ATTACK_IDS = {
 
 _SINK_KIND_BY_NAME = {
     "builtins.open": "FILE_IO",
+    "os.open": "FILE_IO",
     "json.load": "DESERIALIZATION",
     "json.loads": "DESERIALIZATION",
     # Milestone 15: widened past the Milestone 2 starting set. pickle's

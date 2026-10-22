@@ -14,10 +14,14 @@ UNRESOLVED_INCONCLUSIVE, which is most real-world functions.
 import tempfile
 from pathlib import Path
 
+import pytest
+
 from sentinel_zero.dogfood_scan import find_finding_plans
 from sentinel_zero.disposition import load_catalog
 from sentinel_zero.catalog_loader import bundled_snapshot_path
 from sentinel_zero.resolvers.python_resolver import build_project_graph
+
+pytestmark = pytest.mark.docker_integration
 
 _CATALOG_PATH = str(bundled_snapshot_path())
 
