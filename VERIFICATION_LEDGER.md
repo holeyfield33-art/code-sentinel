@@ -372,3 +372,87 @@ Ashura to make, not something closed by further patching.
   executor pins by digest; this is a real, intentional narrowing stated
   here rather than silently matched to the stronger claim.
 - **date:** 2026-10-21
+
+### sz-2026-10-21-24
+- **claims:**
+  1. (P2) "On a host where Sentinel runs under a UID other than 1000,
+     the install container creates `/env/src` and the venv inside the
+     bind-mounted temp dir as UID 1000 at mode 0755, so the host
+     process cannot remove their contents on cleanup, and an otherwise-
+     completed probe raises `PermissionError`."
+  2. (P2) "`|| true` on either pip install line defeats `set -e`, makes
+     the install container exit successfully even when pip genuinely
+     fails, and causes `_install()` to report success — the harness
+     then probes a partial environment, which can produce misleading
+     reachability evidence instead of the promised `call_failed`."
+  3. (P2) "`test_docker_is_genuinely_unavailable_in_this_environment`
+     unconditionally asserts `docker_available()` is `False`, which
+     fails outright on any developer or CI machine with a reachable
+     Docker daemon — exactly the environment this backend is supposed
+     to be smoke-tested in."
+  4. (P1, separately flagged to the user rather than decided
+     unilaterally — see below) "The nonce is exposed in the target's own
+     process environment; the already-documented
+     `_io.FileIO('/proc/self/environ')` bypass can recover it and forge
+     a nonced result, since the container isolates the shared process
+     from the HOST, not the harness from the imported target it shares
+     a process with."
+- **claimant:** Codex automated review on PR #5 (sz-2026-10-21-19's own
+  PR), commit `0245b11`, comment_ids 4344098481 (claim 1), 4344098475
+  (claim 2), 4344098486 (claim 3), 4344098471 (claim 4)
+- **check performed (claims 1-3):** fixed directly, each a small, local,
+  confident fix on the Builder's own PR, per the standing PR-steward
+  policy. Claim 1: `_install_user()` added, returning the host's own
+  `os.getuid():os.getgid()` (falling back to the previous `1000:1000`
+  only when `os.getuid`/`getgid` don't exist, i.e. non-Linux/macOS),
+  used for the INSTALL phase's `--user` flag only — the EXECUTE phase
+  intentionally keeps its hardcoded non-root `1000:1000` for security,
+  unaffected by this (it mounts `/env` read-only, so it never writes
+  anything the host needs to clean up). Claim 2: both `|| true`s
+  removed from `_INSTALL_SCRIPT`; the "never hard-fail just because
+  there's nothing to install" bound is untouched since those `pip`
+  lines are inside `if [ -f ... ]` branches skipped entirely when no
+  manifest exists. Claim 3: the test now self-skips (via
+  `pytest.skip`) when Docker IS actually reachable, instead of
+  asserting a machine-specific fact; a new mocked test
+  (`test_dispatcher_reports_a_clear_failure_when_docker_is_unavailable_mocked`)
+  covers the exact same dispatcher path deterministically regardless of
+  the real host, per Codex's own suggested fix.
+- **tests added:** `test_install_script_never_swallows_a_real_pip_failure`,
+  `test_install_user_matches_the_host_uid_so_cleanup_can_remove_its_files`,
+  `test_install_user_falls_back_to_a_fixed_uid_without_getuid`, and the
+  mocked dispatcher test above — 4 new, plus the renamed/skip-guarded
+  existing one. `git stash` confirmation: stashing just
+  `docker_sink_executor.py` made the test module fail to even COLLECT
+  (`ImportError: cannot import name '_install_user'`) — the strongest
+  possible "fails pre-fix" signal — and independently, the stashed
+  file's `_INSTALL_SCRIPT` was confirmed (by direct `grep`) to still
+  contain both `|| true` lines. Popping the stash: full suite **149
+  passed, 0 failed**.
+- **check performed (claim 4):** independently reproduced as describing
+  a real, architecturally significant gap — NOT fixed unilaterally.
+  This is the same root-cause class already recorded in
+  sz-2026-10-21-14 (two independent Verifier rounds breaking the
+  subprocess backend's in-process monkeypatch sandbox via different
+  unpatched primitives) and sz-2026-10-21-17 (the `_io.FileIO`/`os.open`
+  bypass specifically, folded into that decision rather than patched
+  piecemeal). Codex's point is sharper than a restatement, though: the
+  Docker backend's whole reason for existing was to replace in-process
+  monkeypatching with real OS-level isolation, but containerizing the
+  process does nothing for the harness/target boundary WITHIN that one
+  process — the nonce still crosses no boundary the target can't
+  inspect, so the container's isolation claim and the nonce's
+  authentication claim are independent, and this backend currently only
+  delivers the first. A real fix needs the harness and the target to
+  run in genuinely separate processes with the nonce confined to the
+  one the target never touches (e.g. a supervising parent process that
+  never lets the nonce enter the child's environment at all, appending
+  it to the child's raw, un-authenticated result only after reading it
+  back) — a real architecture change to `_sink_reachability_harness.py`,
+  shared with the subprocess backend, not a local patch to this file.
+- **decision:** flagged to the user per the standing PR-steward policy
+  for an ambiguous/architecturally-significant finding on a PR the
+  Builder opened, rather than deciding unilaterally whether to invest in
+  that redesign now or accept and re-disclose the gap. Not implemented
+  as part of this entry.
+- **date:** 2026-10-22

@@ -63,6 +63,20 @@ image digest yet (uses a floating tag, `python:3.12-slim`) -- a real
 difference from the stronger claim readme-tester makes for itself,
 called out here rather than silently matched to it.
 
+Explicit, disclosed gap in this module's OWN isolation claim (Codex
+review, PR #5, VERIFICATION_LEDGER.md sz-2026-10-21-24, flagged to the
+user rather than fixed unilaterally): containerizing the process does
+nothing for the harness/target boundary WITHIN that one process. The
+nonce still travels through the target's own environment (the same
+`_io.FileIO('/proc/self/environ')` bypass already documented for the
+subprocess backend works just as well inside this container), so this
+backend's container-isolation claim and its nonce-authentication claim
+are independent -- today it only delivers the first. A real fix needs
+the harness and the target to run in genuinely separate processes with
+the nonce confined to one the target never touches, which is an
+architecture change to `_sink_reachability_harness.py` itself (shared
+with the subprocess backend), not a local patch to this file.
+
 TODO (deliberately not done here, same "pick the bounded fix first"
 principle as every item in docs/REMEDIATION_PLAN.md): installing fresh
 per probe call is wasteful when a scan probes many findings in the same
@@ -98,10 +112,22 @@ _INSTALL_SCRIPT = (
     "cp -r /repo /env/src\n"
     "cd /env/src\n"
     "python -m venv /env/venv\n"
+    # Codex review, PR #5: `|| true` here defeated `set -e` for the one
+    # case that actually matters -- a manifest DOES exist and pip
+    # genuinely fails (bad pin, unreachable index, broken editable
+    # build). That made the install container exit 0 regardless, so
+    # `_install` reported success and the harness went on to probe a
+    # partial environment, which can produce misleading reachability
+    # evidence (e.g. exercising an ImportError fallback branch as if it
+    # were the real code path) instead of the promised call_failed. The
+    # "never hard-fail just because there's nothing to install" bound
+    # this module's docstring states is still intact -- these `if`
+    # branches are skipped entirely, not reached, when no manifest
+    # exists at all.
     "if [ -f pyproject.toml ] || [ -f setup.py ]; then\n"
-    "    /env/venv/bin/pip install --no-cache-dir --quiet -e . || true\n"
+    "    /env/venv/bin/pip install --no-cache-dir --quiet -e .\n"
     "elif [ -f requirements.txt ]; then\n"
-    "    /env/venv/bin/pip install --no-cache-dir --quiet -r requirements.txt || true\n"
+    "    /env/venv/bin/pip install --no-cache-dir --quiet -r requirements.txt\n"
     "fi\n"
 )
 
@@ -192,12 +218,32 @@ def _docker_run(args: list[str], timeout: int) -> tuple[int, str, str, bool]:
         subprocess.run(["docker", "rm", "-f", name], capture_output=True)
 
 
+def _install_user() -> str:
+    """Codex review, PR #5: the install container used to run as a
+    hardcoded `1000:1000`, but `cp -r`/`pip install` create `/env/src` and
+    the venv INSIDE the bind-mounted `env_path` as that UID, at the
+    directory's normal (0755) mode. On a host where the process running
+    Sentinel is not UID 1000, `tempfile.TemporaryDirectory`'s own cleanup
+    then can't remove those nested files/dirs it doesn't own, and an
+    otherwise-successful probe raises PermissionError instead of
+    returning its result. Running the install container as the HOST's
+    own UID/GID instead makes every file it creates removable by the
+    same process that will later clean it up -- on platforms without
+    os.getuid (not Linux/macOS), falls back to the previous `1000:1000`,
+    since Docker itself is Linux-container-only here regardless."""
+    getuid = getattr(os, "getuid", None)
+    getgid = getattr(os, "getgid", None)
+    if getuid is None or getgid is None:
+        return "1000:1000"
+    return f"{getuid()}:{getgid()}"
+
+
 def _install(repo_root: Path, env_path: Path) -> tuple[bool, str]:
     env_path.chmod(0o777)
     code, stdout, stderr, timed_out = _docker_run(
         [
             "--rm",
-            "--user", "1000:1000",
+            "--user", _install_user(),
             "-e", "HOME=/tmp",
             "--tmpfs", "/tmp:rw,size=512m",
             "-v", f"{repo_root}:/repo:ro",

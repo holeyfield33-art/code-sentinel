@@ -15,8 +15,14 @@ import json
 import os
 import tempfile
 from pathlib import Path
+from unittest import mock
 
+import pytest
+
+from sentinel_zero.probes import docker_sink_executor
 from sentinel_zero.probes.docker_sink_executor import (
+    _INSTALL_SCRIPT,
+    _install_user,
     build_docker_run_args,
     docker_available,
     parse_harness_result,
@@ -24,11 +30,22 @@ from sentinel_zero.probes.docker_sink_executor import (
 from sentinel_zero.probes.sink_reachability_probe import run_sink_reachability_probe
 
 
-def test_docker_is_genuinely_unavailable_in_this_environment():
-    """Not a mock -- a real call. This is the fact the whole module's
-    "not verified end-to-end" caveat rests on, so it's asserted here
-    rather than just claimed in a docstring."""
-    available, _detail = docker_available()
+def test_docker_availability_in_this_environment_is_recorded_not_assumed_elsewhere():
+    """Not a mock -- a real call, confirming (rather than assuming) the
+    actual state of this session's environment. Codex review, PR #5: the
+    original version of this test unconditionally asserted `available is
+    False`, which would fail outright on any developer or CI machine
+    with a reachable Docker daemon -- exactly the environment this
+    backend is meant to be smoke-tested in. Rather than assert a
+    machine-specific fact, this self-skips when Docker IS reachable: the
+    "not verified end-to-end" caveat in the module docstring is about
+    THIS session specifically, not a portable property of every
+    environment this suite might run in. Deterministic coverage of the
+    dispatcher's own behavior in each case lives in the mocked tests
+    below, which don't depend on what this one finds."""
+    available, detail = docker_available()
+    if available:
+        pytest.skip(f"Docker IS reachable here ({detail}) -- unavailability is not a fact this suite can assume.")
     assert available is False
 
 
@@ -125,7 +142,12 @@ def test_dispatcher_reports_a_clear_failure_rather_than_silently_falling_back():
     never a silent switch back to the subprocess backend -- the two
     backends make different isolation claims, and conflating them on
     failure would make the stronger claim unverifiable from the
-    caller's side."""
+    caller's side. Relies on the real environment genuinely having no
+    Docker daemon (confirmed by the test above); the mocked version
+    right below covers the identical path deterministically, regardless
+    of what this host actually has."""
+    if docker_available()[0]:
+        pytest.skip("Docker IS reachable here -- this exact path is covered deterministically by the mocked test below.")
     os.environ["SENTINEL_ZERO_PROBE_BACKEND"] = "docker"
     try:
         with tempfile.TemporaryDirectory() as tmp:
@@ -137,6 +159,29 @@ def test_dispatcher_reports_a_clear_failure_rather_than_silently_falling_back():
             assert "daemon" in result["detail"].lower()
     finally:
         del os.environ["SENTINEL_ZERO_PROBE_BACKEND"]
+
+
+def test_dispatcher_reports_a_clear_failure_when_docker_is_unavailable_mocked():
+    """Codex review, PR #5: deterministic coverage for the dispatcher's
+    unavailable-docker path, independent of whether THIS host actually
+    has Docker -- mocks docker_available() to return False regardless of
+    the real environment, so this test (unlike the one above) passes the
+    same way on every machine, including one with a reachable daemon."""
+    with mock.patch(
+        "sentinel_zero.probes.docker_sink_executor.docker_available",
+        return_value=(False, "mocked: no daemon reachable"),
+    ):
+        os.environ["SENTINEL_ZERO_PROBE_BACKEND"] = "docker"
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                (root / "mod.py").write_text("def run_it():\n    pass\n")
+                result = run_sink_reachability_probe(root, "mod", "run_it")
+                assert result["status"] == "call_failed"
+                assert "docker" in result["detail"].lower()
+                assert "daemon" in result["detail"].lower()
+        finally:
+            del os.environ["SENTINEL_ZERO_PROBE_BACKEND"]
 
 
 def test_dispatcher_rejects_an_unknown_backend_name_rather_than_guessing():
@@ -163,3 +208,41 @@ def test_default_backend_is_unchanged_subprocess_behavior():
         result = run_sink_reachability_probe(root, "good", "run_it")
         assert result["status"] == "sink_reached"
         assert result["symbol"] == "subprocess.run"
+
+
+def test_install_script_never_swallows_a_real_pip_failure():
+    """Codex review, PR #5: `|| true` on either pip install line defeated
+    `set -e` for the one case that actually matters -- a manifest DOES
+    exist and pip genuinely fails -- making the install container
+    report success regardless, so `_install` believed a broken/partial
+    environment was fine to probe. Pinned directly against the script
+    text rather than a real docker run, since no daemon is reachable
+    here to exercise it end to end."""
+    assert "|| true" not in _INSTALL_SCRIPT
+    assert "pip install --no-cache-dir --quiet -e .\n" in _INSTALL_SCRIPT
+    assert "pip install --no-cache-dir --quiet -r requirements.txt\n" in _INSTALL_SCRIPT
+
+
+def test_install_user_matches_the_host_uid_so_cleanup_can_remove_its_files():
+    """Codex review, PR #5: the install container used to run as a
+    hardcoded 1000:1000, creating /env/src and the venv inside the
+    bind-mounted temp dir as that UID. On a host whose own process isn't
+    UID 1000, tempfile.TemporaryDirectory's cleanup can't remove files
+    it doesn't own, turning an otherwise-successful probe into a
+    PermissionError. _install_user() must report the HOST's actual
+    UID/GID (when os.getuid/getgid exist), not a hardcoded value."""
+    getuid = getattr(os, "getuid", None)
+    getgid = getattr(os, "getgid", None)
+    if getuid is None or getgid is None:
+        pytest.skip("os.getuid/getgid not available on this platform (not Linux/macOS)")
+    assert _install_user() == f"{getuid()}:{getgid()}"
+
+
+def test_install_user_falls_back_to_a_fixed_uid_without_getuid():
+    """The non-Linux/macOS fallback path, exercised deterministically by
+    removing os.getuid/getgid regardless of what this host actually
+    has."""
+    with mock.patch.object(docker_sink_executor.os, "getuid", None, create=True), mock.patch.object(
+        docker_sink_executor.os, "getgid", None, create=True
+    ):
+        assert _install_user() == "1000:1000"
