@@ -1,4 +1,10 @@
-"""Milestone 3 dogfood run: cross-function guard propagation added on top
+"""Static-by-default scanning with optional, untrusted probe diagnostics.
+
+No current probe authorizes VERIFIED_TRUE. Historical milestone notes
+below describe the original analysis and probe mechanisms, not the
+current proof policy.
+
+Milestone 3 dogfood run: cross-function guard propagation added on top
 of the Milestone 2 ISBG resolver.
 
 What changed vs. Milestone 2, and why: a guard used to have to contain its
@@ -144,6 +150,7 @@ from sentinel_zero.callgraph import (
 from sentinel_zero.graph import ProjectGraph, Symbol
 from sentinel_zero.graph_export import export_graph
 from sentinel_zero.ledger_writer import safe_write_text
+from sentinel_zero.probes.evidence import validate_probe_result
 from sentinel_zero.probes.sink_reachability_probe import run_sink_reachability_probe
 from sentinel_zero.probes.js_sink_reachability_probe import run_js_sink_reachability_probe
 from sentinel_zero.resolvers.python_resolver import build_project_graph as build_python_project_graph
@@ -383,75 +390,41 @@ def _js_top_level_function_name(module_qualname: str, caller_qualname: str) -> s
     return name
 
 
-def _promote_if_sink_reached(
-    plan,
-    probe_result: dict,
-    call,
-    guard_hit: str | None,
-    caller: str,
-    call_desc: str,
-    *,
-    harvested_literal_args: bool = False,
+def _record_probe_diagnostic(
+    plan, probe_result: object, call,
+    caller: str, call_desc: str, *, harvested_literal_args: bool = False,
 ) -> None:
-    """Shared by both the Python and JS/TS probing paths (Milestone 18
-    factored this out so neither language's block could silently drift
-    from the other's correctness rule): promotes `plan` to VERIFIED_TRUE
-    only when the harness reported "sink_reached" AND the reported symbol
-    is THIS finding's own sink -- the Milestone 16 fix, now applied
-    uniformly. `call_desc` is the language-specific clause describing how
-    the probe actually invoked the function ("with zero arguments", or
-    Python's harvested-literal-argument variant) -- written into the
-    reason text so a human reading a finding never has to guess what was
-    actually run.
+    """Parent context associates a diagnostic with a request, not proof.
 
-    `harvested_literal_args` (remediation item 4, VERIFICATION_LEDGER.md
-    sz-2026-10-21-07): set only by the Milestone 17 harvested-literal-
-    argument path. A zero-argument call has nothing a reader could
-    mistake for attacker input, but a harvested call passes real,
-    non-trivial-looking values (a path, a command fragment) -- and
-    "VERIFIED_TRUE" next to "args=('/etc/passwd',)" reads, to a skimming
-    human, like proof the sink is exploitable with that value. It is not:
-    the value is a literal constant lifted from elsewhere in the project,
-    confirmed non-attacker-controlled, never synthesized or adversarial.
-    This flag makes both the reason text and residual_uncertainty say so
-    explicitly, rather than relying on call_desc's own wording alone to
-    carry that distinction."""
-    # The caller must first exclude competing sites in its resolved
-    # delegation graph: a matching symbol alone cannot identify a site.
-    if probe_result.get("status") != "sink_reached" or probe_result.get("symbol") != call.target.qualified_name:
-        return
-    guard_note = (
-        f" A guard-shaped call ({guard_hit}) was detected statically on this path, "
-        "but the dynamic probe still reached the sink -- this does not mean the guard "
-        "is bypassable by attacker-controlled input, only that it did not block this "
-        "specific call."
-        if guard_hit else ""
+    Targets share the harness process, including in Docker. No existing
+    backend independently observes a call-site event or can authorize it.
+    """
+    report = validate_probe_result(probe_result)
+    plan.verification_method["probe_observation"] = {
+        "trust": "target_controlled", "site_verified": False,
+        "matches_requested_symbol": report.get("symbol") == call.target.qualified_name,
+        "requested_site": {
+            "source_node": plan.hypothesis["source_node"], "caller": caller,
+            "sink": call.target.qualified_name, "order": call.order,
+        },
+        "report": report,
+    }
+    note = (
+        f" Diagnostic probe requested {caller}() {call_desc}. "
+        f"Untrusted target-controlled report: {report['status']}"
+        + (f" ({report['symbol']}, args={report['args']})." if report["status"] == "sink_reached" else ".")
+        + " This report is not independent call-site evidence and cannot authorize VERIFIED_TRUE."
     )
-    exploitability_note = (
-        " This demonstrates the call path is reachable under this exact, "
-        "non-attacker-controlled value -- it does NOT demonstrate that the sink is "
-        "reachable under attacker-controlled input, and must never be read as proof "
-        "of exploitability."
-        if harvested_literal_args else ""
-    )
-    set_disposition(
-        plan,
-        "VERIFIED_TRUE",
-        reason=(
-            f"a bounded dynamic probe called {caller}() {call_desc} in an "
-            f"isolated subprocess and observed {probe_result.get('symbol')} invoked "
-            f"(args={probe_result.get('args')}) before the real sink could execute "
-            "(monkeypatched, never actually run). This confirms the call path is live "
-            "and reachable under at least one real invocation." + exploitability_note + guard_note
-        ),
-        residual_uncertainty=(
-            "Low: dynamic reachability confirmed under one benign, harvested-literal "
-            "call; this says nothing about reachability under attacker-controlled "
-            "input, which was never attempted (explicitly out of scope for this probe)."
-            if harvested_literal_args
-            else "Low: dynamic reachability confirmed under one benign call; no "
-            "adversarial inputs were attempted (explicitly out of scope for this probe)."
-        ),
+    if harvested_literal_args:
+        note += (
+            " The arguments are non-attacker-controlled literals. This does NOT demonstrate "
+            "reachability under attacker-controlled input or prove exploitability."
+        )
+    plan.disposition["reason"] += note
+    plan.disposition["residual_uncertainty"] = (
+        "High: target-controlled diagnostics cannot establish reachability or exploitability; "
+        "no independent call-site verifier is available."
+        + (" Harvested literals establish nothing about attacker-controlled input." if harvested_literal_args else "")
     )
 
 
@@ -503,7 +476,11 @@ def find_finding_plans(
     plan_counter: list[int],
     repo_root: Path,
     language: str = "python",
+    *,
+    probe_mode: str = "static",
 ) -> list:
+    if probe_mode not in ("static", "diagnostic"):
+        raise ToolFailure(f"unknown probe mode {probe_mode!r}; expected 'static' or 'diagnostic'")
     sink_table = _SINK_TABLES[language]
     plans = []
     callee_index = build_direct_callee_index(graph)
@@ -566,6 +543,8 @@ def find_finding_plans(
                     },
                     verification_method={
                         "checker_type": f"isbg_{language}_resolver_v0",
+                        "proof_authority": "none",
+                        "probe_mode": probe_mode,
                         "required_evidence_tier": "CONFIRMED_REACHABLE",
                         "sandbox_validation_required": True,
                     },
@@ -623,6 +602,13 @@ def find_finding_plans(
                     plans.append(plan)
                     continue
 
+                if probe_mode == "static":
+                    plan.disposition["reason"] += " Static-only mode: target code was not executed."
+                    plans.append(plan)
+                    continue
+
+                # Historical probing eligibility is retained for explicit
+                # diagnostics only; target reports cannot grant verification.
                 # Milestone 6, widened in Milestone 16 (FILE_IO/DESERIALIZATION
                 # sink kinds) and Milestone 17 (harvested-literal-argument
                 # calls, not just zero-argument ones -- see
@@ -630,12 +616,9 @@ def find_finding_plans(
                 # bounded dynamic reachability probe, never attempting
                 # adversarial inputs, that patches every known sink kind
                 # simultaneously (see probes/_sink_reachability_harness.py
-                # for the full scope statement). It can only ever argue FOR
-                # VERIFIED_TRUE ("this path is live, confirmed by a real
-                # call") -- a sink not reached on this one run proves nothing
-                # about other inputs, so "not_reached" and "call_failed"
-                # leave the disposition exactly as the static analysis above
-                # already set it.
+                # for the full scope statement). Every outcome leaves the
+                # disposition inconclusive; a target-controlled report is
+                # not an independent observation of this source call site.
                 #
                 # builtins.eval/builtins.exec findings are deliberately
                 # excluded from probing entirely, not just from promotion:
@@ -669,8 +652,8 @@ def find_finding_plans(
                             )
                         else:
                             call_desc = "with zero arguments"
-                        _promote_if_sink_reached(
-                            plan, probe_result, call, guard_hit, caller, call_desc,
+                        _record_probe_diagnostic(
+                            plan, probe_result, call, caller, call_desc,
                             harvested_literal_args=harvested_args is not None,
                         )
 
@@ -700,7 +683,7 @@ def find_finding_plans(
                     fn_name = _js_top_level_function_name(module.module_qualname, caller)
                     if fn_name:
                         probe_result = run_js_sink_reachability_probe(module.file_path, fn_name)
-                        _promote_if_sink_reached(plan, probe_result, call, guard_hit, caller, "with zero arguments")
+                        _record_probe_diagnostic(plan, probe_result, call, caller, "with zero arguments")
                 plans.append(plan)
     return plans
 
@@ -728,10 +711,19 @@ def run(
     language: str = "python",
     *,
     is_bundled_snapshot_catalog: bool = False,
+    probe_mode: str = "static",
 ) -> int:
+    if probe_mode not in ("static", "diagnostic"):
+        raise ToolFailure(f"unknown probe mode {probe_mode!r}; expected 'static' or 'diagnostic'")
     if language not in _RESOLVERS:
         raise ToolFailure(f"unknown language {language!r} -- expected one of {sorted(_RESOLVERS)}")
     catalog = load_catalog(catalog_path, is_bundled_snapshot=is_bundled_snapshot_catalog)
+    print(
+        "NOTICE: static-only scan; target code will not be executed."
+        if probe_mode == "static" else
+        "NOTICE: diagnostic mode executes target code; reports are untrusted and cannot authorize VERIFIED_TRUE.",
+        file=sys.stderr,
+    )
     if catalog.is_bundled_snapshot:
         # Never silent: a run checked against the catalog shipped inside
         # this package, not one the caller fetched fresh, must say so
@@ -749,7 +741,7 @@ def run(
         raise ToolFailure(f"ISBG resolver failed on {repo_root}: {exc}") from exc
 
     plan_counter = [0]
-    plans = find_finding_plans(graph, repo_root.name, catalog, plan_counter, repo_root, language)
+    plans = find_finding_plans(graph, repo_root.name, catalog, plan_counter, repo_root, language, probe_mode=probe_mode)
 
     unresolved_calls = sum(
         1 for c in graph.all_calls() if not isinstance(c.target, Symbol)
@@ -757,6 +749,7 @@ def run(
 
     ledger = {
         "target_repository": repo_root.name,
+        "probe_mode": probe_mode,
         "modules_scanned": len(graph.modules),
         "functions_indexed": len(graph.functions),
         "unresolved_call_sites": unresolved_calls,

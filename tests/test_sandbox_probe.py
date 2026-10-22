@@ -1,10 +1,5 @@
-"""Proves Milestone 6's bounded dynamic-reachability probe: a zero-argument
-top-level function that actually reaches a PROCESS_EXEC sink gets promoted
-to VERIFIED_TRUE; one that doesn't, or that the probe can't safely call at
-all, is left exactly where static analysis put it. This is the only
-disposition this probe is allowed to produce -- it must never demote
-anything to VERIFIED_FALSE, since it never attempts adversarial inputs."""
-import json
+"""Diagnostic eligibility: sink reports never establish verified reachability."""
+from sentinel_zero.catalog_loader import bundled_snapshot_path
 import tempfile
 from pathlib import Path
 
@@ -12,17 +7,17 @@ from sentinel_zero.dogfood_scan import find_finding_plans
 from sentinel_zero.disposition import load_catalog
 from sentinel_zero.resolvers.python_resolver import build_project_graph
 
-_CATALOG_PATH = "/home/claude/agent-security-index/public/export/asi-catalog.json"
+_CATALOG_PATH = str(bundled_snapshot_path())
 
 
 def _run(root: Path) -> list[dict]:
     graph = build_project_graph(root)
     catalog = load_catalog(_CATALOG_PATH)
-    plans = find_finding_plans(graph, root.name, catalog, [0], root)
+    plans = find_finding_plans(graph, root.name, catalog, [0], root, probe_mode="diagnostic")
     return [p.as_dict() for p in plans]
 
 
-def test_zero_arg_function_reaching_sink_is_verified_true():
+def test_zero_arg_sink_report_does_not_grant_verification():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         (root / "runner.py").write_text(
@@ -32,7 +27,8 @@ def test_zero_arg_function_reaching_sink_is_verified_true():
         )
         plans = _run(root)
         assert len(plans) == 1
-        assert plans[0]["disposition"]["status"] == "VERIFIED_TRUE"
+        assert plans[0]["disposition"]["status"] == "UNRESOLVED_INCONCLUSIVE"
+        assert plans[0]["verification_method"]["probe_observation"]["report"]["status"] == "sink_reached"
         assert "subprocess.run" in plans[0]["disposition"]["reason"]
 
 

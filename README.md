@@ -1,5 +1,26 @@
 # Sentinel-Zero
 
+## Current verification policy
+
+Scans are **static-only by default**: the CLI, MCP tool, and scan API do
+not import or invoke target code. Findings remain `UNRESOLVED_INCONCLUSIVE`.
+
+For code you already trust to execute, `--probe-mode diagnostic` opts into
+the legacy harnesses. Their output is validated and recorded as
+`verification_method.probe_observation`, with parent-assigned requested
+call-site context, `trust: target_controlled`, and `site_verified: false`.
+These fields associate a report with a request; they do not prove that
+the requested source site executed. Target stdout, JSON serializers,
+nonces, and matching sink names cannot authorize `VERIFIED_TRUE`.
+
+**No independent runtime verifier is implemented yet.** All current
+Python, JavaScript, and Docker harnesses share their process with the
+target, so their self-reports never grant verification, even in diagnostic
+mode. Docker can isolate that process from the host but does not protect
+the harness from the target inside it. Diagnostic mode is not safe for
+hostile repositories. The milestone descriptions below record historical
+behavior; automatic probe-based promotion described there is disabled.
+
 A standalone AI-security assessment engine, built fresh instead of gluing
 together the earlier multi-repo pipeline (aletheia-redteam-kit + Code
 Atlas + friends). It exists to structurally close two confirmed failure

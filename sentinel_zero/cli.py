@@ -77,6 +77,9 @@ def _render_markdown(ledger: dict) -> str:
     lines.append(f"# Sentinel-Zero report: {ledger['target_repository']}")
     lines.append("")
     cat = ledger.get("catalog", {})
+    lines.append(f"Probe mode: **{ledger.get('probe_mode', 'legacy/unspecified')}**. "
+                 "Current probe reports are untrusted diagnostics, not independent verification.")
+    lines.append("")
     snapshot_note = " (bundled snapshot -- pass --catalog for a fresh export)" if cat.get("is_bundled_snapshot") else ""
     meta = cat.get("metadata", {}) or {}
     lines.append(
@@ -156,7 +159,8 @@ def cmd_analyze(args: argparse.Namespace) -> int:
                 "the JS/TS resolver's dependencies are not installed. "
                 "Run `sentinel-zero install-js-deps` once, then re-run this scan."
             )
-        run_scan(repo_root, catalog_path, out_dir, language, is_bundled_snapshot_catalog=is_bundled)
+        run_scan(repo_root, catalog_path, out_dir, language,
+                 is_bundled_snapshot_catalog=is_bundled, probe_mode=getattr(args, "probe_mode", "static"))
 
         ledger = json.loads((out_dir / "verification_ledger.json").read_text(encoding="utf-8"))
 
@@ -202,6 +206,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     analyze = sub.add_parser("analyze", help="scan a target repository and produce a verification ledger")
     analyze.add_argument("path", help="path to the target repository (not this one)")
+    analyze.add_argument(
+        "--probe-mode", choices=["static", "diagnostic"], default="static",
+        help="static (default): never execute target code. diagnostic: execute trusted target code "
+             "and record untrusted reports; no existing probe can authorize VERIFIED_TRUE.",
+    )
     analyze.add_argument(
         "--format", choices=["json", "md"], default="json",
         help="json (default): just the ledger. md: also render a human-readable report.md alongside it.",

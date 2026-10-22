@@ -1,4 +1,6 @@
-"""Milestone 17: the dynamic probe can now call a function that requires
+"""Current reports are diagnostic-only; the milestone notes below are historical.
+
+Milestone 17: the dynamic probe can now call a function that requires
 arguments, not just zero-arg ones, PROVIDED a real call site elsewhere in
 the project passes it only literal-constant arguments (per Milestone 15's
 taint classifier). Those exact values are harvested via ast.literal_eval
@@ -23,11 +25,11 @@ _CATALOG_PATH = str(bundled_snapshot_path())
 def _run(root: Path) -> list[dict]:
     graph = build_project_graph(root)
     catalog = load_catalog(_CATALOG_PATH, is_bundled_snapshot=True)
-    plans = find_finding_plans(graph, root.name, catalog, [0], root)
+    plans = find_finding_plans(graph, root.name, catalog, [0], root, probe_mode="diagnostic")
     return [p.as_dict() for p in plans]
 
 
-def test_function_with_a_literal_only_call_site_is_probed_and_verified_true():
+def test_literal_only_call_site_produces_untrusted_diagnostic():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         (root / "mod.py").write_text(
@@ -40,12 +42,13 @@ def test_function_with_a_literal_only_call_site_is_probed_and_verified_true():
         )
         plans = _run(root)
         assert len(plans) == 1
-        assert plans[0]["disposition"]["status"] == "VERIFIED_TRUE"
+        assert plans[0]["disposition"]["status"] == "UNRESOLVED_INCONCLUSIVE"
+        assert plans[0]["verification_method"]["probe_observation"]["report"]["status"] == "sink_reached"
         assert "harvested arguments" in plans[0]["disposition"]["reason"]
         assert "['echo', 'hello']" in plans[0]["disposition"]["reason"]
 
 
-def test_harvested_arg_promotion_explicitly_disclaims_exploitability():
+def test_harvested_diagnostic_explicitly_disclaims_exploitability():
     """VERIFICATION_LEDGER.md sz-2026-10-21-07, docs/REMEDIATION_PLAN.md
     item 4: 'VERIFIED_TRUE' next to 'args=('/etc/passwd',)' reads, to a
     skimming human, like proof the sink is exploitable with that value.
@@ -65,14 +68,15 @@ def test_harvested_arg_promotion_explicitly_disclaims_exploitability():
             "    run_cmd(['echo', 'hello'])\n"
         )
         plans = _run(root)
-        assert plans[0]["disposition"]["status"] == "VERIFIED_TRUE"
+        assert plans[0]["disposition"]["status"] == "UNRESOLVED_INCONCLUSIVE"
+        assert plans[0]["verification_method"]["probe_observation"]["report"]["status"] == "sink_reached"
         reason = plans[0]["disposition"]["reason"]
         assert "does NOT demonstrate" in reason
         assert "attacker-controlled input" in reason
         assert "attacker-controlled" in plans[0]["disposition"]["residual_uncertainty"]
 
 
-def test_zero_arg_promotion_has_no_harvested_arg_disclaimer_to_avoid_confusion():
+def test_zero_arg_diagnostic_has_no_harvested_arg_disclaimer_to_avoid_confusion():
     """Sanity check for the other side of the same fix: a genuine
     zero-argument call has no harvested value to disclaim, so the new
     exploitability note must NOT appear there -- adding noise to the
@@ -83,7 +87,8 @@ def test_zero_arg_promotion_has_no_harvested_arg_disclaimer_to_avoid_confusion()
             "import subprocess\ndef run_it():\n    subprocess.run(['echo', 'hi'])\n"
         )
         plans = _run(root)
-        assert plans[0]["disposition"]["status"] == "VERIFIED_TRUE"
+        assert plans[0]["disposition"]["status"] == "UNRESOLVED_INCONCLUSIVE"
+        assert plans[0]["verification_method"]["probe_observation"]["report"]["status"] == "sink_reached"
         reason = plans[0]["disposition"]["reason"]
         assert "does NOT demonstrate" not in reason
         assert "harvested-literal" not in plans[0]["disposition"]["residual_uncertainty"]
@@ -138,7 +143,8 @@ def test_too_few_harvested_values_for_required_params_stays_unresolved():
         # so it should actually succeed -- establishes the positive baseline
         # before the negative test below.
         plans = _run(root)
-        assert plans[0]["disposition"]["status"] == "VERIFIED_TRUE"
+        assert plans[0]["disposition"]["status"] == "UNRESOLVED_INCONCLUSIVE"
+        assert plans[0]["verification_method"]["probe_observation"]["report"]["status"] == "sink_reached"
 
 
 def test_keyword_only_required_parameter_is_never_harvested_for():
@@ -178,4 +184,5 @@ def test_multiple_literal_call_sites_picks_one_deterministically_not_erroring():
         )
         plans = _run(root)
         assert len(plans) == 1
-        assert plans[0]["disposition"]["status"] == "VERIFIED_TRUE"
+        assert plans[0]["disposition"]["status"] == "UNRESOLVED_INCONCLUSIVE"
+        assert plans[0]["verification_method"]["probe_observation"]["report"]["status"] == "sink_reached"

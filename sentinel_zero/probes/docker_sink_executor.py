@@ -1,4 +1,9 @@
-"""Docker-backed execution backend for the sink-reachability probe.
+"""Docker-backed diagnostic execution; target output is not trusted proof.
+
+The scan parent never grants VERIFIED_TRUE from this backend's reports.
+Container isolation does not separate the target from the harness that
+produces those reports. The historical design notes below still describe
+the execution boundary and its limitations.
 
 Ported logic (NOT a dependency) from Ashura's own readme-tester project
 (`liedetector/executor.py`): the same two-phase install/execute split and
@@ -95,6 +100,8 @@ import subprocess
 import tempfile
 import uuid
 from pathlib import Path
+
+from sentinel_zero.probes.evidence import validate_probe_result
 
 DOCKER_IMAGE = "python:3.12-slim"
 INSTALL_TIMEOUT_SECONDS = 180
@@ -280,7 +287,7 @@ def parse_harness_result(stdout: str, nonce: str) -> dict:
             "(this is the expected outcome for a forged or stale result line, not a crash)",
         }
     result.pop("nonce", None)
-    return result
+    return validate_probe_result(result)
 
 
 def run_sink_reachability_probe_docker(

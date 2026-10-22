@@ -47,6 +47,7 @@ def analyze_repository(
     repo_path: str,
     language: str | None = None,
     catalog_path: str | None = None,
+    probe_mode: str = "static",
 ) -> dict[str, Any]:
     """Run a Sentinel-Zero scan against a repository and return its verification ledger.
 
@@ -57,6 +58,9 @@ def analyze_repository(
             snapshot bundled with this install -- the returned ledger's "catalog" block
             always says which one was actually used, and its version/generatedAt, so this
             is never silently treated as equivalent to a freshly-fetched taxonomy.
+
+        probe_mode: static (default) never executes target code. diagnostic executes
+            trusted target code and records untrusted reports, never VERIFIED_TRUE.
 
     Returns:
         The same ledger dict `sentinel-zero analyze --format json` writes to disk:
@@ -93,6 +97,7 @@ def analyze_repository(
             out_dir,
             resolved_language,
             is_bundled_snapshot_catalog=is_bundled,
+            probe_mode=probe_mode,
         )
         return json.loads((out_dir / "verification_ledger.json").read_text(encoding="utf-8"))
 

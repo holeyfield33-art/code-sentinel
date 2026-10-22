@@ -1,4 +1,6 @@
-"""Milestone 16: widens the Milestone 6 dynamic reachability probe past
+"""Current reports are diagnostic-only; the milestone notes below are historical.
+
+Milestone 16: widens the Milestone 6 dynamic reachability probe past
 its original PROCESS_EXEC-only scope to also cover FILE_IO and
 DESERIALIZATION, and fixes a real correctness bug found in the process --
 see probes/_sink_reachability_harness.py and dogfood_scan.py's comments
@@ -28,11 +30,11 @@ _CATALOG_PATH = str(bundled_snapshot_path())
 def _run(root: Path) -> list[dict]:
     graph = build_project_graph(root)
     catalog = load_catalog(_CATALOG_PATH, is_bundled_snapshot=True)
-    plans = find_finding_plans(graph, root.name, catalog, [0], root)
+    plans = find_finding_plans(graph, root.name, catalog, [0], root, probe_mode="diagnostic")
     return [p.as_dict() for p in plans]
 
 
-def test_zero_arg_function_reaching_file_io_sink_is_verified_true():
+def test_file_io_sink_report_does_not_grant_verification():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         (root / "runner.py").write_text(
@@ -40,11 +42,12 @@ def test_zero_arg_function_reaching_file_io_sink_is_verified_true():
         )
         plans = _run(root)
         assert len(plans) == 1
-        assert plans[0]["disposition"]["status"] == "VERIFIED_TRUE"
+        assert plans[0]["disposition"]["status"] == "UNRESOLVED_INCONCLUSIVE"
+        assert plans[0]["verification_method"]["probe_observation"]["report"]["status"] == "sink_reached"
         assert "builtins.open" in plans[0]["disposition"]["reason"]
 
 
-def test_zero_arg_function_reaching_deserialization_sink_is_verified_true():
+def test_deserialization_sink_report_does_not_grant_verification():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         (root / "runner.py").write_text(
@@ -52,11 +55,12 @@ def test_zero_arg_function_reaching_deserialization_sink_is_verified_true():
         )
         plans = _run(root)
         assert len(plans) == 1
-        assert plans[0]["disposition"]["status"] == "VERIFIED_TRUE"
+        assert plans[0]["disposition"]["status"] == "UNRESOLVED_INCONCLUSIVE"
+        assert plans[0]["verification_method"]["probe_observation"]["report"]["status"] == "sink_reached"
         assert "json.loads" in plans[0]["disposition"]["reason"]
 
 
-def test_only_the_actually_reached_sink_is_promoted_not_both():
+def test_reported_symbol_does_not_verify_either_sink():
     """The regression this milestone fixes: before the symbol-match check,
     both sinks in this caller were wrongly marked VERIFIED_TRUE off a
     single probe run, even though the second is never reached (the first
@@ -71,7 +75,8 @@ def test_only_the_actually_reached_sink_is_promoted_not_both():
         )
         plans = _run(root)
         by_sink = {p["hypothesis"]["sink_node"]: p["disposition"]["status"] for p in plans}
-        assert by_sink["subprocess.run"] == "VERIFIED_TRUE"
+        assert by_sink["subprocess.run"] == "UNRESOLVED_INCONCLUSIVE"
+        assert any(p["verification_method"].get("probe_observation", {}).get("report", {}).get("symbol") == "subprocess.run" for p in plans)
         assert by_sink["subprocess.call"] == "UNRESOLVED_INCONCLUSIVE"
 
 

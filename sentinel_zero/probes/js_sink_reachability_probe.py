@@ -1,4 +1,10 @@
-"""Milestone 18: JS/TS mirror of sink_reachability_probe.py (Python's
+"""Untrusted JS/TS diagnostics, never independent verification evidence.
+
+Run only for explicitly trusted targets. Output shape validation does
+not authenticate stdout or prevent target-controlled serializers.
+The scan parent never promotes these reports to VERIFIED_TRUE.
+
+Milestone 18: JS/TS mirror of sink_reachability_probe.py (Python's
 Milestone 6/16 dynamic reachability probe). Same safety model, same
 parent-side responsibility split: this module never executes target
 code itself, only launches probes/js/_sink_reachability_harness.js as an
@@ -17,6 +23,8 @@ import json
 import shutil
 import subprocess
 from pathlib import Path
+
+from sentinel_zero.probes.evidence import validate_probe_result
 
 _HARNESS_PATH = Path(__file__).parent / "js" / "_sink_reachability_harness.js"
 PROBE_TIMEOUT_SECONDS = 5
@@ -59,6 +67,6 @@ def run_js_sink_reachability_probe(file_path: str, function_name: str) -> dict:
     if not lines:
         return {"status": "call_failed", "detail": "harness produced no output"}
     try:
-        return json.loads(lines[-1])
+        return validate_probe_result(json.loads(lines[-1]))
     except ValueError as exc:
         return {"status": "call_failed", "detail": f"could not parse harness output: {exc}"}

@@ -27,7 +27,7 @@ def _plans(root, language, sources):
         (root / name).write_text(source, encoding="utf-8")
     graph = (build_python_graph if language == "python" else build_js_graph)(root)
     catalog = load_catalog(str(bundled_snapshot_path()), is_bundled_snapshot=True)
-    return [p.as_dict() for p in find_finding_plans(graph, root.name, catalog, [0], root, language)]
+    return [p.as_dict() for p in find_finding_plans(graph, root.name, catalog, [0], root, language, probe_mode="diagnostic")]
 
 
 def test_direct_duplicates_never_run_a_probe(tmp_path, language):
@@ -49,7 +49,7 @@ def test_direct_duplicates_never_run_a_probe(tmp_path, language):
 
 
 @pytest.mark.parametrize("cross_file", [False, True])
-def test_delegated_dead_site_stays_inconclusive_but_helper_promotes(tmp_path, language, cross_file):
+def test_delegated_dead_site_is_unprobed_but_helper_has_a_report(tmp_path, language, cross_file):
     if language == "python":
         helper = "import os\ndef helper():\n    os.system('live')\n"
         runner = "def run_it():\n    helper()\n    return\n    os.system('dead')\n"
@@ -64,7 +64,8 @@ def test_delegated_dead_site_stays_inconclusive_but_helper_promotes(tmp_path, la
     plans = _plans(tmp_path, language, sources)
     assert len(plans) == 2
     by_caller = {p["hypothesis"]["symbol_binding"].rsplit(".", 1)[-1]: p for p in plans}
-    assert by_caller["helper"]["disposition"]["status"] == "VERIFIED_TRUE"
+    assert by_caller["helper"]["disposition"]["status"] == "UNRESOLVED_INCONCLUSIVE"
+    assert by_caller["helper"]["verification_method"]["probe_observation"]["report"]["status"] == "sink_reached"
     assert by_caller["run_it"]["disposition"]["status"] == "UNRESOLVED_INCONCLUSIVE"
     assert "resolved callees" in by_caller["run_it"]["disposition"]["reason"]
 

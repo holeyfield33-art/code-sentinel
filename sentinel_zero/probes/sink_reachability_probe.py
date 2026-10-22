@@ -1,4 +1,10 @@
-"""Parent-side driver for the bounded dynamic sink-reachability probe
+"""Parent-side driver for untrusted probe diagnostics on trusted targets.
+
+The nonce protocol below is not proof authentication against a target
+sharing the harness's interpreter. Current scans never grant VERIFIED_TRUE
+from its reports, including when Docker contains that shared process.
+
+Historical driver for the bounded dynamic sink-reachability probe
 (Milestone 6, widened in Milestone 16 past its original PROCESS_EXEC-only
 scope to also cover FILE_IO and DESERIALIZATION -- see
 _sink_reachability_harness.py for the actual isolation boundary and full
@@ -47,6 +53,8 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+
+from sentinel_zero.probes.evidence import validate_probe_result
 
 _HARNESS_PATH = Path(__file__).parent / "_sink_reachability_harness.py"
 PROBE_TIMEOUT_SECONDS = 5
@@ -196,4 +204,4 @@ def _run_sink_reachability_probe_subprocess(
             "(this is the expected outcome for a forged or stale result line, not a crash)",
         }
     result.pop("nonce", None)
-    return result
+    return validate_probe_result(result)

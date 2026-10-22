@@ -1,4 +1,6 @@
-"""Milestone 18: JS/TS mirror of the dynamic reachability probe. Proves
+"""Current reports are diagnostic-only; the milestone notes below are historical.
+
+Milestone 18: JS/TS mirror of the dynamic reachability probe. Proves
 the same three things the Python probe tests prove, through the Node
 harness instead of the Python one -- plus the two things that are
 genuinely different on this side (eligibility decided at runtime via the
@@ -25,11 +27,11 @@ def _run(root: Path) -> list[dict]:
 
     graph = build_project_graph(root)
     catalog = load_catalog(_CATALOG_PATH, is_bundled_snapshot=True)
-    plans = find_finding_plans(graph, root.name, catalog, [0], root, "javascript")
+    plans = find_finding_plans(graph, root.name, catalog, [0], root, "javascript", probe_mode="diagnostic")
     return [p.as_dict() for p in plans]
 
 
-def test_exported_zero_arg_function_reaching_sink_is_verified_true():
+def test_exported_zero_arg_sink_report_does_not_grant_verification():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         (root / "mod.js").write_text(
@@ -39,7 +41,8 @@ def test_exported_zero_arg_function_reaching_sink_is_verified_true():
         )
         plans = _run(root)
         assert len(plans) == 1
-        assert plans[0]["disposition"]["status"] == "VERIFIED_TRUE"
+        assert plans[0]["disposition"]["status"] == "UNRESOLVED_INCONCLUSIVE"
+        assert plans[0]["verification_method"]["probe_observation"]["report"]["status"] == "sink_reached"
         assert "child_process.exec" in plans[0]["disposition"]["reason"]
 
 
@@ -87,7 +90,7 @@ def test_class_method_sink_is_not_probed_but_is_still_a_finding():
         assert plans[0]["disposition"]["status"] == "UNRESOLVED_INCONCLUSIVE"
 
 
-def test_only_the_actually_reached_sink_is_promoted_not_both():
+def test_reported_symbol_does_not_verify_either_sink():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         (root / "mod.js").write_text(
@@ -97,7 +100,8 @@ def test_only_the_actually_reached_sink_is_promoted_not_both():
         )
         plans = _run(root)
         by_sink = {p["hypothesis"]["sink_node"]: p["disposition"]["status"] for p in plans}
-        assert by_sink["child_process.exec"] == "VERIFIED_TRUE"
+        assert by_sink["child_process.exec"] == "UNRESOLVED_INCONCLUSIVE"
+        assert any(p["verification_method"].get("probe_observation", {}).get("report", {}).get("symbol") == "child_process.exec" for p in plans)
         assert by_sink["child_process.execSync"] == "UNRESOLVED_INCONCLUSIVE"
 
 
@@ -132,5 +136,6 @@ def test_eval_sink_is_safely_probed_unlike_python():
         )
         plans = _run(root)
         assert len(plans) == 1
-        assert plans[0]["disposition"]["status"] == "VERIFIED_TRUE"
+        assert plans[0]["disposition"]["status"] == "UNRESOLVED_INCONCLUSIVE"
+        assert plans[0]["verification_method"]["probe_observation"]["report"]["status"] == "sink_reached"
         assert "eval" in plans[0]["disposition"]["reason"]
