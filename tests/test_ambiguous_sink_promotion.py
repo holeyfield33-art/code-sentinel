@@ -1,4 +1,4 @@
-﻿"""VERIFICATION_LEDGER.md sz-2026-10-21-04, docs/REMEDIATION_PLAN.md item 3:
+"""VERIFICATION_LEDGER.md sz-2026-10-21-04, docs/REMEDIATION_PLAN.md item 3:
 _promote_if_sink_reached can only compare the probe's reported symbol
 against a finding's own call.target.qualified_name -- a match by resolved
 NAME, not by which specific call site actually fired. When a caller has
@@ -23,7 +23,7 @@ _CATALOG_PATH = str(bundled_snapshot_path())
 def _run(root: Path) -> list[dict]:
     graph = build_project_graph(root)
     catalog = load_catalog(_CATALOG_PATH, is_bundled_snapshot=True)
-    plans = find_finding_plans(graph, root.name, catalog, [0], root)
+    plans = find_finding_plans(graph, root.name, catalog, [0], root, probe_mode="diagnostic")
     return [p.as_dict() for p in plans]
 
 
@@ -57,11 +57,8 @@ def test_unreachable_duplicate_sink_call_is_not_promoted_off_the_reachable_ones_
             assert "2 separate call sites" in plan["disposition"]["reason"]
 
 
-def test_single_call_site_to_a_sink_is_still_probed_and_promoted_normally():
-    """Sanity check: the fix must not accidentally disable promotion for
-    the ordinary, unambiguous case -- a zero-arg function with exactly one
-    call site to a given sink symbol must still reach VERIFIED_TRUE, same
-    as before this change."""
+def test_single_call_site_receives_only_an_untrusted_diagnostic():
+    """A benign single site can report a sink without becoming verified."""
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         (root / "runner.py").write_text(
@@ -69,7 +66,8 @@ def test_single_call_site_to_a_sink_is_still_probed_and_promoted_normally():
         )
         plans = _run(root)
         assert len(plans) == 1
-        assert plans[0]["disposition"]["status"] == "VERIFIED_TRUE"
+        assert plans[0]["disposition"]["status"] == "UNRESOLVED_INCONCLUSIVE"
+        assert plans[0]["verification_method"]["probe_observation"]["report"]["status"] == "sink_reached"
 
 
 def test_unreachable_direct_call_is_not_promoted_off_a_helpers_delegated_reach():
@@ -83,9 +81,8 @@ def test_unreachable_direct_call_is_not_promoted_off_a_helpers_delegated_reach()
     os.system call (after an unconditional return) was wrongly promoted
     to VERIFIED_TRUE off helper's reachable call -- the exact same
     disambiguation failure item 3 already named, just one hop further
-    out through delegation. helper's own call site must still promote
-    normally (it's genuinely the only possible source for ITS OWN probe
-    run); only run_it's dead direct call site must stay ambiguous."""
+    out through delegation. The helper may receive an untrusted diagnostic;
+    run_it's competing site must not even be probed."""
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
         (root / "delegated.py").write_text(
@@ -99,7 +96,9 @@ def test_unreachable_direct_call_is_not_promoted_off_a_helpers_delegated_reach()
         )
         plans = _run(root)
         by_line = {p["hypothesis"]["source_node"].split(":")[-1]: p["disposition"]["status"] for p in plans}
-        assert by_line["3"] == "VERIFIED_TRUE", "helper's own, genuinely-reachable call site must still promote"
+        assert by_line["3"] == "UNRESOLVED_INCONCLUSIVE"
+        helper_plan = next(p for p in plans if p["hypothesis"]["source_node"].endswith(":3"))
+        assert helper_plan["verification_method"]["probe_observation"]["report"]["status"] == "sink_reached"
         assert by_line["7"] == "UNRESOLVED_INCONCLUSIVE", (
             "run_it's dead direct call site must NOT be promoted off helper's delegated evidence"
         )
@@ -122,5 +121,6 @@ def test_two_different_sinks_in_one_caller_are_still_probed_independently():
         )
         plans = _run(root)
         by_sink = {p["hypothesis"]["sink_node"]: p["disposition"]["status"] for p in plans}
-        assert by_sink["subprocess.run"] == "VERIFIED_TRUE"
+        assert by_sink["subprocess.run"] == "UNRESOLVED_INCONCLUSIVE"
+        assert any(p["verification_method"].get("probe_observation", {}).get("report", {}).get("symbol") == "subprocess.run" for p in plans)
         assert by_sink["subprocess.call"] == "UNRESOLVED_INCONCLUSIVE"

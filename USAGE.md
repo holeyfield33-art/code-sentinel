@@ -24,6 +24,21 @@ sentinel-zero install-js-deps
 sentinel-zero analyze /path/to/target-repo --format md
 ```
 
+This defaults to static-only analysis and never executes target code.
+The ledger records `probe_mode: static`.
+
+For a repository whose code you trust to execute with the scan user's
+privileges, diagnostics are an explicit option:
+
+```bash
+sentinel-zero analyze /path/to/trusted-repo --probe-mode diagnostic --format md
+```
+
+Diagnostic output is target-controlled and cannot authorize `VERIFIED_TRUE`.
+The parent's requested call site and the validated report are recorded in
+`verification_method.probe_observation`; `site_verified` remains false.
+No existing subprocess or Docker probe independently verifies runtime events.
+
 `--format md` is worth using for bug hunting — it writes a `report.md`
 you can skim, grouped by disposition, alongside the full
 `verification_ledger.json`. Both land in `<target-repo-name>.sentinel-
@@ -47,17 +62,16 @@ four, and they mean specific, different things:
 
 | Status | What it actually means | What to do with it |
 |---|---|---|
-| **`VERIFIED_TRUE`** | A dynamic probe actually called this code path (zero-argument, in an isolated subprocess, sink monkeypatched so nothing real executed) and watched the sink get hit. This is confirmed-live reachability, not a guess. | Start here. This is the smallest, highest-confidence list — go read the source at `hypothesis.source_node`. |
+| **`VERIFIED_TRUE`** | Reserved for independent verification. Current scans never grant it from a probe self-report. | Treat this status in older reports according to the older scanner's limitations. |
 | **`UNRESOLVED_INCONCLUSIVE`** | Static analysis found a resolved call to a sink, and either found no guard or found a guard whose protection isn't fully proven (same-function call order, not full CFG dominance — see Known bounds). | This is a worklist, not noise. Triage by `asi_classification.category` and whether `hypothesis.external_dependencies_reached` looks interesting. Read `disposition.reason` for exactly what was and wasn't checked. |
-| **`VERIFIED_FALSE`** | Not currently reachable in this build. (No finding currently reaches this — the dynamic probe only ever promotes *to* `VERIFIED_TRUE`, it never demotes, so you won't see this today; it's reserved for a future adversarial-input probe.) | — |
+| **`VERIFIED_FALSE`** | Reserved for a future independent verifier; current scans never establish safety from a negative probe report. | — |
 | **`TOOL_FAILURE`** | The engine itself broke partway through. | This should never appear inside `plans` — a `TOOL_FAILURE` halts the whole run (nonzero exit, nothing written) rather than showing up as one finding among others. If the CLI exits nonzero with `CRITICAL_TOOL_FAILURE: ...`, that's this — read the message, it names exactly what failed (bad catalog, resolver crash, missing Node.js, etc). |
 
 **The one rule that matters most:** `UNRESOLVED_INCONCLUSIVE` is not
 "probably fine." It means exactly what it says — the tool could not
 resolve this to either confirmed-reachable or confirmed-safe. Treat the
 whole `UNRESOLVED_INCONCLUSIVE` list as the actual bug-hunting surface;
-`VERIFIED_TRUE` is just the subset the tool could additionally *prove*
-live on its own, with zero manual work from you.
+Current diagnostic reports do not prove reachability or safety on their own.
 
 ## 4. Triage order that works in practice
 
