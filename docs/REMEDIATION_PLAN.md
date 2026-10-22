@@ -216,18 +216,27 @@ read only the reason text (not the code), and judge whether it overclaims.
 ---
 
 ## 5. Nested Python functions are invisible to the resolver
-**Ledger:** sz-2026-10-21-05
+**Status: fixed, pending fresh Verifier pass.** Ledger: sz-2026-10-21-05
+(original finding), sz-2026-10-21-21 (fix).
 
-**Fix direction:** `walk_stmts()`'s skip of nested `FunctionDef` needs a
-matching "and also walk it, as its own scope" step — the same shape as the
-existing class-method pass (lines 745–752), but recursive: a nested function
-needs a qualname of its own (e.g. `module.outer.<locals>.inner`, mirroring
-Python's own `__qualname__` convention) and its own `walk_fn` invocation.
-Watch for the obvious recursion case (a function nested three deep) and for
-closures that reference the *enclosing* function's parameters, not just
-their own — `_param_names` likely needs to accumulate across nesting levels,
-not reset per scope, or a parameter captured by closure will misclassify as
-"unknown" taint instead of "parameter."
+Branch `fix/nested-function-invisibility`. Added
+`_direct_nested_function_defs`/`_index_function_and_nested` to index a
+nested `FunctionDef`/`AsyncFunctionDef` with a `module.outer.<locals>.inner`
+qualname (mirroring Python's own `__qualname__` convention), wired into both
+the top-level and class-method indexing loops. Extended `walk_fn` with an
+`enclosing_param_names` accumulator and `walk_stmts` to recurse into a
+nested function as a real scope of its own — guarded so this recursion only
+fires when walking inside a real function scope, never the module's own
+top-level walk (which already indexes top-level functions itself; without
+the guard, every top-level function got double-counted — caught by the
+existing suite during development, 26 failures, fixed before any new tests
+were written). 6 new tests in
+`tests/test_nested_function_visibility.py` cover one-level nesting, a
+closure over the *enclosing* function's own parameter (classifies as
+`parameter` taint, not `unknown`), three-deep nesting, a nested def inside
+an `if` block, and two regression guards against the double-counting bug.
+Confirmed via `git stash`: 4/6 new tests fail against the pre-fix resolver,
+6/6 pass post-fix. Full suite: 141 passed, 0 failed.
 
 **Acceptance claim for the Verifier:** "A sink call inside a function nested
 inside another function produces a finding plan, with correct parameter
@@ -235,23 +244,43 @@ taint classification for a variable captured from the enclosing scope."
 
 **Verifier method hint:** the ledger's own fixture (a closure with a real
 `os.system` call) plus a second fixture where the sink argument is a
-parameter of the *outer* function, referenced inside the inner one.
+parameter of the *outer* function, referenced inside the inner one — both
+are now covered by the committed test file, but a fresh Verifier should
+still try to break the fix with its own adversarial fixtures (e.g. a
+closure over a *loop variable* from the enclosing scope, or a nested
+function that itself has a nested function with a sink call two levels
+removed from the parameter it closes over) rather than only re-running the
+Builder's own tests.
 
 ---
 
 ## 6. Inline JS/TS function literals (callbacks) are invisible
-**Ledger:** sz-2026-10-21-06
+**Status: fixed, pending fresh Verifier pass.** Ledger: sz-2026-10-21-06
+(original finding), sz-2026-10-21-22 (fix).
 
-**Fix direction:** mirror item 5's shape on the JS side: when
-`findCallsInExpr` hits a `FunctionExpression`/`ArrowFunctionExpression` that
-is NOT a named declaration or `const x = () => {}` assignment (i.e. it's an
-argument expression — the callback case), it still needs its own scope
-walked and indexed, with a qualname derived from its position (e.g. the
-enclosing call's resolved callee + an ordinal, since it's genuinely
-anonymous). This is the highest real-world-impact item in the whole list —
-prioritize it over polish on items 1–4 once those are closed, since it's
-the gap most likely to produce real false negatives on real Node codebases
-today.
+Branch `fix/js-inline-callback-invisibility`. Added
+`collectInlineFunctionNodes`/`discoverInlineFunctions` to `extract_graph.js`,
+mirroring item 5's shape: every inline `FunctionExpression`/
+`ArrowFunctionExpression` not already a named scope (a top-level
+`const x = function/arrow` or a class method/constructor, excluded by AST-
+node reference identity) gets a qualname derived from its own source
+position (`<enclosing>.<callback:L<line>C<col>>`, deterministic so pass 1
+and pass 2 always agree without shared insertion-order state) and is
+indexed and walked as a real scope of its own, with parameter taint
+accumulated across every enclosing scope (closure-correct, mirroring item
+5's `enclosing_param_names`). Covers: a callback passed as a call argument
+(the Express shape), a callback nested inside a callback at any depth, a
+callback at bare module scope, a callback inside a class method (`this`
+resolves back to the owning class), a concise-expression-body arrow
+(`x => sink(x)`, no braces — walked directly via `findCallsInExpr` since
+there's no statement list), and — wider than the acceptance claim strictly
+asked for, since the discovery walk is fully generic, not limited to
+call-argument position — a function literal assigned as an object-literal
+property's value. 9 new tests in `tests/test_js_inline_callback_visibility.py`.
+Confirmed via `git stash`: 7/8 new tests failed against the pre-fix
+resolver (the regression guard for pre-existing named-const behavior
+passed either way, as expected); all pass post-fix. Full suite: 144
+passed, 0 failed (the pre-existing 38 JS-resolver tests also re-ran clean).
 
 **Acceptance claim for the Verifier:** "A sink call inside an anonymous
 arrow function passed directly as a call argument (the
@@ -260,31 +289,57 @@ arrow function passed directly as a call argument (the
 **Verifier method hint:** the ledger's own fixture, plus a second, more
 realistic one pulled from an actual small Express app shape (a handful of
 routes, one with a sink in the inline handler, one without) to catch an
-over-narrow fix that only handles the single-argument pattern.
+over-narrow fix that only handles the single-argument pattern — both now
+covered by the committed tests, but a fresh Verifier should still try its
+own adversarial shapes: an IIFE's own invocation wrapper, a callback
+forwarded through a variable before being passed on, and a named
+(non-anonymous) function expression used as an argument are all untested
+and worth trying, rather than only re-running the Builder's own tests.
 
 ---
 
-## 7. Output-cap crash — STATUS: fixed, pending fresh Verifier pass
+## 7. Output-cap crash — STATUS: fixed, merged (PR #9)
 **Ledger:** sz-2026-10-21-08 claim 1 (UNABLE_TO_VERIFY) -> sz-2026-10-22-01
-(CONFIRMED, fixed). See PR #9 (`fix/ledger-output-cap-crash`).
+(CONFIRMED, fixed) -> sz-2026-10-22-03 (Codex P2 follow-up, fixed).
 
 Reproduced for real before any fix was written: a synthetic 3500-module
 repo, each with its own `os.system(user_input)` sink call, produced a
 genuine 5,548,527-byte ledger and crashed `sentinel-zero analyze` with an
 uncaught `ValueError` traceback instead of this project's own
-`CRITICAL_TOOL_FAILURE` convention.
+`CRITICAL_TOOL_FAILURE` convention — `cli.py`'s
+`except (ToolFailure, UnknownAttackClass)` never covered the plain
+`ValueError` the byte cap raises.
 
-**Fix:** `dogfood_scan._write_or_fail_cleanly()` catches that specific
-`ValueError` at the ledger/graph.json write sites and re-raises it as a
-`ToolFailure`; `cli.cmd_analyze()`'s `report.md` write moved inside the
-same try/except. Byte caps themselves unchanged. See sz-2026-10-22-01 for
-full detail.
+**Fix:** `dogfood_scan.write_or_fail_cleanly()` catches that specific
+`ValueError` at both the `verification_ledger.json` and `graph.json` write
+sites and re-raises it as a `ToolFailure` naming the real size and the
+cap. `cli.cmd_analyze()`'s `report.md` write (`--format md`) had the
+identical gap and now calls the same shared helper rather than a second,
+separately-maintained copy. The already-written ledger is left on disk
+rather than lost when only the markdown render is too large. See
+sz-2026-10-22-01 for full detail (tests added, stash confirmation,
+real-repro re-run against the fix).
+
+**Codex P2 follow-up (sz-2026-10-22-03):** the original wrapper caught
+`ValueError` generically and always claimed "too large... were
+discarded" — wrong for `safe_write_text`'s other two `ValueError`
+causes (a `resolve_inside` path-containment refusal; a
+`UnicodeEncodeError`), both currently unreachable from this project's
+own fixed-literal call sites but worth fixing honestly regardless.
+`write_or_fail_cleanly()` now independently recomputes whether `text` is
+actually over `max_bytes` before choosing which message to raise.
+
+**Not changed:** the byte caps themselves (5MB ledger/report, 20MB
+graph). The confirmed bug was the crash's shape (uncaught traceback vs.
+clean failure), not the cap values — raising the caps is a separate,
+unasked-for design decision this fix does not make.
 
 ---
 
 ## 8. Missing wheel asset for the JS probe harness — STATUS: fixed, pending fresh Verifier pass
 **Ledger:** sz-2026-10-21-08 claim 2 (UNABLE_TO_VERIFY) -> sz-2026-10-22-02
-(CONFIRMED, fixed).
+(CONFIRMED, fixed) -> sz-2026-10-22-04 (Codex P2 follow-up, fixed).
+See PR #10 (`fix/js-harness-missing-from-wheel`).
 
 Reproduced for real before any fix was written: built the actual wheel
 with `python -m build`, installed it into a fresh venv, and called
@@ -300,6 +355,14 @@ list for `sentinel_zero`. The Python-side harness was never affected --
 it ships as ordinary package source, not a package-data asset. See
 sz-2026-10-22-02 for full detail (two-layer test: a fast glob-coverage
 check plus a skippable real-wheel-build check).
+
+**Codex P2 follow-up (sz-2026-10-22-04):** the real-wheel test built
+directly from the repo checkout, so a leftover `build/` directory from
+an earlier build could let setuptools silently reuse a previously-
+included asset and make the test pass even against a broken
+`pyproject.toml` — confirmed for real (twice: `build/` alone wasn't
+enough, a leftover `*.egg-info` let the same bug through a second way).
+Fixed by building from an isolated, cache-free copy of the source tree.
 
 ---
 

@@ -208,6 +208,74 @@ def _dispatch_forwards_to(method: ast.FunctionDef | ast.AsyncFunctionDef, wrappe
     return False
 
 
+def _direct_nested_function_defs(
+    stmts: list[ast.stmt],
+) -> list[ast.FunctionDef | ast.AsyncFunctionDef]:
+    """Function defs that belong to THIS scope -- found by walking through
+    control-flow constructs (if/try/for/while/with) exactly the way
+    _resolve_module's own walk_stmts does for CallSites, but collecting
+    FunctionDef/AsyncFunctionDef nodes instead. Stops at a nested
+    FunctionDef/AsyncFunctionDef/ClassDef boundary without descending into
+    it -- each of those is a separate scope, indexed by its own recursive
+    call in _index_function_and_nested below, never flattened into this
+    one's result."""
+    found: list[ast.FunctionDef | ast.AsyncFunctionDef] = []
+    for stmt in stmts:
+        if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            found.append(stmt)
+        elif isinstance(stmt, ast.ClassDef):
+            continue  # a nested class remains out of scope for this pass
+        elif isinstance(stmt, ast.If):
+            found += _direct_nested_function_defs(stmt.body)
+            found += _direct_nested_function_defs(stmt.orelse)
+        elif isinstance(stmt, ast.Try):
+            found += _direct_nested_function_defs(stmt.body)
+            for handler in stmt.handlers:
+                found += _direct_nested_function_defs(handler.body)
+            found += _direct_nested_function_defs(stmt.orelse)
+            found += _direct_nested_function_defs(stmt.finalbody)
+        elif isinstance(stmt, (ast.For, ast.AsyncFor, ast.While)):
+            found += _direct_nested_function_defs(stmt.body)
+            found += _direct_nested_function_defs(stmt.orelse)
+        elif isinstance(stmt, (ast.With, ast.AsyncWith)):
+            found += _direct_nested_function_defs(stmt.body)
+        elif isinstance(stmt, ast.Match):
+            # Codex review, PR #7: `match value: case ...: def inner():
+            # ...` is real, supported Python 3.10+ syntax -- a case body is
+            # just another list of statements, same as an If branch, and a
+            # function def inside one still belongs to the enclosing
+            # scope, not a separate one.
+            for case in stmt.cases:
+                found += _direct_nested_function_defs(case.body)
+    return found
+
+
+def _index_function_and_nested(
+    node: ast.FunctionDef | ast.AsyncFunctionDef,
+    qualname: str,
+    file_path: str,
+    index: dict[str, FunctionInfo],
+) -> None:
+    """Milestone (remediation item 5, VERIFICATION_LEDGER.md
+    sz-2026-10-21-05): indexes `node` itself, then recurses into any
+    function nested inside it -- at any depth, inside any control-flow
+    construct -- giving each one a qualname of its own that mirrors
+    Python's own __qualname__ convention for a nested function
+    (`module.outer.<locals>.inner`). Before this, a nested function had
+    NO entry in `project_functions` at all, so a sink call inside one
+    could never resolve to a real caller -- it simply vanished, producing
+    zero finding plans, not even UNRESOLVED_INCONCLUSIVE."""
+    index[qualname] = FunctionInfo(
+        qualified_name=qualname,
+        is_guard_shaped=_is_guard_shaped(node),
+        raises_on_guard=_is_raise_guard_shaped(node),
+        file_path=file_path,
+        lineno=node.lineno,
+    )
+    for nested in _direct_nested_function_defs(node.body):
+        _index_function_and_nested(nested, f"{qualname}.<locals>.{nested.name}", file_path, index)
+
+
 def _index_module_functions(
     tree: ast.Module,
     module_qualname: str,
@@ -218,26 +286,14 @@ def _index_module_functions(
     for node in tree.body:
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             qualname = f"{module_qualname}.{node.name}"
-            index[qualname] = FunctionInfo(
-                qualified_name=qualname,
-                is_guard_shaped=_is_guard_shaped(node),
-                raises_on_guard=_is_raise_guard_shaped(node),
-                file_path=file_path,
-                lineno=node.lineno,
-            )
+            _index_function_and_nested(node, qualname, file_path, index)
         elif isinstance(node, ast.ClassDef):
             class_qualname = f"{module_qualname}.{node.name}"
             init_fn = call_fn = None
             for member in node.body:
                 if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     member_qualname = f"{class_qualname}.{member.name}"
-                    index[member_qualname] = FunctionInfo(
-                        qualified_name=member_qualname,
-                        is_guard_shaped=_is_guard_shaped(member),
-                        raises_on_guard=_is_raise_guard_shaped(member),
-                        file_path=file_path,
-                        lineno=member.lineno,
-                    )
+                    _index_function_and_nested(member, member_qualname, file_path, index)
                     if member.name == "__init__":
                         init_fn = member
                     elif member.name == "__call__":
@@ -577,13 +633,21 @@ def _resolve_module(
         fn_node: ast.FunctionDef | ast.AsyncFunctionDef | None,
         caller_name: str,
         extra_bindings: dict[str, str] | None = None,
+        enclosing_param_names: frozenset[str] = frozenset(),
     ) -> None:
         local_bindings = dict(bindings)
         if extra_bindings:
             local_bindings.update(extra_bindings)
         order_counter = [0]
         body = fn_node.body if fn_node else tree.body
-        param_names = _param_names(fn_node)
+        # Milestone (remediation item 5, VERIFICATION_LEDGER.md
+        # sz-2026-10-21-05): a nested function's own parameters are joined
+        # with every ENCLOSING function's parameters, not just its own --
+        # a closure that references its outer function's parameter must
+        # still classify that reference as "parameter" taint, not
+        # "unknown", or the exact case this fix targets would silently
+        # regress to the wrong (weaker) classification one call deeper.
+        param_names = _param_names(fn_node) | enclosing_param_names
 
         def record_calls_in_expr(expr: ast.AST, branch_path: tuple) -> None:
             """Find every ast.Call nested in this expression (but not inside
@@ -662,8 +726,63 @@ def _resolve_module(
 
         def walk_stmts(stmts: list[ast.stmt], branch_path: tuple) -> None:
             for stmt in stmts:
-                if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
-                    continue  # separate scope, indexed/walked on its own
+                if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                    # Milestone (remediation item 5, VERIFICATION_LEDGER.md
+                    # sz-2026-10-21-05): a nested function is a separate
+                    # scope -- its own qualname, its own order_counter,
+                    # its own CallSite caller identity -- but, unlike the
+                    # old behavior, it IS walked, right here, recursively.
+                    # Qualname mirrors Python's own __qualname__ convention
+                    # for a nested function (module.outer.<locals>.inner),
+                    # so a sink call inside it resolves to a real,
+                    # addressable caller instead of vanishing entirely.
+                    # `local_bindings` (this scope's own accumulated import/
+                    # alias bindings, including any Assign-alias seen
+                    # earlier in THIS body) is passed down as the nested
+                    # scope's starting bindings -- a reasonable, stated
+                    # approximation of lexical closure, not full dataflow.
+                    #
+                    # Guarded on `fn_node is not None`: this walk_stmts can
+                    # also be the TOP-level module scope's own walk
+                    # (walk_fn(None, "") below), whose body is `tree.body`
+                    # -- and tree.body's own top-level FunctionDefs are
+                    # already walked by the dedicated loop right after that
+                    # call, with the correct `module.name` qualname. Without
+                    # this guard, every top-level function got walked
+                    # TWICE: once correctly by that loop, once more here
+                    # under a bogus `.<locals>.name` qualname with no
+                    # module prefix -- a real duplicate-CallSite regression
+                    # caught by the existing test suite, not a hypothetical.
+                    if fn_node is not None:
+                        nested_qualname = f"{caller_name}.<locals>.{stmt.name}"
+                        # Codex review, PR #7 (ledger sz-2026-10-21-21's own
+                        # follow-up): a call to the nested function BY ITS
+                        # LOCAL NAME -- `inner()`, the normal way to call it,
+                        # whether from a sibling statement in this same
+                        # scope or recursively from inside the nested
+                        # function itself -- must resolve to this qualname,
+                        # not the bare name "inner". Without this binding,
+                        # _resolve_dotted falls through to an unbound bare
+                        # Symbol("inner") that never matches project_functions
+                        # (keyed by the qualified name), so
+                        # build_direct_callee_index silently drops the edge
+                        # and transitive guard/dependency propagation never
+                        # sees it. Bound in `local_bindings` (this scope's
+                        # own dict, mutated in place) BEFORE walking the
+                        # nested function's own body, so the binding is
+                        # already present in the `extra_bindings` snapshot
+                        # the nested scope inherits -- covering self-
+                        # recursion too, not just sibling calls after it.
+                        local_bindings[stmt.name] = nested_qualname
+                        walk_fn(
+                            stmt,
+                            nested_qualname,
+                            extra_bindings=local_bindings,
+                            enclosing_param_names=param_names,
+                        )
+                    continue
+                if isinstance(stmt, ast.ClassDef):
+                    continue  # a nested class remains out of scope for this pass
                 if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1 and isinstance(stmt.targets[0], ast.Name):
                     record_calls_in_expr(stmt.value, branch_path)
                     resolved_rhs = _resolve_dotted(stmt.value, local_bindings)
@@ -705,6 +824,24 @@ def _resolve_module(
                     for item in stmt.items:
                         record_calls_in_expr(item.context_expr, branch_path)
                     walk_stmts(stmt.body, branch_path)
+                    continue
+                if isinstance(stmt, ast.Match):
+                    # Codex review, PR #7: mirrors the If/Try/For treatment
+                    # above -- without this branch, a Match statement fell
+                    # through to the generic record_calls_in_expr(stmt, ...)
+                    # case below, which calls plain ast.walk(stmt) and
+                    # attributes every call inside every case body to THIS
+                    # scope directly, bypassing the FunctionDef branch at
+                    # the top of this loop entirely -- so a function nested
+                    # inside a case body was never recursed into as its own
+                    # scope, and calls made from inside it were silently
+                    # misattributed to the enclosing function instead.
+                    record_calls_in_expr(stmt.subject, branch_path)  # the matched subject always evaluates
+                    tag = id(stmt)
+                    for i, case in enumerate(stmt.cases):
+                        if case.guard is not None:
+                            record_calls_in_expr(case.guard, branch_path + ((tag, f"case{i}"),))
+                        walk_stmts(case.body, branch_path + ((tag, f"case{i}"),))
                     continue
                 # simple statement (Expr, Return, Raise, Assert, AugAssign, ...):
                 # record every call nested in it at the current branch_path.

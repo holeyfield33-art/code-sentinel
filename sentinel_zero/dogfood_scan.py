@@ -148,6 +148,44 @@ from sentinel_zero.resolvers.python_resolver import build_project_graph as build
 from sentinel_zero.resolvers.python_resolver import dominates
 from sentinel_zero.resolvers.js_resolver import build_project_graph as build_js_project_graph
 
+
+def write_or_fail_cleanly(root: str, relative: str, text: str, max_bytes: int, *, what: str) -> None:
+    """VERIFICATION_LEDGER.md sz-2026-10-22-01 / REMEDIATION_PLAN.md item 7:
+    `safe_write_text` raises a bare `ValueError` when its output exceeds
+    `max_bytes` -- correct refusal-before-writing behavior on its own, but
+    nothing downstream of it (dogfood_scan.run(), cli.cmd_analyze) ever
+    caught that specific ValueError, so it propagated all the way out as
+    an uncaught traceback instead of this project's own
+    CRITICAL_TOOL_FAILURE convention. Confirmed by an actual oversized run
+    in this session (3500 real sink findings -> a 5.5MB ledger -> the raw
+    traceback, reproduced before this fix existed). This wrapper is the
+    single place that turns that failure into a clean ToolFailure instead
+    of an uncaught traceback.
+
+    VERIFICATION_LEDGER.md sz-2026-10-22-03 (Codex P2 on PR #9):
+    `safe_write_text` also raises a plain `ValueError` for two other,
+    unrelated refusals -- `resolve_inside`'s path-containment check (a
+    symlink escaping out_dir) and a `UnicodeEncodeError` (a ValueError
+    subclass) from encoding `text`. The original version of this wrapper
+    caught ValueError generically and always claimed "too large... were
+    discarded", which would be a flatly wrong, misleading message for
+    either of those other cases -- worse than the traceback it replaced
+    for exactly the cases it wasn't written for, since it actively lies
+    about why the write failed. Fixed by independently recomputing
+    whether `text` is actually over `max_bytes` before choosing which
+    message to raise, rather than assuming every ValueError here is the
+    size refusal."""
+    try:
+        safe_write_text(root, relative, text, max_bytes)
+    except ValueError as exc:
+        if len(text.encode("utf-8")) > max_bytes:
+            raise ToolFailure(
+                f"could not write {what} to {relative}: {exc}. The scan completed and found real "
+                f"results, but they were too large to write out under this project's own safety cap "
+                f"and were discarded rather than silently truncated."
+            ) from exc
+        raise ToolFailure(f"could not write {what} to {relative}: {exc}") from exc
+
 SINK_ATTACK_IDS = {
     "FILE_IO": "AAC-17",
     "DESERIALIZATION": "AAC-27",
@@ -722,7 +760,10 @@ def run(
             "metadata": catalog.meta,
         },
     }
-    safe_write_text(str(out_dir), "verification_ledger.json", json.dumps(ledger, indent=2), 5_000_000)
+    write_or_fail_cleanly(
+        str(out_dir), "verification_ledger.json", json.dumps(ledger, indent=2), 5_000_000,
+        what="the verification ledger",
+    )
 
     # Milestone 14: the full node/edge graph, not just the flat findings --
     # a pure re-serialization of data already in `graph`/`ledger["plans"]`,
@@ -730,7 +771,10 @@ def run(
     # graph_export.py for why this exists (nothing a future 3D view or a
     # Code Atlas adapter needs survives past this function otherwise).
     graph_doc = export_graph(graph, ledger["plans"], repo_root.name)
-    safe_write_text(str(out_dir), "graph.json", json.dumps(graph_doc, indent=2), 20_000_000)
+    write_or_fail_cleanly(
+        str(out_dir), "graph.json", json.dumps(graph_doc, indent=2), 20_000_000,
+        what="the call graph",
+    )
 
     print(
         f"{repo_root.name}: {len(graph.modules)} modules, {len(graph.functions)} functions indexed, "

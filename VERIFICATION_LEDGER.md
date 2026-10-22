@@ -320,6 +320,144 @@ Ashura to make, not something closed by further patching.
   reproduce an oversized run)
 - **date:** 2026-10-21
 
+### sz-2026-10-21-22
+- **claim:** "An inline anonymous function literal passed directly as a
+  call argument — the `app.get('/x', (req,res)=>{...})` shape — is
+  completely invisible to `extract_graph.js`: it is never indexed as its
+  own scope and its own body is never walked for `CallSite`s, so a sink
+  call inside one produces zero `CallSite`s, not even an Unresolved one."
+  (Remediation plan item 6, explicitly flagged there as "the highest
+  real-world-impact item in the whole list.")
+- **claimant:** `docs/REMEDIATION_PLAN.md` item 6 (originally from the
+  external audit)
+- **check performed:** Builder session on branch
+  `fix/js-inline-callback-invisibility`, mirroring item 5's shape on the
+  JS side as the plan's own fix direction specified. Added
+  `collectInlineFunctionNodes` (finds every `FunctionExpression`/
+  `ArrowFunctionExpression` reachable from a scope's body that isn't
+  already a named scope handled elsewhere — a top-level `const x =
+  function/arrow` or a class method/constructor, excluded by AST-node
+  reference identity — and stops at every `FunctionDeclaration`/
+  `ClassDeclaration`/`ClassExpression` boundary without recursing into
+  it, a stated "don't guess" bound) and `discoverInlineFunctions`
+  (assigns each one a qualname derived from its own source position,
+  `<enclosing>.<callback:L<line>C<col>>`, deterministic so pass 1
+  (`indexFile`) and pass 2 (`walkCalls`) always agree without sharing
+  insertion-order state, and accumulates `effectiveParamNames` across
+  every enclosing scope — the JS mirror of item 5's
+  `enclosing_param_names` — so a closure over an enclosing function's
+  own parameter classifies as `parameter` taint, not `unknown`).
+  `indexFile` now also indexes every discovered inline callback (module
+  scope, every top-level function, every class method/constructor);
+  `walkCalls` now also walks each one's body for `CallSite` recording,
+  including the concise-arrow-body case (`x => sink(x)`, no statement
+  list) via a direct `findCallsInExpr`/`recordCallsFromNodes` call
+  instead of `walkStmts`, and including `this` resolution for a callback
+  nested inside a class method (same `bindings` window the method's own
+  body already walks in, a stated simplification since real JS only
+  lexically inherits `this` for an arrow callback, never a plain
+  `function(){}` one — this resolver does not distinguish the two here).
+- **tests added:** `tests/test_js_inline_callback_visibility.py` (9
+  tests) — the plan's own Express fixture (a sink call inside
+  `app.get('/x', (req,res)=>{...})`); a closure over the enclosing
+  function's own parameter (`setTimeout`); the plan's suggested second,
+  more realistic fixture (several routes, only one with a sink in its
+  inline handler); a callback nested inside a callback, discovered at
+  depth; a callback living directly at module scope with no enclosing
+  function; a callback inside a class method correctly resolving
+  `this.execute()` back to the owning class; a concise-expression-body
+  arrow (`cmd => exec(cmd)`, no braces); a regression guard confirming a
+  top-level named `const handler = (req,res) => {...}` is still indexed
+  once, under its own name, never double-indexed under a synthetic
+  `<callback:...>` qualname too; and a function literal assigned as an
+  object-literal property's value (not passed as a call argument at
+  all), confirming the fix is wider than the plan's own acceptance claim
+  strictly asked for.
+- **`git stash` confirmation:** stashing just the `extract_graph.js`
+  change and rerunning the new test file: 7 of 8 then-existing cases
+  failed (the regression-guard test, scoped to pre-existing named-const
+  behavior, passed either way, as expected) — every inline-callback case
+  came back with zero `CallSite`s, confirming the bug was real and the
+  tests actually exercise the fix. Popping the stash and rerunning: all
+  pass. Full suite (Python + JS, all skip-guarded on Node.js
+  availability): **144 passed, 0 failed** (135 pre-existing + 9 new,
+  after the object-literal-property test was added). The pre-existing 38
+  JS-resolver tests also re-ran clean with no changes, confirming the
+  wrapper-middleware/guard-shape/delegation/argument-taint machinery this
+  fix sits beside was not disturbed.
+- **verdict:** CONFIRMED by the Builder's own testing — **pending a
+  fresh, non-forked Tier-1 Verifier pass** before this is asserted as
+  closed to anyone outside this session, per IVP (a Builder's own
+  regression tests for a bug the Builder found and fixed do not close an
+  item on their own). The Verifier method hint in the plan (the Express
+  fixture plus a more-realistic multi-route one) is covered by the
+  committed tests. Note for the Verifier: `collectInlineFunctionNodes` is
+  a fully generic tree walk, not limited to call-argument position — an
+  inline function assigned to an object-literal property value is also
+  discovered (now a committed test), and an array element presumably is
+  too by the same generic traversal (not separately tested), wider than
+  the plan's own acceptance claim strictly asked for. A fresh Verifier
+  should confirm this breadth holds and look for the actual boundary: an
+  IIFE's own invocation wrapper, a callback forwarded through a variable
+  before being passed on, and a named (non-anonymous) function expression
+  used as an argument are all untested shapes worth trying, rather than
+  only re-running the Builder's own tests.
+- **date:** 2026-10-21
+
+### sz-2026-10-21-25
+- **claim:** "When a named top-level arrow has a concise expression body,
+  this call remains gated by the `BlockStatement` check [in the
+  `callerFunctions` walk loop], so code such as
+  `const register = app => app.get('/x', req => exec(req.cmd));`
+  indexes the synthetic callback but records no calls from it." (P1)
+- **claimant:** Codex automated review on PR #8 (sz-2026-10-21-22's own
+  PR), commit `f5a80e8`, comment_id 4344197900
+- **check performed:** independently reproduced before accepting, per
+  IVP — ran the exact fixture from the finding through
+  `extract_graph.js` directly: `functions` correctly contained
+  `concise.register.<callback:L2C38>` (pass 1's `discoverInlineFunctions`
+  call in `indexFile` never gated on `BlockStatement`, so the callback
+  WAS indexed), but `modules.concise.calls` was completely empty — zero
+  `CallSite`s from either `concise.register` itself or the callback
+  nested inside it. Confirmed exactly as described: the
+  `callerFunctions` loop in `walkCalls` only called `walkStmts`/
+  `walkInlineScopes` inside an `if (fnNode.body.type === 'BlockStatement')`
+  guard, so a concise-body named arrow was skipped from this whole block
+  entirely.
+- **why this is worse than a pre-existing gap, not just a restatement of
+  one:** a concise-body named top-level arrow's own direct calls were
+  ALREADY invisible before item 6 (an unrelated, pre-existing limitation
+  of the original resolver, never claimed fixed by item 6). What item 6
+  added on top was worse: it now indexes a callback nested inside that
+  expression into `functions` unconditionally, so the callback *looks*
+  like a real, checked scope (it has an entry, a qualname, everything a
+  genuinely walked scope has) while actually holding zero `CallSite`s --
+  "checked, no sink calls found" is a materially different, false
+  signal from "never walked at all."
+- **fix:** the `callerFunctions` loop in `walkCalls` now has an `else`
+  branch for a non-`BlockStatement` body: records the named arrow's own
+  direct calls via `findCallsInExpr`/`recordCallsFromNodes` (the same
+  treatment a concise-body INLINE callback already got in
+  `walkInlineScopes`), and calls `walkInlineScopes` on that same
+  expression so any callback nested inside it is walked too -- closing
+  both halves of the gap: the pre-existing one (the named arrow's own
+  direct calls) and the one item 6 introduced (its nested callbacks).
+- **tests added:** 2 tests appended to
+  `tests/test_js_inline_callback_visibility.py` —
+  `test_a_callback_nested_inside_a_named_concise_body_arrow_is_still_walked`
+  (Codex's own fixture, asserting the previously-silent sink call now
+  resolves) and `test_a_named_concise_body_arrows_own_direct_sink_call_is_also_recorded`
+  (the other half: a direct call with no nested callback at all).
+- **`git stash` confirmation:** stashing just `extract_graph.js` and
+  rerunning the 2 new tests: both failed (`assert 0 == 1`, zero
+  `CallSite`s found, matching the finding's own description exactly).
+  Popping the stash: 11/11 pass in this test file. Full suite: **146
+  passed, 0 failed** (144 + 2 new).
+- **verdict:** CONFIRMED (the P1 was real) and fixed, pushed to PR #8 —
+  **still pending the same fresh, non-forked Verifier pass**
+  sz-2026-10-21-22 was already waiting on; this entry closes one
+  specific Codex finding against the same unmerged PR, same relationship
+  sz-2026-10-21-23 had to sz-2026-10-21-21 on PR #7.
 ### sz-2026-10-21-19
 - **claim:** "The probe can run with real OS-level isolation (network
   segmentation, dropped capabilities, read-only root, non-root user,
@@ -466,6 +604,61 @@ Ashura to make, not something closed by further patching.
   covered by the existing sz-2026-10-21-14/-17 decision record.
 - **date:** 2026-10-22
 
+### sz-2026-10-22-01
+- **claim:** From sz-2026-10-21-08 claim 1 / `docs/REMEDIATION_PLAN.md` item 7:
+  "A ledger over 5 MB crashes the scan with no partial output" —
+  `dogfood_scan.py`'s hardcoded `5_000_000`-byte cap passed to
+  `safe_write_text` raises a bare `ValueError` when exceeded, and neither
+  `dogfood_scan.run()` nor `cli.cmd_analyze()` caught that specific
+  exception, so it propagated as an uncaught traceback instead of this
+  project's own `CRITICAL_TOOL_FAILURE` convention.
+- **claimant:** External audit (previously UNABLE_TO_VERIFY in
+  sz-2026-10-21-08, not reproduced with an actual oversized run).
+- **check performed:** Reproduced for real, not just reasoned about.
+  Built a synthetic 3500-module Python repo, each module with its own
+  `os.system(user_input)` sink call, and ran
+  `python -m sentinel_zero.cli analyze` against it. The scan found 3500
+  real sink findings, serialized them to a genuine 5,548,527-byte ledger,
+  and crashed with:
+  `ValueError: refused: 5548527 bytes is over the 5000000-byte limit`
+  as an uncaught traceback through `dogfood_scan.py:687` ->
+  `ledger_writer.py:24` — exactly the mechanism sz-2026-10-21-08 predicted,
+  now confirmed with a real run rather than left as a plausible read of
+  the source.
+- **fix:** Added `_write_or_fail_cleanly()` in `dogfood_scan.py`, a thin
+  wrapper around `safe_write_text()` that catches the specific
+  oversize `ValueError` and re-raises it as a `ToolFailure` naming the
+  real byte count, the cap, and that the scan's own results were real
+  but too large to write out — never silently truncated, never a bare
+  traceback. Applied to both the `verification_ledger.json` write and the
+  `graph.json` write in `run()`. The equivalent `report.md` write in
+  `cli.cmd_analyze()` had the identical gap (it sat entirely outside the
+  `except (ToolFailure, UnknownAttackClass)` block) — moved inside that
+  block and wrapped the same way, so a report.md over its own 5MB cap
+  now also produces a clean `CRITICAL_TOOL_FAILURE` and exit code 3,
+  with the already-written ledger left intact rather than lost.
+- **tests added:** `tests/test_tool_failure.py`:
+  `test_run_raises_tool_failure_not_a_bare_valueerror_when_the_ledger_is_too_big`
+  (monkeypatches `safe_write_text` to reproduce the exact oversize raise
+  cheaply, asserts `ToolFailure` not `ValueError`, asserts the real byte
+  count and cap appear in the message),
+  `test_write_or_fail_cleanly_still_writes_normally_sized_output`
+  (regression guard: the common case is unaffected), and
+  `test_cmd_analyze_reports_a_clean_critical_tool_failure_when_the_markdown_report_is_too_big`
+  (same shape for the `report.md` path, also asserts the ledger file
+  itself was written successfully first — this is not a total loss).
+- **stash confirmation:** `git stash push -- sentinel_zero/dogfood_scan.py
+  sentinel_zero/cli.py`; all 3 new tests failed pre-fix with the exact
+  predicted shape (an uncaught `ValueError` propagating out of
+  `cli.cmd_analyze`, visible in the pytest traceback); `git stash pop`;
+  all 10 tests in the file passed post-fix; full suite (154 tests) passed.
+  Also re-ran the original 3500-module real-world repro end-to-end
+  against the fixed code: now prints a single `CRITICAL_TOOL_FAILURE:
+  could not write the verification ledger to verification_ledger.json:
+  ...` line to stderr and exits 3 — no traceback.
+- **verdict:** CONFIRMED (claim) / fixed, pending fresh Verifier pass.
+- **date:** 2026-10-22
+
 ### sz-2026-10-22-02
 - **claim:** From sz-2026-10-21-08 claim 2 / `docs/REMEDIATION_PLAN.md` item 8:
   "The distributed wheel omits the JS probe harness, so the installed
@@ -516,6 +709,70 @@ Ashura to make, not something closed by further patching.
 - **verdict:** CONFIRMED (claim) / fixed, pending fresh Verifier pass.
 - **date:** 2026-10-22
 
+### sz-2026-10-22-03
+- **claim:** Codex P2 review on PR #9, commit `0f833fc`: "Preserve
+  non-size write refusal reasons" — `write_or_fail_cleanly()`'s blanket
+  `except ValueError` assumes every `ValueError` from `safe_write_text`
+  is the byte-cap refusal and always says "too large... were
+  discarded", but `safe_write_text` can also raise a plain `ValueError`
+  from `resolve_inside`'s path-containment check (a symlink escaping
+  `out_dir`) or from a `UnicodeEncodeError` (a `ValueError` subclass)
+  encoding `text`. For either, the original wrapper's message would be
+  flatly wrong about why the write failed.
+- **claimant:** `chatgpt-codex-connector[bot]`, PR #9 review comment
+  (comment_id 4348521066).
+- **check performed:** Confirmed real by reading `ledger_writer.py`
+  directly: `resolve_inside` raises `ValueError(f'refused: {relative}
+  is not inside {root}')` on a path-containment failure, a distinct
+  branch from the byte-cap check, and both are plain `ValueError`
+  (`UnicodeEncodeError` is a `ValueError` subclass in the standard
+  library). The original `write_or_fail_cleanly` caught `ValueError`
+  generically with no way to tell the two apart, so it would mislabel
+  either case as a size refusal. Confirmed this is currently
+  unreachable from this project's own call sites specifically (every
+  `relative` argument at every call site is a fixed literal with no
+  `..`, so `resolve_inside`'s escape branch can't fire; `json.dumps(...,
+  indent=2)` defaults to `ensure_ascii=True`, which escapes everything
+  outside ASCII, so the `.encode('utf-8')` it's piped into can't raise)
+  -- but a latent correctness bug worth fixing cheaply regardless, since
+  mislabeling a future path-containment refusal (a genuinely
+  security-relevant signal) as an innocuous "too large" is exactly the
+  kind of wrong-but-plausible-sounding message this project's own
+  CRITICAL_TOOL_FAILURE convention exists to prevent.
+- **fix:** `write_or_fail_cleanly()` now independently recomputes
+  `len(text.encode("utf-8")) > max_bytes` before choosing which message
+  to raise, rather than assuming every `ValueError` is the size refusal.
+  Only the oversize case gets the "too large... discarded" framing;
+  anything else gets an honest message naming the real cause, still
+  wrapped as `ToolFailure` (not re-introducing the original item-7 bug
+  for those cases). Also deduplicated `cli.cmd_analyze()`'s separate
+  copy of the same wrapping logic around the `report.md` write -- it
+  had the identical flaw and would have needed the identical fix a
+  second time -- by having it call `dogfood_scan.write_or_fail_cleanly()`
+  directly instead of maintaining its own copy (renamed from
+  `_write_or_fail_cleanly` to `write_or_fail_cleanly` to be
+  cross-module-callable).
+- **tests added:** `tests/test_tool_failure.py`:
+  `test_write_or_fail_cleanly_does_not_mislabel_a_non_size_valueerror_as_too_big`
+  (monkeypatches `safe_write_text` to raise the path-containment
+  `ValueError` with `text` well under the cap, asserts the message
+  names the real reason and contains neither "too large" nor
+  "discarded"); updated the two existing report.md-path tests to patch
+  `dogfood_scan.safe_write_text` instead of a now-removed
+  `cli.safe_write_text`, since `cli.cmd_analyze` no longer imports
+  `safe_write_text` directly.
+- **stash confirmation:** `git stash push -- sentinel_zero/dogfood_scan.py
+  sentinel_zero/cli.py`; all 3 touched/added tests failed pre-fix (the
+  mislabel test and the still-writes-normally test failed because
+  `write_or_fail_cleanly` didn't exist yet under that name; the
+  report.md test failed because `cli.cmd_analyze` didn't yet route
+  through the shared helper, so the monkeypatch on
+  `dogfood_scan.safe_write_text` had no effect on cli.py's separate,
+  then-still-direct call); `git stash pop`; full suite (155 tests)
+  passed. Re-ran the original 3500-module real-world repro end-to-end
+  again post-fix: unchanged clean `CRITICAL_TOOL_FAILURE` output, exit
+  code 3.
+
 ### sz-2026-10-22-04
 - **claim:** Codex P2 review on PR #10, commit `afbac38`: "Build the
   wheel from a clean source tree" — `test_a_real_built_wheel_actually_
@@ -564,5 +821,3 @@ Ashura to make, not something closed by further patching.
   tests failed with the exclusion fix in place and the config broken, as
   shown above. Restored `pyproject.toml`, cleared the stale directories,
   reran: both tests pass. Full suite (153 tests) passed.
-- **verdict:** CONFIRMED (claim) / fixed, pending fresh Verifier pass.
-- **date:** 2026-10-22
