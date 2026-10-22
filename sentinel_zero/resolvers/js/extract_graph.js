@@ -441,6 +441,71 @@ function classifyArgTaint(node, paramNames) {
   return 'unknown';
 }
 
+// Item 6 (JS mirror of item 5's nested-Python-function fix): an inline
+// anonymous function literal passed as a call argument -- the
+// `app.get('/x', (req, res) => { ... })` shape, the highest real-world-
+// impact gap in this resolver -- was completely invisible before this.
+// findCallsInExpr correctly refuses to descend into a FunctionExpression/
+// ArrowFunctionExpression's own body (that's a separate scope), but
+// nothing ever walked that separate scope either, so a sink call inside
+// one produced zero finding plans, not even Unresolved.
+//
+// collectInlineFunctionNodes finds every FunctionExpression/
+// ArrowFunctionExpression reachable from `node` that is NOT already a
+// named scope handled elsewhere (a top-level `const x = function/arrow`
+// or a class method/constructor -- passed in as `exclude`, a Set of the
+// actual AST node objects, checked by reference identity, which is exact
+// and needs no structural matching). It deliberately also stops at any
+// FunctionDeclaration/ClassDeclaration/ClassExpression boundary without
+// recursing into it at all -- those are each either a separate named
+// scope walked from its own body directly, or (a function/class nested
+// inside another function, or a named function expression passed as an
+// argument) a stated "don't guess" bound this resolver already applies
+// to shapes it doesn't model, same reasoning as the loop-body and
+// destructured-parameter bounds noted elsewhere in this file.
+function collectInlineFunctionNodes(node, exclude, out) {
+  if (!isNode(node)) return;
+  if (node.type === 'FunctionDeclaration' || node.type === 'ClassDeclaration' || node.type === 'ClassExpression') {
+    return;
+  }
+  if (node.type === 'FunctionExpression' || node.type === 'ArrowFunctionExpression') {
+    if (!exclude.has(node)) out.push(node);
+    return; // its own body is discovered separately, once it has a qualname
+  }
+  for (const key of Object.keys(node)) {
+    if (key === 'type' || key === 'start' || key === 'end' || key === 'loc' || key === 'range') continue;
+    const val = node[key];
+    if (Array.isArray(val)) {
+      for (const item of val) collectInlineFunctionNodes(item, exclude, out);
+    } else if (isNode(val)) {
+      collectInlineFunctionNodes(val, exclude, out);
+    }
+  }
+}
+
+// Assigns each inline function literal found under `bodyNode` a qualname
+// derived from its own AST position (`<enclosing>.<callback:L<line>C<col>>`)
+// -- deterministic from the source position alone, so pass 1 (indexFile)
+// and pass 2 (walkCalls) always agree on the same name for the same
+// callback without sharing any insertion-order state between them.
+// Mirrors item 5's `enclosing_param_names`: `effectiveParamNames` accumulates
+// every enclosing scope's own parameters union'd with this callback's own,
+// so a closure referencing an enclosing function's parameter still
+// classifies as "parameter" taint rather than "unknown". Recurses into
+// each found callback's own body so a callback nested inside a callback
+// (`.then(x => { arr.map(y => { sink(y) }) })`) is discovered too, at
+// whatever depth.
+function discoverInlineFunctions(bodyNode, baseQualname, enclosingParamNames, exclude, onFound) {
+  const found = [];
+  collectInlineFunctionNodes(bodyNode, exclude, found);
+  for (const fnNode of found) {
+    const qualname = `${baseQualname}.<callback:L${fnNode.loc.start.line}C${fnNode.loc.start.column}>`;
+    const effectiveParamNames = new Set([...enclosingParamNames, ...paramNamesFromFnNode(fnNode)]);
+    onFound(qualname, fnNode, effectiveParamNames);
+    discoverInlineFunctions(fnNode.body, qualname, effectiveParamNames, exclude, onFound);
+  }
+}
+
 // Collects CallExpression/NewExpression nodes within `node`, WITHOUT
 // descending into a nested function literal's body -- that's a separate
 // scope, not walked as part of the enclosing caller (mirrors Python's
@@ -545,6 +610,13 @@ function parseFile(filePath) {
 function indexFile(program, filePath, modQ) {
   const functionsOut = {};
   const wrapperClassesOut = {};
+  // Item 6: fnNode references (by identity) that are each already a named
+  // scope indexed below -- never re-indexed as "inline" -- plus the body/
+  // baseQualname/paramNames of every scope inline discovery should start
+  // from. Built up as the existing top-level/class loops run, then used
+  // once after them.
+  const inlineExclude = new Set();
+  const scopesForInlineDiscovery = [];
 
   function indexFunction(qualname, fnNode) {
     functionsOut[qualname] = {
@@ -587,6 +659,12 @@ function indexFile(program, filePath, modQ) {
           file_path: filePath,
           lineno: member.loc.start.line,
         };
+        inlineExclude.add(member.value);
+        scopesForInlineDiscovery.push({
+          bodyNode: member.value.body,
+          baseQualname: ctorQualname,
+          paramNames: paramNamesFromFnNode(member.value),
+        });
         continue;
       }
       if (member.kind !== 'method') continue; // getters/setters/static out of scope for v0
@@ -598,6 +676,12 @@ function indexFile(program, filePath, modQ) {
         file_path: filePath,
         lineno: member.loc.start.line,
       };
+      inlineExclude.add(member.value);
+      scopesForInlineDiscovery.push({
+        bodyNode: member.value.body,
+        baseQualname: methodQualname,
+        paramNames: paramNamesFromFnNode(member.value),
+      });
       otherMethods.push({ name: member.key.name, qualname: methodQualname, fnNode: member.value });
     }
     if (!ctorNode) return;
@@ -616,7 +700,10 @@ function indexFile(program, filePath, modQ) {
 
   for (const stmt of program.body) {
     if (stmt.type === 'FunctionDeclaration' && stmt.id) {
-      indexFunction(`${modQ}.${stmt.id.name}`, stmt);
+      const qn = `${modQ}.${stmt.id.name}`;
+      indexFunction(qn, stmt);
+      inlineExclude.add(stmt);
+      scopesForInlineDiscovery.push({ bodyNode: stmt.body, baseQualname: qn, paramNames: paramNamesFromFnNode(stmt) });
     } else if (stmt.type === 'VariableDeclaration') {
       for (const decl of stmt.declarations) {
         if (
@@ -624,12 +711,34 @@ function indexFile(program, filePath, modQ) {
           decl.init &&
           (decl.init.type === 'FunctionExpression' || decl.init.type === 'ArrowFunctionExpression')
         ) {
-          indexFunction(`${modQ}.${decl.id.name}`, decl.init);
+          const qn = `${modQ}.${decl.id.name}`;
+          indexFunction(qn, decl.init);
+          inlineExclude.add(decl.init);
+          scopesForInlineDiscovery.push({
+            bodyNode: decl.init.body,
+            baseQualname: qn,
+            paramNames: paramNamesFromFnNode(decl.init),
+          });
         }
       }
     } else if (stmt.type === 'ClassDeclaration' && stmt.id) {
       indexClass(`${modQ}.${stmt.id.name}`, stmt);
     }
+  }
+
+  // Item 6: an inline callback can also live directly at module scope
+  // (`setTimeout(() => { sink() }, 1000);` at the top of a file, not
+  // inside any named function) -- same treatment, base qualname modQ.
+  // collectInlineFunctionNodes stops at every FunctionDeclaration/
+  // ClassDeclaration boundary without recursing into it (see its own
+  // docstring), so walking from `program` here never re-discovers or
+  // double-indexes anything the loop above already indexed.
+  scopesForInlineDiscovery.push({ bodyNode: program, baseQualname: modQ, paramNames: new Set() });
+
+  for (const scope of scopesForInlineDiscovery) {
+    discoverInlineFunctions(scope.bodyNode, scope.baseQualname, scope.paramNames, inlineExclude, (qualname, fnNode) => {
+      indexFunction(qualname, fnNode);
+    });
   }
 
   return { functions: functionsOut, wrapper_classes: wrapperClassesOut };
@@ -797,9 +906,56 @@ function walkCalls(
       }
     }
   }
+  // Item 6: fnNode references that are each already one of the named
+  // scopes above (or a class method/constructor, added below) -- must
+  // match indexFile's own exclude set exactly, by AST node identity, or
+  // pass 1's qualnames and pass 2's walked qualnames would drift apart.
+  const inlineExclude = new Set(callerFunctions.map(([, fnNode]) => fnNode));
+
+  // Item 6 (mirrors item 5's fix on the JS side): walk every inline
+  // function literal discovered under `bodyNode` as a real scope of its
+  // own, with CallSite's caller set to its derived qualname. An arrow's
+  // concise expression body (`x => sink(x)`, no braces) has no statement
+  // list for walkStmts, so its calls are collected directly via
+  // findCallsInExpr/recordCallsFromNodes instead -- the only difference
+  // from a normal BlockStatement-bodied scope.
+  function walkInlineScopes(bodyNode, baseQualname, paramNames) {
+    discoverInlineFunctions(bodyNode, baseQualname, paramNames, inlineExclude, (qualname, fnNode, effectiveParamNames) => {
+      if (fnNode.body.type === 'BlockStatement') {
+        walkStmts(fnNode.body.body, [], qualname, { n: 0 }, effectiveParamNames);
+      } else {
+        const found = [];
+        findCallsInExpr(fnNode.body, found);
+        recordCallsFromNodes(found, [], qualname, { n: 0 }, effectiveParamNames);
+      }
+    });
+  }
+
   for (const [qualname, fnNode] of callerFunctions) {
+    const paramNames = paramNamesFromFnNode(fnNode);
     if (fnNode.body.type === 'BlockStatement') {
-      walkStmts(fnNode.body.body, [], qualname, { n: 0 }, paramNamesFromFnNode(fnNode));
+      walkStmts(fnNode.body.body, [], qualname, { n: 0 }, paramNames);
+      walkInlineScopes(fnNode.body, qualname, paramNames);
+    } else {
+      // Codex review, PR #8: a NAMED top-level `const x = () => expr`
+      // with a concise (brace-less) expression body was gated out of
+      // this whole block entirely -- not just its own direct calls
+      // (a pre-existing gap, unrelated to item 6), but, after item 6,
+      // ALSO any inline callback nested inside that expression. Pass 1
+      // (indexFile) discovers and indexes such a callback unconditionally
+      // (it never gated on BlockStatement), so the callback showed up in
+      // `functions` looking like a real, checked scope while pass 2 here
+      // silently walked zero calls from it -- worse than before item 6,
+      // since an indexed-but-empty scope reads as "checked, no sink
+      // calls" rather than "never walked at all". Same
+      // findCallsInExpr/recordCallsFromNodes treatment a concise-body
+      // inline callback already gets in walkInlineScopes above, for
+      // both halves: the named arrow's own direct calls, and its nested
+      // inline scopes.
+      const found = [];
+      findCallsInExpr(fnNode.body, found);
+      recordCallsFromNodes(found, [], qualname, { n: 0 }, paramNames);
+      walkInlineScopes(fnNode.body, qualname, paramNames);
     }
   }
 
@@ -823,13 +979,27 @@ function walkCalls(
       const methodName = member.kind === 'constructor' ? 'constructor' : member.key.name;
       const methodQualname = `${classQualname}.${methodName}`;
       if (member.value.body.type !== 'BlockStatement') continue;
+      inlineExclude.add(member.value);
       bindings = Object.assign({}, fileBindings, { this: classQualname });
-      walkStmts(member.value.body.body, [], methodQualname, { n: 0 }, paramNamesFromFnNode(member.value));
+      const methodParamNames = paramNamesFromFnNode(member.value);
+      walkStmts(member.value.body.body, [], methodQualname, { n: 0 }, methodParamNames);
+      // Item 6: an inline callback inside a class method is walked while
+      // `bindings` still has `this` bound to the owning class -- so
+      // `this.foo()` inside the callback resolves the same way it would
+      // inside the method itself. A stated simplification: real JS only
+      // lexically inherits `this` for an ARROW callback, never a plain
+      // `function(){}` one, but this resolver does not distinguish the
+      // two here, the same "bounded, not full parity" ethos as every
+      // other noted simplification in this file.
+      walkInlineScopes(member.value.body, methodQualname, methodParamNames);
       bindings = fileBindings;
     }
   }
 
   walkStmts(program.body, [], '', { n: 0 }, new Set()); // module-scope calls, caller = "", no parameters
+  // Item 6: a callback can also live directly at module scope
+  // (`setTimeout(() => { sink() }, 1000);` with no enclosing function).
+  walkInlineScopes(program, modQ, new Set());
 
   return { calls, external_references: externalReferences };
 }

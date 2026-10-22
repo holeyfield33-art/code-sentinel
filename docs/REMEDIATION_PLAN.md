@@ -255,18 +255,32 @@ Builder's own tests.
 ---
 
 ## 6. Inline JS/TS function literals (callbacks) are invisible
-**Ledger:** sz-2026-10-21-06
+**Status: fixed, pending fresh Verifier pass.** Ledger: sz-2026-10-21-06
+(original finding), sz-2026-10-21-22 (fix).
 
-**Fix direction:** mirror item 5's shape on the JS side: when
-`findCallsInExpr` hits a `FunctionExpression`/`ArrowFunctionExpression` that
-is NOT a named declaration or `const x = () => {}` assignment (i.e. it's an
-argument expression — the callback case), it still needs its own scope
-walked and indexed, with a qualname derived from its position (e.g. the
-enclosing call's resolved callee + an ordinal, since it's genuinely
-anonymous). This is the highest real-world-impact item in the whole list —
-prioritize it over polish on items 1–4 once those are closed, since it's
-the gap most likely to produce real false negatives on real Node codebases
-today.
+Branch `fix/js-inline-callback-invisibility`. Added
+`collectInlineFunctionNodes`/`discoverInlineFunctions` to `extract_graph.js`,
+mirroring item 5's shape: every inline `FunctionExpression`/
+`ArrowFunctionExpression` not already a named scope (a top-level
+`const x = function/arrow` or a class method/constructor, excluded by AST-
+node reference identity) gets a qualname derived from its own source
+position (`<enclosing>.<callback:L<line>C<col>>`, deterministic so pass 1
+and pass 2 always agree without shared insertion-order state) and is
+indexed and walked as a real scope of its own, with parameter taint
+accumulated across every enclosing scope (closure-correct, mirroring item
+5's `enclosing_param_names`). Covers: a callback passed as a call argument
+(the Express shape), a callback nested inside a callback at any depth, a
+callback at bare module scope, a callback inside a class method (`this`
+resolves back to the owning class), a concise-expression-body arrow
+(`x => sink(x)`, no braces — walked directly via `findCallsInExpr` since
+there's no statement list), and — wider than the acceptance claim strictly
+asked for, since the discovery walk is fully generic, not limited to
+call-argument position — a function literal assigned as an object-literal
+property's value. 9 new tests in `tests/test_js_inline_callback_visibility.py`.
+Confirmed via `git stash`: 7/8 new tests failed against the pre-fix
+resolver (the regression guard for pre-existing named-const behavior
+passed either way, as expected); all pass post-fix. Full suite: 144
+passed, 0 failed (the pre-existing 38 JS-resolver tests also re-ran clean).
 
 **Acceptance claim for the Verifier:** "A sink call inside an anonymous
 arrow function passed directly as a call argument (the
@@ -275,7 +289,12 @@ arrow function passed directly as a call argument (the
 **Verifier method hint:** the ledger's own fixture, plus a second, more
 realistic one pulled from an actual small Express app shape (a handful of
 routes, one with a sink in the inline handler, one without) to catch an
-over-narrow fix that only handles the single-argument pattern.
+over-narrow fix that only handles the single-argument pattern — both now
+covered by the committed tests, but a fresh Verifier should still try its
+own adversarial shapes: an IIFE's own invocation wrapper, a callback
+forwarded through a variable before being passed on, and a named
+(non-anonymous) function expression used as an argument are all untested
+and worth trying, rather than only re-running the Builder's own tests.
 
 ---
 
