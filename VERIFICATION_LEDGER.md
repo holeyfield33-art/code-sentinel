@@ -520,3 +520,69 @@ Ashura to make, not something closed by further patching.
   ...` line to stderr and exits 3 — no traceback.
 - **verdict:** CONFIRMED (claim) / fixed, pending fresh Verifier pass.
 - **date:** 2026-10-22
+
+### sz-2026-10-22-03
+- **claim:** Codex P2 review on PR #9, commit `0f833fc`: "Preserve
+  non-size write refusal reasons" — `write_or_fail_cleanly()`'s blanket
+  `except ValueError` assumes every `ValueError` from `safe_write_text`
+  is the byte-cap refusal and always says "too large... were
+  discarded", but `safe_write_text` can also raise a plain `ValueError`
+  from `resolve_inside`'s path-containment check (a symlink escaping
+  `out_dir`) or from a `UnicodeEncodeError` (a `ValueError` subclass)
+  encoding `text`. For either, the original wrapper's message would be
+  flatly wrong about why the write failed.
+- **claimant:** `chatgpt-codex-connector[bot]`, PR #9 review comment
+  (comment_id 4348521066).
+- **check performed:** Confirmed real by reading `ledger_writer.py`
+  directly: `resolve_inside` raises `ValueError(f'refused: {relative}
+  is not inside {root}')` on a path-containment failure, a distinct
+  branch from the byte-cap check, and both are plain `ValueError`
+  (`UnicodeEncodeError` is a `ValueError` subclass in the standard
+  library). The original `write_or_fail_cleanly` caught `ValueError`
+  generically with no way to tell the two apart, so it would mislabel
+  either case as a size refusal. Confirmed this is currently
+  unreachable from this project's own call sites specifically (every
+  `relative` argument at every call site is a fixed literal with no
+  `..`, so `resolve_inside`'s escape branch can't fire; `json.dumps(...,
+  indent=2)` defaults to `ensure_ascii=True`, which escapes everything
+  outside ASCII, so the `.encode('utf-8')` it's piped into can't raise)
+  -- but a latent correctness bug worth fixing cheaply regardless, since
+  mislabeling a future path-containment refusal (a genuinely
+  security-relevant signal) as an innocuous "too large" is exactly the
+  kind of wrong-but-plausible-sounding message this project's own
+  CRITICAL_TOOL_FAILURE convention exists to prevent.
+- **fix:** `write_or_fail_cleanly()` now independently recomputes
+  `len(text.encode("utf-8")) > max_bytes` before choosing which message
+  to raise, rather than assuming every `ValueError` is the size refusal.
+  Only the oversize case gets the "too large... discarded" framing;
+  anything else gets an honest message naming the real cause, still
+  wrapped as `ToolFailure` (not re-introducing the original item-7 bug
+  for those cases). Also deduplicated `cli.cmd_analyze()`'s separate
+  copy of the same wrapping logic around the `report.md` write -- it
+  had the identical flaw and would have needed the identical fix a
+  second time -- by having it call `dogfood_scan.write_or_fail_cleanly()`
+  directly instead of maintaining its own copy (renamed from
+  `_write_or_fail_cleanly` to `write_or_fail_cleanly` to be
+  cross-module-callable).
+- **tests added:** `tests/test_tool_failure.py`:
+  `test_write_or_fail_cleanly_does_not_mislabel_a_non_size_valueerror_as_too_big`
+  (monkeypatches `safe_write_text` to raise the path-containment
+  `ValueError` with `text` well under the cap, asserts the message
+  names the real reason and contains neither "too large" nor
+  "discarded"); updated the two existing report.md-path tests to patch
+  `dogfood_scan.safe_write_text` instead of a now-removed
+  `cli.safe_write_text`, since `cli.cmd_analyze` no longer imports
+  `safe_write_text` directly.
+- **stash confirmation:** `git stash push -- sentinel_zero/dogfood_scan.py
+  sentinel_zero/cli.py`; all 3 touched/added tests failed pre-fix (the
+  mislabel test and the still-writes-normally test failed because
+  `write_or_fail_cleanly` didn't exist yet under that name; the
+  report.md test failed because `cli.cmd_analyze` didn't yet route
+  through the shared helper, so the monkeypatch on
+  `dogfood_scan.safe_write_text` had no effect on cli.py's separate,
+  then-still-direct call); `git stash pop`; full suite (155 tests)
+  passed. Re-ran the original 3500-module real-world repro end-to-end
+  again post-fix: unchanged clean `CRITICAL_TOOL_FAILURE` output, exit
+  code 3.
+- **verdict:** CONFIRMED (claim) / fixed, pending fresh Verifier pass.
+- **date:** 2026-10-22

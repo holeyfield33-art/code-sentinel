@@ -142,9 +142,14 @@ from sentinel_zero.callgraph import (
 from sentinel_zero.graph import ProjectGraph, Symbol
 from sentinel_zero.graph_export import export_graph
 from sentinel_zero.ledger_writer import safe_write_text
+from sentinel_zero.probes.sink_reachability_probe import run_sink_reachability_probe
+from sentinel_zero.probes.js_sink_reachability_probe import run_js_sink_reachability_probe
+from sentinel_zero.resolvers.python_resolver import build_project_graph as build_python_project_graph
+from sentinel_zero.resolvers.python_resolver import dominates
+from sentinel_zero.resolvers.js_resolver import build_project_graph as build_js_project_graph
 
 
-def _write_or_fail_cleanly(root: str, relative: str, text: str, max_bytes: int, *, what: str) -> None:
+def write_or_fail_cleanly(root: str, relative: str, text: str, max_bytes: int, *, what: str) -> None:
     """VERIFICATION_LEDGER.md sz-2026-10-22-01 / REMEDIATION_PLAN.md item 7:
     `safe_write_text` raises a bare `ValueError` when its output exceeds
     `max_bytes` -- correct refusal-before-writing behavior on its own, but
@@ -154,23 +159,32 @@ def _write_or_fail_cleanly(root: str, relative: str, text: str, max_bytes: int, 
     CRITICAL_TOOL_FAILURE convention. Confirmed by an actual oversized run
     in this session (3500 real sink findings -> a 5.5MB ledger -> the raw
     traceback, reproduced before this fix existed). This wrapper is the
-    single place that turns that one specific, expected failure mode into
-    a clean ToolFailure with the real size and the cap in the message, so
-    the operator knows exactly what happened and that none of the
-    analysis work -- real or not -- was silently lost without a trace."""
+    single place that turns that failure into a clean ToolFailure instead
+    of an uncaught traceback.
+
+    VERIFICATION_LEDGER.md sz-2026-10-22-03 (Codex P2 on PR #9):
+    `safe_write_text` also raises a plain `ValueError` for two other,
+    unrelated refusals -- `resolve_inside`'s path-containment check (a
+    symlink escaping out_dir) and a `UnicodeEncodeError` (a ValueError
+    subclass) from encoding `text`. The original version of this wrapper
+    caught ValueError generically and always claimed "too large... were
+    discarded", which would be a flatly wrong, misleading message for
+    either of those other cases -- worse than the traceback it replaced
+    for exactly the cases it wasn't written for, since it actively lies
+    about why the write failed. Fixed by independently recomputing
+    whether `text` is actually over `max_bytes` before choosing which
+    message to raise, rather than assuming every ValueError here is the
+    size refusal."""
     try:
         safe_write_text(root, relative, text, max_bytes)
     except ValueError as exc:
-        raise ToolFailure(
-            f"could not write {what} to {relative}: {exc}. The scan completed and found real "
-            f"results, but they were too large to write out under this project's own safety cap "
-            f"and were discarded rather than silently truncated."
-        ) from exc
-from sentinel_zero.probes.sink_reachability_probe import run_sink_reachability_probe
-from sentinel_zero.probes.js_sink_reachability_probe import run_js_sink_reachability_probe
-from sentinel_zero.resolvers.python_resolver import build_project_graph as build_python_project_graph
-from sentinel_zero.resolvers.python_resolver import dominates
-from sentinel_zero.resolvers.js_resolver import build_project_graph as build_js_project_graph
+        if len(text.encode("utf-8")) > max_bytes:
+            raise ToolFailure(
+                f"could not write {what} to {relative}: {exc}. The scan completed and found real "
+                f"results, but they were too large to write out under this project's own safety cap "
+                f"and were discarded rather than silently truncated."
+            ) from exc
+        raise ToolFailure(f"could not write {what} to {relative}: {exc}") from exc
 
 SINK_ATTACK_IDS = {
     "FILE_IO": "AAC-17",
@@ -746,7 +760,7 @@ def run(
             "metadata": catalog.meta,
         },
     }
-    _write_or_fail_cleanly(
+    write_or_fail_cleanly(
         str(out_dir), "verification_ledger.json", json.dumps(ledger, indent=2), 5_000_000,
         what="the verification ledger",
     )
@@ -757,7 +771,7 @@ def run(
     # graph_export.py for why this exists (nothing a future 3D view or a
     # Code Atlas adapter needs survives past this function otherwise).
     graph_doc = export_graph(graph, ledger["plans"], repo_root.name)
-    _write_or_fail_cleanly(
+    write_or_fail_cleanly(
         str(out_dir), "graph.json", json.dumps(graph_doc, indent=2), 20_000_000,
         what="the call graph",
     )

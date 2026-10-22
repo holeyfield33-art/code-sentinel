@@ -36,7 +36,7 @@ from pathlib import Path
 from sentinel_zero.catalog_loader import bundled_snapshot_path
 from sentinel_zero.disposition import ToolFailure, UnknownAttackClass
 from sentinel_zero.dogfood_scan import run as run_scan
-from sentinel_zero.ledger_writer import safe_write_text
+from sentinel_zero.dogfood_scan import write_or_fail_cleanly
 from sentinel_zero.repo_detect import detect_language, js_deps_installed
 
 
@@ -161,22 +161,24 @@ def cmd_analyze(args: argparse.Namespace) -> int:
         ledger = json.loads((out_dir / "verification_ledger.json").read_text(encoding="utf-8"))
 
         if args.format == "md":
-            # VERIFICATION_LEDGER.md sz-2026-10-22-01 / REMEDIATION_PLAN.md item 7:
-            # this write has the exact same "refuses before writing, raises a
-            # bare ValueError over the byte cap" shape dogfood_scan.run()'s own
-            # writes have, and used to sit entirely outside this try/except --
-            # a report.md over 5MB crashed with an uncaught traceback instead
-            # of this same CRITICAL_TOOL_FAILURE message. Moved inside so the
-            # existing (ToolFailure, UnknownAttackClass) handler also catches
-            # it once it's wrapped as a ToolFailure below.
-            try:
-                safe_write_text(str(out_dir), "report.md", _render_markdown(ledger), 5_000_000)
-            except ValueError as exc:
-                raise ToolFailure(
-                    f"could not write the markdown report to report.md: {exc}. The ledger was "
-                    f"written successfully at {out_dir / 'verification_ledger.json'}; only the "
-                    f"human-readable report.md render was too large for this project's own safety cap."
-                ) from exc
+            # VERIFICATION_LEDGER.md sz-2026-10-22-01/-03 / REMEDIATION_PLAN.md
+            # item 7: this write has the exact same "refuses before writing,
+            # raises a bare ValueError over the byte cap" shape
+            # dogfood_scan.run()'s own writes have, and used to sit entirely
+            # outside this try/except -- a report.md over 5MB crashed with an
+            # uncaught traceback instead of this same CRITICAL_TOOL_FAILURE
+            # message. Moved inside so the existing
+            # (ToolFailure, UnknownAttackClass) handler also catches it, and
+            # reuses dogfood_scan.write_or_fail_cleanly() rather than a second,
+            # separately-maintained copy of the same ValueError-handling
+            # logic (an earlier version of this duplicated it, which is
+            # exactly how Codex's PR #9 P2 finding -- the duplicate wrongly
+            # claiming "too large" for any ValueError, not just an oversize
+            # one -- would have had to be fixed twice).
+            write_or_fail_cleanly(
+                str(out_dir), "report.md", _render_markdown(ledger), 5_000_000,
+                what="the markdown report",
+            )
             print(f"markdown report -> {out_dir / 'report.md'}")
         else:
             print(f"ledger -> {out_dir / 'verification_ledger.json'} (graph: {out_dir / 'graph.json'})")

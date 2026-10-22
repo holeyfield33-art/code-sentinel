@@ -135,7 +135,7 @@ def test_run_raises_tool_failure_not_a_bare_valueerror_when_the_ledger_is_too_bi
     `safe_write_text`'s own refusal is correct and unchanged here; this
     monkeypatch reproduces its exact raise cheaply, without generating
     thousands of files, to pin the fix at the one place that must now
-    catch it: `_write_or_fail_cleanly` in dogfood_scan.py."""
+    catch it: `write_or_fail_cleanly` in dogfood_scan.py."""
     import sentinel_zero.dogfood_scan as dogfood_scan
 
     def _always_too_big(root, relative, text, max_bytes):
@@ -156,6 +156,36 @@ def test_run_raises_tool_failure_not_a_bare_valueerror_when_the_ledger_is_too_bi
         assert "99999999" in str(excinfo.value)
 
 
+def test_write_or_fail_cleanly_does_not_mislabel_a_non_size_valueerror_as_too_big():
+    """VERIFICATION_LEDGER.md sz-2026-10-22-03 (Codex P2 on PR #9):
+    `safe_write_text` can raise a plain `ValueError` for reasons that have
+    nothing to do with the byte cap -- `resolve_inside`'s path-containment
+    refusal (a symlink escaping out_dir) and a `UnicodeEncodeError` (a
+    ValueError subclass) from encoding `text` are both real, if currently
+    unreachable from this project's own hardcoded call sites. The original
+    version of this wrapper caught ValueError generically and always
+    claimed "too large... were discarded", which would be a flatly wrong
+    message for either of those -- actively misleading about why the
+    write failed, worse than no message at all. This pins that the
+    "too large" framing only appears when `text` is actually over
+    `max_bytes`."""
+    import sentinel_zero.dogfood_scan as dogfood_scan
+
+    def _refuse_for_an_unrelated_reason(root, relative, text, max_bytes):
+        raise ValueError(f"refused: {relative} is not inside {root}")
+
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(dogfood_scan, "safe_write_text", _refuse_for_an_unrelated_reason)
+        with pytest.raises(ToolFailure) as excinfo:
+            dogfood_scan.write_or_fail_cleanly(
+                "/tmp/whatever", "small.json", '{"ok": true}', 5_000_000, what="a small file"
+            )
+        message = str(excinfo.value)
+        assert "not inside" in message
+        assert "too large" not in message
+        assert "discarded" not in message
+
+
 def test_write_or_fail_cleanly_still_writes_normally_sized_output():
     """Sanity/regression guard: the fix must not change behavior for the
     overwhelmingly common case where the write is well under the cap."""
@@ -163,7 +193,7 @@ def test_write_or_fail_cleanly_still_writes_normally_sized_output():
 
     with tempfile.TemporaryDirectory() as tmp:
         out_dir = Path(tmp)
-        dogfood_scan._write_or_fail_cleanly(
+        dogfood_scan.write_or_fail_cleanly(
             str(out_dir), "small.json", '{"ok": true}', 5_000_000, what="a small file"
         )
         assert (out_dir / "small.json").read_text(encoding="utf-8") == '{"ok": true}'
@@ -176,14 +206,20 @@ def test_cmd_analyze_reports_a_clean_critical_tool_failure_when_the_markdown_rep
     write (--format md) used to sit entirely outside the
     `except (ToolFailure, UnknownAttackClass)` handler, so the exact same
     oversize ValueError from `safe_write_text` crashed there too, even
-    after a successful scan. Moved inside the try block and wrapped as a
-    ToolFailure; this pins that the CLI now prints the clean
+    after a successful scan. Moved inside the try block and now shares
+    `dogfood_scan.write_or_fail_cleanly()` rather than a second copy of
+    the same wrapping logic; this pins that the CLI prints the clean
     CRITICAL_TOOL_FAILURE message and returns exit code 3, never a raw
     traceback, while confirming the underlying ledger write (not
-    monkeypatched) still succeeds first."""
+    monkeypatched) still succeeds first. Patches
+    `dogfood_scan.safe_write_text` (not `cli.safe_write_text`, which no
+    longer exists now that cli.py calls through write_or_fail_cleanly)
+    since that's where write_or_fail_cleanly actually resolves the name
+    at call time."""
     import argparse
 
     import sentinel_zero.cli as cli
+    import sentinel_zero.dogfood_scan as dogfood_scan
 
     real_safe_write_text = safe_write_text
 
@@ -192,7 +228,7 @@ def test_cmd_analyze_reports_a_clean_critical_tool_failure_when_the_markdown_rep
             raise ValueError(f"refused: 99999999 bytes is over the {max_bytes}-byte limit")
         return real_safe_write_text(root, relative, text, max_bytes)
 
-    monkeypatch.setattr(cli, "safe_write_text", _fail_only_for_report_md)
+    monkeypatch.setattr(dogfood_scan, "safe_write_text", _fail_only_for_report_md)
 
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
