@@ -932,9 +932,29 @@ function walkCalls(
   }
 
   for (const [qualname, fnNode] of callerFunctions) {
+    const paramNames = paramNamesFromFnNode(fnNode);
     if (fnNode.body.type === 'BlockStatement') {
-      const paramNames = paramNamesFromFnNode(fnNode);
       walkStmts(fnNode.body.body, [], qualname, { n: 0 }, paramNames);
+      walkInlineScopes(fnNode.body, qualname, paramNames);
+    } else {
+      // Codex review, PR #8: a NAMED top-level `const x = () => expr`
+      // with a concise (brace-less) expression body was gated out of
+      // this whole block entirely -- not just its own direct calls
+      // (a pre-existing gap, unrelated to item 6), but, after item 6,
+      // ALSO any inline callback nested inside that expression. Pass 1
+      // (indexFile) discovers and indexes such a callback unconditionally
+      // (it never gated on BlockStatement), so the callback showed up in
+      // `functions` looking like a real, checked scope while pass 2 here
+      // silently walked zero calls from it -- worse than before item 6,
+      // since an indexed-but-empty scope reads as "checked, no sink
+      // calls" rather than "never walked at all". Same
+      // findCallsInExpr/recordCallsFromNodes treatment a concise-body
+      // inline callback already gets in walkInlineScopes above, for
+      // both halves: the named arrow's own direct calls, and its nested
+      // inline scopes.
+      const found = [];
+      findCallsInExpr(fnNode.body, found);
+      recordCallsFromNodes(found, [], qualname, { n: 0 }, paramNames);
       walkInlineScopes(fnNode.body, qualname, paramNames);
     }
   }

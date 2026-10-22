@@ -225,3 +225,47 @@ def test_inline_function_as_an_object_literal_property_value_is_also_discovered(
         assert len(sink_calls) == 1
         assert sink_calls[0].caller == "mod.build.<callback:L4C9>"
         assert sink_calls[0].arg_taint == ("parameter",)
+
+
+def test_a_callback_nested_inside_a_named_concise_body_arrow_is_still_walked():
+    """Codex review, PR #8 (P1): a NAMED top-level `const x = () => expr`
+    with a concise (brace-less) expression body was gated entirely out
+    of the caller-functions walk loop (it only ran for a BlockStatement
+    body). Pass 1 (indexFile) discovers and indexes a callback nested
+    inside that expression unconditionally -- it never gated on
+    BlockStatement -- so before this fix the callback showed up in
+    `functions` looking like a real, checked scope while pass 2 silently
+    walked zero calls from it. Worse than before item 6 existed at all:
+    an indexed-but-empty scope reads as "checked, no sink calls" rather
+    than "never walked", the exact shape Codex's own repro
+    (`const register = app => app.get('/x', req => exec(req.cmd));`)
+    demonstrated."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "mod.js").write_text(
+            "const { exec } = require('child_process');\n"
+            "const register = (app) => app.get('/x', (req) => exec(req.cmd));\n"
+        )
+        graph = build_project_graph(root)
+        assert "mod.register" in graph.functions
+        sink_calls = [c for c in graph.all_calls() if c.target == Symbol("child_process.exec")]
+        assert len(sink_calls) == 1
+        assert sink_calls[0].caller.startswith("mod.register.<callback")
+        assert sink_calls[0].arg_taint == ("parameter",)
+
+
+def test_a_named_concise_body_arrows_own_direct_sink_call_is_also_recorded():
+    """The other half of the same fix: a named top-level concise-body
+    arrow's OWN direct call (not routed through any nested callback at
+    all) must also be recorded now, not just a callback nested inside
+    it."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "mod.js").write_text(
+            "const { exec } = require('child_process');\nconst runIt = (cmd) => exec(cmd);\n"
+        )
+        graph = build_project_graph(root)
+        sink_calls = [c for c in graph.all_calls() if c.target == Symbol("child_process.exec")]
+        assert len(sink_calls) == 1
+        assert sink_calls[0].caller == "mod.runIt"
+        assert sink_calls[0].arg_taint == ("parameter",)

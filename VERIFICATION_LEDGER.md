@@ -403,3 +403,59 @@ Ashura to make, not something closed by further patching.
   used as an argument are all untested shapes worth trying, rather than
   only re-running the Builder's own tests.
 - **date:** 2026-10-21
+
+### sz-2026-10-21-25
+- **claim:** "When a named top-level arrow has a concise expression body,
+  this call remains gated by the `BlockStatement` check [in the
+  `callerFunctions` walk loop], so code such as
+  `const register = app => app.get('/x', req => exec(req.cmd));`
+  indexes the synthetic callback but records no calls from it." (P1)
+- **claimant:** Codex automated review on PR #8 (sz-2026-10-21-22's own
+  PR), commit `f5a80e8`, comment_id 4344197900
+- **check performed:** independently reproduced before accepting, per
+  IVP — ran the exact fixture from the finding through
+  `extract_graph.js` directly: `functions` correctly contained
+  `concise.register.<callback:L2C38>` (pass 1's `discoverInlineFunctions`
+  call in `indexFile` never gated on `BlockStatement`, so the callback
+  WAS indexed), but `modules.concise.calls` was completely empty — zero
+  `CallSite`s from either `concise.register` itself or the callback
+  nested inside it. Confirmed exactly as described: the
+  `callerFunctions` loop in `walkCalls` only called `walkStmts`/
+  `walkInlineScopes` inside an `if (fnNode.body.type === 'BlockStatement')`
+  guard, so a concise-body named arrow was skipped from this whole block
+  entirely.
+- **why this is worse than a pre-existing gap, not just a restatement of
+  one:** a concise-body named top-level arrow's own direct calls were
+  ALREADY invisible before item 6 (an unrelated, pre-existing limitation
+  of the original resolver, never claimed fixed by item 6). What item 6
+  added on top was worse: it now indexes a callback nested inside that
+  expression into `functions` unconditionally, so the callback *looks*
+  like a real, checked scope (it has an entry, a qualname, everything a
+  genuinely walked scope has) while actually holding zero `CallSite`s --
+  "checked, no sink calls found" is a materially different, false
+  signal from "never walked at all."
+- **fix:** the `callerFunctions` loop in `walkCalls` now has an `else`
+  branch for a non-`BlockStatement` body: records the named arrow's own
+  direct calls via `findCallsInExpr`/`recordCallsFromNodes` (the same
+  treatment a concise-body INLINE callback already got in
+  `walkInlineScopes`), and calls `walkInlineScopes` on that same
+  expression so any callback nested inside it is walked too -- closing
+  both halves of the gap: the pre-existing one (the named arrow's own
+  direct calls) and the one item 6 introduced (its nested callbacks).
+- **tests added:** 2 tests appended to
+  `tests/test_js_inline_callback_visibility.py` —
+  `test_a_callback_nested_inside_a_named_concise_body_arrow_is_still_walked`
+  (Codex's own fixture, asserting the previously-silent sink call now
+  resolves) and `test_a_named_concise_body_arrows_own_direct_sink_call_is_also_recorded`
+  (the other half: a direct call with no nested callback at all).
+- **`git stash` confirmation:** stashing just `extract_graph.js` and
+  rerunning the 2 new tests: both failed (`assert 0 == 1`, zero
+  `CallSite`s found, matching the finding's own description exactly).
+  Popping the stash: 11/11 pass in this test file. Full suite: **146
+  passed, 0 failed** (144 + 2 new).
+- **verdict:** CONFIRMED (the P1 was real) and fixed, pushed to PR #8 —
+  **still pending the same fresh, non-forked Verifier pass**
+  sz-2026-10-21-22 was already waiting on; this entry closes one
+  specific Codex finding against the same unmerged PR, same relationship
+  sz-2026-10-21-23 had to sz-2026-10-21-21 on PR #7.
+- **date:** 2026-10-22
