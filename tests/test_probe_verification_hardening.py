@@ -16,7 +16,11 @@ import os
 import tempfile
 from pathlib import Path
 
+import pytest
+
 from sentinel_zero.probes.sink_reachability_probe import run_sink_reachability_probe
+
+pytestmark = pytest.mark.docker_integration
 
 
 def test_target_cannot_forge_sink_reached_by_printing_a_matching_line():

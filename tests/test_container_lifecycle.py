@@ -83,6 +83,7 @@ def test_timeout_keeps_execution_and_cleanup_diagnostics(tmp_path):
 
 
 @pytest.mark.parametrize("language", ["python", "javascript"])
+@pytest.mark.docker_integration
 def test_public_cli_docker_outcome(tmp_path, language):
     """Runs on either host OS; a Linux worker alone is not Linux-host coverage."""
     available, detail = runner.docker_available()

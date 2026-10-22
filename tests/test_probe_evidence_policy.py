@@ -64,6 +64,7 @@ def test_default_never_executes_target_even_when_docker_is_selected(tmp_path, mo
 
 
 @pytest.mark.parametrize("attack", ["stdout", "serializer", "null"])
+@pytest.mark.docker_integration
 def test_real_js_forgery_remains_untrusted_diagnostic(tmp_path, attack):
     _js_available()
     root = tmp_path / "repo"
@@ -100,6 +101,7 @@ def _frame_attack():
     )
 
 
+@pytest.mark.docker_integration
 def test_real_python_frame_forgery_cannot_promote(tmp_path, monkeypatch):
     monkeypatch.delenv("SENTINEL_ZERO_PROBE_BACKEND", raising=False)
     root = tmp_path / "repo"
@@ -112,6 +114,7 @@ def test_real_python_frame_forgery_cannot_promote(tmp_path, monkeypatch):
     assert observation["site_verified"] is False
 
 
+@pytest.mark.docker_integration
 def test_real_locked_container_forgery_cannot_promote(tmp_path):
     if not shutil.which("docker"):
         pytest.skip("Docker executable unavailable")

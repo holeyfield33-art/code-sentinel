@@ -32,6 +32,7 @@ def _probe(root, language, source):
             else run_js_sink_reachability_probe(str(path), "run_it", repo_root=root))
 
 
+@pytest.mark.docker_integration
 def test_real_container_hides_parent_env_and_cwd(tmp_path, monkeypatch, runtime):
     monkeypatch.setenv("SENTINEL_ISOLATION_FAKE_SECRET", "synthetic-parent-secret")
     # HOME is asserted to be a fixed container value below. Host Docker
@@ -73,6 +74,7 @@ def test_real_container_hides_parent_env_and_cwd(tmp_path, monkeypatch, runtime)
     assert result["symbol"] == ("os.system" if runtime == "python" else "child_process.exec")
 
 
+@pytest.mark.docker_integration
 def test_real_unpatched_file_writes_stay_in_private_scratch(tmp_path, runtime):
     root = tmp_path / "repo"
     root.mkdir()

@@ -12,6 +12,8 @@ promote either of them on an unverifiable guess.
 import tempfile
 from pathlib import Path
 
+import pytest
+
 from sentinel_zero.dogfood_scan import find_finding_plans
 from sentinel_zero.disposition import load_catalog
 from sentinel_zero.catalog_loader import bundled_snapshot_path
@@ -57,6 +59,7 @@ def test_unreachable_duplicate_sink_call_is_not_promoted_off_the_reachable_ones_
             assert "2 separate call sites" in plan["disposition"]["reason"]
 
 
+@pytest.mark.docker_integration
 def test_single_call_site_receives_only_an_untrusted_diagnostic():
     """A benign single site can report a sink without becoming verified."""
     with tempfile.TemporaryDirectory() as tmp:
@@ -70,6 +73,7 @@ def test_single_call_site_receives_only_an_untrusted_diagnostic():
         assert plans[0]["verification_method"]["probe_observation"]["report"]["status"] == "sink_reached"
 
 
+@pytest.mark.docker_integration
 def test_unreachable_direct_call_is_not_promoted_off_a_helpers_delegated_reach():
     """VERIFICATION_LEDGER.md sz-2026-10-21-18 (Codex review on PR #3,
     comment_id 4340617860, P1): the original fix above only counted call
@@ -106,6 +110,7 @@ def test_unreachable_direct_call_is_not_promoted_off_a_helpers_delegated_reach()
         assert "separate call sites" in dead_call_plan["disposition"]["reason"]
 
 
+@pytest.mark.docker_integration
 def test_two_different_sinks_in_one_caller_are_still_probed_independently():
     """A different-symbol pair (not the same sink twice) is not ambiguous
     at all and must be unaffected -- this is the ORIGINAL Milestone 16

@@ -184,6 +184,7 @@ def test_dispatcher_rejects_an_unknown_backend_name_rather_than_guessing():
         del os.environ["SENTINEL_ZERO_PROBE_BACKEND"]
 
 
+@pytest.mark.docker_integration
 def test_default_backend_retains_positive_sink_report_inside_docker():
     """The default retains benign reports, but only inside Docker."""
     assert "SENTINEL_ZERO_PROBE_BACKEND" not in os.environ

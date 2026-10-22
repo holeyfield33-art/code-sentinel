@@ -83,6 +83,7 @@ _STDLIB_MODULE_NAMES.add("builtins")
 
 STDLIB_SINKS = {
     "builtins.open",
+    "os.open",
     "builtins.eval",
     "builtins.exec",
     "json.load",
@@ -315,9 +316,8 @@ def _import_bindings(tree: ast.Module, module_qualname: str) -> dict[str, str]:
     """local_name -> best-effort fully-qualified dotted path."""
     bindings: dict[str, str] = {}
     package_parts = module_qualname.split(".")[:-1]
-    package = ".".join(package_parts)
 
-    for node in ast.walk(tree):
+    for node in _scope_nodes(tree.body):
         if isinstance(node, ast.Import):
             for alias in node.names:
                 local = alias.asname or alias.name.split(".")[0]
@@ -334,6 +334,19 @@ def _import_bindings(tree: ast.Module, module_qualname: str) -> dict[str, str]:
                 local = alias.asname or alias.name
                 bindings[local] = f"{module_base}.{alias.name}" if module_base else alias.name
     return bindings
+
+
+def _scope_nodes(body: list[ast.stmt]):
+    """Walk one lexical scope, excluding bodies of child scopes."""
+    def visit(node):
+        yield node
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef,
+                             ast.Lambda, ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)):
+            return
+        for child in ast.iter_child_nodes(node):
+            yield from visit(child)
+    for stmt in body:
+        yield from visit(stmt)
 
 
 def _root_name_is_bound(node: ast.expr, bindings: dict[str, str]) -> bool:
@@ -639,7 +652,34 @@ def _resolve_module(
         if extra_bindings:
             local_bindings.update(extra_bindings)
         order_counter = [0]
+        nested_bodies = []
         body = fn_node.body if fn_node else tree.body
+        if fn_node is not None:
+            nodes = list(_scope_nodes(body))
+            declared_global = {name for node in nodes if isinstance(node, ast.Global) for name in node.names}
+            declared_nonlocal = {name for node in nodes if isinstance(node, ast.Nonlocal) for name in node.names}
+            # Python locals shadow closure/module bindings throughout the
+            # scope, even before an assignment executes. Empty bindings
+            # deliberately resolve to Unresolved rather than a false edge.
+            local_names = _param_names(fn_node) | {
+                node.id for node in nodes if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store)
+            }
+            for name in local_names - declared_global - declared_nonlocal:
+                local_bindings[name] = ""
+            for name in declared_global:
+                local_bindings[name] = bindings.get(name, f"{module_qualname}.{name}")
+            local_bindings.update(_import_bindings(ast.Module(body=body, type_ignores=[]), module_qualname))
+            # Bind every sibling before entering any child body, including
+            # definitions inside control-flow suites. This is lexical
+            # resolution, not proof a conditional def executes at runtime.
+            for nested in _direct_nested_function_defs(body):
+                local_bindings[nested.name] = (
+                    "" if nested.name in declared_global | declared_nonlocal
+                    else f"{caller_name}.<locals>.{nested.name}"
+                )
+            # The dedicated method walk explicitly supplies these identities.
+            if "<locals>" not in caller_name and extra_bindings:
+                local_bindings.update(extra_bindings)
         # Milestone (remediation item 5, VERIFICATION_LEDGER.md
         # sz-2026-10-21-05): a nested function's own parameters are joined
         # with every ENCLOSING function's parameters, not just its own --
@@ -665,7 +705,7 @@ def _resolve_module(
                 key=lambda n: (n.lineno, n.col_offset),
             ):
                 dotted = _resolve_dotted(node.func, local_bindings)
-                target = None
+                target: Symbol | Unresolved | None = None
                 if dotted:
                     for cand in (dotted, f"{module_qualname}.{dotted}"):
                         if cand in project_functions or cand in STDLIB_SINKS:
@@ -736,11 +776,8 @@ def _resolve_module(
                     # for a nested function (module.outer.<locals>.inner),
                     # so a sink call inside it resolves to a real,
                     # addressable caller instead of vanishing entirely.
-                    # `local_bindings` (this scope's own accumulated import/
-                    # alias bindings, including any Assign-alias seen
-                    # earlier in THIS body) is passed down as the nested
-                    # scope's starting bindings -- a reasonable, stated
-                    # approximation of lexical closure, not full dataflow.
+                    # Child bodies are deferred until this scope's bindings
+                    # are complete, so later siblings and rebindings apply.
                     #
                     # Guarded on `fn_node is not None`: this walk_stmts can
                     # also be the TOP-level module scope's own walk
@@ -755,34 +792,14 @@ def _resolve_module(
                     # caught by the existing test suite, not a hypothetical.
                     if fn_node is not None:
                         nested_qualname = f"{caller_name}.<locals>.{stmt.name}"
-                        # Codex review, PR #7 (ledger sz-2026-10-21-21's own
-                        # follow-up): a call to the nested function BY ITS
-                        # LOCAL NAME -- `inner()`, the normal way to call it,
-                        # whether from a sibling statement in this same
-                        # scope or recursively from inside the nested
-                        # function itself -- must resolve to this qualname,
-                        # not the bare name "inner". Without this binding,
-                        # _resolve_dotted falls through to an unbound bare
-                        # Symbol("inner") that never matches project_functions
-                        # (keyed by the qualified name), so
-                        # build_direct_callee_index silently drops the edge
-                        # and transitive guard/dependency propagation never
-                        # sees it. Bound in `local_bindings` (this scope's
-                        # own dict, mutated in place) BEFORE walking the
-                        # nested function's own body, so the binding is
-                        # already present in the `extra_bindings` snapshot
-                        # the nested scope inherits -- covering self-
-                        # recursion too, not just sibling calls after it.
-                        local_bindings[stmt.name] = nested_qualname
-                        walk_fn(
-                            stmt,
-                            nested_qualname,
-                            extra_bindings=local_bindings,
-                            enclosing_param_names=param_names,
-                        )
+                        nested_bodies.append((stmt, nested_qualname))
                     continue
                 if isinstance(stmt, ast.ClassDef):
+                    local_bindings[stmt.name] = ""
                     continue  # a nested class remains out of scope for this pass
+                if isinstance(stmt, (ast.Import, ast.ImportFrom)):
+                    local_bindings.update(_import_bindings(ast.Module(body=[stmt], type_ignores=[]), module_qualname))
+                    continue
                 if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1 and isinstance(stmt.targets[0], ast.Name):
                     record_calls_in_expr(stmt.value, branch_path)
                     resolved_rhs = _resolve_dotted(stmt.value, local_bindings)
@@ -794,6 +811,8 @@ def _resolve_module(
                         stmt.value, resolved_rhs, local_bindings, project_functions, module_qualname
                     ):
                         local_bindings[stmt.targets[0].id] = resolved_rhs
+                    else:
+                        local_bindings[stmt.targets[0].id] = ""
                     continue
                 if isinstance(stmt, ast.If):
                     record_calls_in_expr(stmt.test, branch_path)  # test always runs
@@ -848,6 +867,12 @@ def _resolve_module(
                 record_calls_in_expr(stmt, branch_path)
 
         walk_stmts(body, ())
+        # Closures see the enclosing scope's completed lexical bindings,
+        # rather than a snapshot taken at each def statement. Execution
+        # timing and conditional rebinding remain outside this static model.
+        for nested, nested_qualname in nested_bodies:
+            walk_fn(nested, nested_qualname, extra_bindings=local_bindings,
+                    enclosing_param_names=param_names)
 
     # module-level calls
     walk_fn(None, "")

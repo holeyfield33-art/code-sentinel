@@ -327,6 +327,30 @@ invariants end-to-end — plus the viewer's own Playwright-driven render/
 filter/diff tests (`viewer/` has its own test runner; see
 `viewer/README.md`).
 
+### Continuous integration
+
+`.github/workflows/ci.yml` runs the full Python suite on Python 3.10,
+3.12, and 3.14 with real Linux Docker workers and explicitly pulled,
+pinned runtime images. It also runs the Node parser regressions, viewer
+tests and production build on Windows and Linux. The test count changes
+as regressions are added; the pytest summary and uploaded JUnit reports
+account for the current collection rather than a historical fixed count.
+
+`pytest -m docker_integration` selects live-backend scenarios; CI fails
+if any selected scenario skips. Flag assertions, result-parser checks,
+and mocked lifecycle failures are unit coverage, not end-to-end evidence.
+Run `python scripts/ci_wheel_smoke.py` to build a clean wheel, install it
+in a new virtual environment, install the wheel's Node parser dependencies,
+and scan both language fixtures outside the checkout. Add `--docker` to
+exercise both installed diagnostic harnesses too.
+
+Windows live Docker requires Docker Desktop in Linux-container mode.
+The manual workflow's `windows_docker` input enables that job on a
+dedicated self-hosted runner labeled `sentinel-docker-linux`; ordinary
+hosted Windows jobs only cover parser/viewer and installed-wheel static
+scans. A skipped or unconfigured Windows Docker job is not verification
+of that platform's dynamic backend.
+
 ### Output shape
 
 `verification_ledger.json` contains:

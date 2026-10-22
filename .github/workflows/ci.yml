@@ -1,0 +1,125 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      windows_docker:
+        description: Run live Docker Desktop tests on the dedicated Windows runner
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  python:
+    name: Python ${{ matrix.python }} / Linux / live Docker
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ['3.10', '3.12', '3.14']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: python -m pip install -e . pytest build tomli
+      - run: npm --prefix sentinel_zero/resolvers/js ci
+      - name: Require real Docker and pinned runtime images
+        run: |
+          docker info
+          python -c "import subprocess; from sentinel_zero.probes.container_runner import IMAGES; [subprocess.run(['docker','pull',image],check=True) for image in IMAGES.values()]"
+          docker tag python@sha256:cb33f7f771ecec2ef1225cf39b159591a040391bd73e4c01f00fdfc4c47611d2 python:3.12-slim
+      - name: All Python and Node parser tests (including live Docker)
+        run: python -m pytest tests -q -ra --tb=short --strict-markers --junitxml=pytest.xml
+      - name: Live Docker tests must execute, not skip
+        run: |
+          python -m pytest tests -m docker_integration -q -ra --junitxml=docker.xml
+          python -c "import xml.etree.ElementTree as E; r=E.parse('docker.xml'); assert r.findall('.//testcase'); assert not r.findall('.//skipped'), 'live Docker tests skipped'"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: python-${{ matrix.python }}-results
+          path: '*.xml'
+
+  viewer:
+    name: Node parser / viewer / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: python -m pip install -e . pytest
+      - run: npm --prefix sentinel_zero/resolvers/js ci
+      - name: Real Node parser regressions
+        run: python -m pytest tests/test_js_resolver.py tests/test_ts_resolver.py tests/test_js_argument_taint.py tests/test_js_inline_callback_visibility.py -q -ra
+      - run: npm --prefix viewer ci
+      - run: npm --prefix viewer test
+      - run: npm --prefix viewer run build
+
+  wheel:
+    name: Clean wheel / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: python -m pip install build
+      - name: Require real Docker for installed Linux harnesses
+        if: runner.os == 'Linux'
+        run: |
+          docker info
+          python -c "import subprocess; from sentinel_zero.probes.container_runner import IMAGES; [subprocess.run(['docker','pull',image],check=True) for image in IMAGES.values()]"
+      - name: Clean wheel install and live Linux harness scans outside checkout
+        if: runner.os == 'Linux'
+        run: python scripts/ci_wheel_smoke.py --docker
+      - name: Clean wheel install and Windows static scans outside checkout
+        if: runner.os == 'Windows'
+        run: python scripts/ci_wheel_smoke.py
+
+  windows-docker:
+    # Hosted Windows runners cannot provide this Linux-container backend.
+    # Use a dedicated runner with Docker Desktop in Linux-container mode.
+    if: github.event_name == 'workflow_dispatch' && inputs.windows_docker
+    runs-on: [self-hosted, Windows, X64, sentinel-docker-linux]
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: python -m pip install -e . pytest build
+      - run: npm --prefix sentinel_zero/resolvers/js ci
+      - run: docker info
+      - run: python -c "import subprocess; from sentinel_zero.probes.container_runner import IMAGES; [subprocess.run(['docker','pull',image],check=True) for image in IMAGES.values()]"
+      - run: python -m pytest tests/test_container_lifecycle.py tests/test_container_isolation.py -q -ra --junitxml=windows-docker.xml
+      - run: python -c "import xml.etree.ElementTree as E; r=E.parse('windows-docker.xml'); assert r.findall('.//testcase'); assert not r.findall('.//skipped'), 'Windows Docker tests skipped'"
+      - run: python scripts/ci_wheel_smoke.py --docker

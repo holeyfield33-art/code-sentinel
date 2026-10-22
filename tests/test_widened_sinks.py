@@ -29,6 +29,23 @@ from sentinel_zero.graph import Symbol
 from sentinel_zero.resolvers.python_resolver import build_project_graph as build_python_graph
 
 
+@pytest.mark.parametrize("import_line,call", [
+    ("import os", "os.open(path, os.O_RDONLY)"),
+    ("from os import open as open_fd", "open_fd(path, 0)"),
+])
+def test_os_open_parameter_path_produces_file_io_plan(tmp_path, import_line, call):
+    (tmp_path / "mod.py").write_text(f"{import_line}\ndef read_file(path):\n    {call}\n")
+    graph = build_python_graph(tmp_path)
+    assert _only_call(graph, "read_file").target == Symbol("os.open")
+    catalog = load_catalog(str(bundled_snapshot_path()), is_bundled_snapshot=True)
+    plans = find_finding_plans(graph, tmp_path.name, catalog, [0], tmp_path, "python")
+    assert len(plans) == 1
+    plan = plans[0].as_dict()
+    assert "FILE_IO" in plan["hypothesis"]["description"]
+    assert "parameter" in plan["hypothesis"]["argument_taint"]
+    assert plan["disposition"]["status"] == "UNRESOLVED_INCONCLUSIVE"
+
+
 def _only_call(graph, caller_suffix: str):
     matches = [c for c in graph.all_calls() if c.caller.endswith(caller_suffix)]
     assert len(matches) == 1, f"expected exactly one call for {caller_suffix!r}, got {len(matches)}"

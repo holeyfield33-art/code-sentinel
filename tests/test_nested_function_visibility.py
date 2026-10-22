@@ -11,6 +11,8 @@ parameter, not just the nested function's own parameters.
 import tempfile
 from pathlib import Path
 
+import pytest
+
 from sentinel_zero.callgraph import build_direct_callee_index, transitively_guard_shaped
 from sentinel_zero.dogfood_scan import find_finding_plans
 from sentinel_zero.disposition import load_catalog
@@ -19,6 +21,57 @@ from sentinel_zero.graph import Symbol
 from sentinel_zero.resolvers.python_resolver import build_project_graph
 
 _CATALOG_PATH = str(bundled_snapshot_path())
+
+
+@pytest.mark.parametrize("second_def", [
+    "    def second():\n        pass\n",
+    "    if enabled:\n        def second():\n            pass\n",
+    "    async def second():\n        pass\n",
+])
+def test_forward_sibling_call_has_qualified_target_and_direct_edge(tmp_path, second_def):
+    (tmp_path / "mod.py").write_text(
+        "def outer(enabled=True):\n    def first():\n        second()\n" + second_def + "    first()\n"
+    )
+    graph = build_project_graph(tmp_path)
+    caller = "mod.outer.<locals>.first"
+    target = "mod.outer.<locals>.second"
+    assert [c.target for c in graph.all_calls() if c.caller == caller] == [Symbol(target)]
+    assert build_direct_callee_index(graph)[caller] == {target}
+
+
+@pytest.mark.parametrize("shadow", [
+    "    def first(second):\n        second()\n",
+    "    def first():\n        second()\n        second = None\n",
+    "    def first():\n        from external import second\n        second()\n",
+    "    def first():\n        global second\n        second()\n",
+    "    def first():\n        def second():\n            pass\n        second()\n",
+])
+def test_forward_sibling_prebinding_respects_child_shadowing(tmp_path, shadow):
+    (tmp_path / "mod.py").write_text("def outer():\n" + shadow + "    def second():\n        pass\n")
+    graph = build_project_graph(tmp_path)
+    assert "mod.outer.<locals>.second" not in build_direct_callee_index(graph).get(
+        "mod.outer.<locals>.first", set()
+    )
+
+
+def test_sibling_local_import_does_not_leak_into_another_scope(tmp_path):
+    (tmp_path / "mod.py").write_text(
+        "def outer():\n    def first():\n        second()\n"
+        "    def unrelated():\n        from external import second\n"
+        "    def second():\n        pass\n"
+    )
+    graph = build_project_graph(tmp_path)
+    assert build_direct_callee_index(graph)["mod.outer.<locals>.first"] == {"mod.outer.<locals>.second"}
+
+
+@pytest.mark.parametrize("rebind", ["second = None", "from external import second", "class second: pass"])
+def test_later_rebinding_in_enclosing_scope_is_not_a_stale_sibling_edge(tmp_path, rebind):
+    (tmp_path / "mod.py").write_text(
+        "def outer():\n    def first():\n        second()\n"
+        f"    def second():\n        pass\n    {rebind}\n    first()\n"
+    )
+    graph = build_project_graph(tmp_path)
+    assert not build_direct_callee_index(graph).get("mod.outer.<locals>.first")
 
 
 def _run(root: Path) -> list[dict]:

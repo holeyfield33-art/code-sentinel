@@ -3,6 +3,8 @@ from sentinel_zero.catalog_loader import bundled_snapshot_path
 import tempfile
 from pathlib import Path
 
+import pytest
+
 from sentinel_zero.dogfood_scan import find_finding_plans
 from sentinel_zero.disposition import load_catalog
 from sentinel_zero.resolvers.python_resolver import build_project_graph
@@ -12,11 +14,12 @@ _CATALOG_PATH = str(bundled_snapshot_path())
 
 def _run(root: Path) -> list[dict]:
     graph = build_project_graph(root)
-    catalog = load_catalog(_CATALOG_PATH)
+    catalog = load_catalog(_CATALOG_PATH, is_bundled_snapshot=True)
     plans = find_finding_plans(graph, root.name, catalog, [0], root, probe_mode="diagnostic")
     return [p.as_dict() for p in plans]
 
 
+@pytest.mark.docker_integration
 def test_zero_arg_sink_report_does_not_grant_verification():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -45,6 +48,7 @@ def test_function_requiring_args_is_not_probed_stays_unresolved():
         assert plans[0]["disposition"]["status"] == "UNRESOLVED_INCONCLUSIVE"
 
 
+@pytest.mark.docker_integration
 def test_guarded_path_not_taken_on_zero_arg_call_stays_unresolved_not_demoted():
     """The sink sits behind a condition that's false by default, so a
     zero-argument call never reaches it. The probe must NOT read this as

@@ -19,6 +19,8 @@ on the probing block for the full story. Three things to prove here:
 import tempfile
 from pathlib import Path
 
+import pytest
+
 from sentinel_zero.dogfood_scan import find_finding_plans
 from sentinel_zero.disposition import load_catalog
 from sentinel_zero.catalog_loader import bundled_snapshot_path
@@ -34,6 +36,7 @@ def _run(root: Path) -> list[dict]:
     return [p.as_dict() for p in plans]
 
 
+@pytest.mark.docker_integration
 def test_file_io_sink_report_does_not_grant_verification():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -47,6 +50,7 @@ def test_file_io_sink_report_does_not_grant_verification():
         assert "builtins.open" in plans[0]["disposition"]["reason"]
 
 
+@pytest.mark.docker_integration
 def test_deserialization_sink_report_does_not_grant_verification():
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -60,6 +64,7 @@ def test_deserialization_sink_report_does_not_grant_verification():
         assert "json.loads" in plans[0]["disposition"]["reason"]
 
 
+@pytest.mark.docker_integration
 def test_reported_symbol_does_not_verify_either_sink():
     """The regression this milestone fixes: before the symbol-match check,
     both sinks in this caller were wrongly marked VERIFIED_TRUE off a

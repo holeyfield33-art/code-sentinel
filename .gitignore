@@ -1,4 +1,6 @@
 sentinel_zero/resolvers/js/node_modules/
+viewer/node_modules/
+viewer/dist/
 __pycache__/
 *.pyc
 .pytest_cache/

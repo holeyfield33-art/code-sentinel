@@ -17,7 +17,8 @@ from sentinel_zero.dogfood_scan import find_finding_plans
 from sentinel_zero.disposition import load_catalog
 from sentinel_zero.catalog_loader import bundled_snapshot_path
 
-pytestmark = pytest.mark.skipif(shutil.which("node") is None, reason="Node.js not available in this environment")
+pytestmark = [pytest.mark.docker_integration,
+              pytest.mark.skipif(shutil.which("node") is None, reason="Node.js not available in this environment")]
 
 _CATALOG_PATH = str(bundled_snapshot_path())
 

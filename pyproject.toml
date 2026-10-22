@@ -31,3 +31,8 @@ sentinel_zero = [
     "resolvers/js/package-lock.json",
     "probes/js/*.js",
 ]
+
+[tool.pytest.ini_options]
+markers = [
+    "docker_integration: executes a real Docker diagnostic backend; flag and mock tests are not integration",
+]
