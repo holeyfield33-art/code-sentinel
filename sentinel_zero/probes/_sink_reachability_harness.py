@@ -71,6 +71,36 @@ is no OS-level process boundary between them), and is a genuinely different
 and harder problem than the one this fixes. See docs/REMEDIATION_PLAN.md
 item 1 and docs/IVP.md for why this bound is stated rather than left
 implicit.
+
+VERIFICATION_LEDGER.md sz-2026-10-21-16: the nonce above authenticates the
+TARGET side of this channel (is this line really from this probe run) but
+originally did nothing for the HARNESS's OWN side -- main()'s emit() used
+to call json.dumps() and print() by looking them up fresh on the shared
+json/sys module objects every target module shares, so a target that
+reassigns json.dumps (or sys.stdout/builtins.print) at import time could
+forge the harness's own later, legitimate result line, nonce included,
+for a call that reached no sink at all. Found by Codex's automated review
+on PR #2 (commit fec251c), independently reproduced by hand before being
+acted on, per IVP discipline of never taking a bot's or a report's claim
+on its word. Fixed categorically, not by patching one more name: main()
+captures `json.dumps` and `os.write` as local variables immediately after
+popping the nonce -- before `_patch_sinks()` or the target import ever
+run -- and emit() writes the final line directly to fd 1 through the
+captured os.write, never through print()/sys.stdout, which are equally
+shared and equally hijackable by the same mechanism. See
+test_probe_verification_hardening.py's
+test_target_cannot_forge_output_by_hijacking_json_dumps_or_stdout for the
+regression test, confirmed via `git stash` to fail before this fix.
+
+A second Codex finding on the same commit (comment_id 4340475522) --
+module-level aliases such as `_io.FileIO`/`posix.open` bypassing the
+io.FileIO/os.open patches in _patch_sinks() -- was also independently
+reproduced as real, but is NOT fixed here. It is the same open-ended
+primitive-hunting pattern already decided against in sz-2026-10-21-14
+(stop chasing individual I/O primitives; the real fix is OS-level
+isolation or an honestly-narrowed claim, not one more alias in the patch
+table). Logged as sz-2026-10-21-17, folded into item 1's existing
+"claim downgraded, not closed" status rather than treated as a new item.
 """
 import importlib
 import json
@@ -203,8 +233,34 @@ def main() -> None:
     # threat-model statement (sz-2026-10-21-02).
     nonce = os.environ.pop("SENTINEL_ZERO_PROBE_NONCE", "")
 
+    # Confirmed real (Codex review on PR #2, commit fec251c -- verified by
+    # hand before this fix, not taken on the bot's word): json.dumps and
+    # os.environ are the SAME shared, mutable module objects the target
+    # module's own import-time code executes inside. A target that does
+    # `import json; json.dumps = <forges status/symbol, keeps the real
+    # nonce>` at import time, then returns NORMALLY (the honest,
+    # legitimate "not_reached" case), was hijacking the harness's OWN
+    # later, trusted call to json.dumps() -- a different and more
+    # fundamental gap than "one more unpatched read primitive": it is the
+    # harness's own OUTPUT path being forgeable, not an input-reading
+    # bypass. The fix is categorical, not another name added to a patch
+    # list: capture the real json.dumps AND the real os.write BEFORE
+    # _patch_sinks() or the target import ever run, bind them only to
+    # local variables (never read again from the shared json/os module
+    # objects afterward), and write the final result directly to fd 1 via
+    # the captured os.write -- bypassing print()/sys.stdout entirely, both
+    # of which are equally shared, mutable, and equally hijackable the
+    # same way (builtins.print, sys.stdout) if the output step still did a
+    # late dynamic lookup of them.
+    _trusted_dumps = json.dumps
+    _trusted_write = os.write
+
     def emit(payload: dict) -> None:
-        print(json.dumps({**payload, "nonce": nonce}))
+        line = _trusted_dumps({**payload, "nonce": nonce}) + "\n"
+        data = line.encode("utf-8")
+        written = 0
+        while written < len(data):
+            written += _trusted_write(1, data[written:])
 
     # Milestone 17: an optional 5th argv, ARGS_REPR, is the repr() of a
     # tuple of real Python values harvested from a genuine call site

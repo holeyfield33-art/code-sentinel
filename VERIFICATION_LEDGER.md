@@ -253,89 +253,56 @@ process), which is a materially different and larger piece of work than
 this plan's scope, and is recorded there as a separate, larger decision for
 Ashura to make, not something closed by further patching.
 
-### sz-2026-10-21-15
-- **claim:** "A function with two call sites to the same sink symbol, only
-  one of which is actually reachable, does not have its unreachable call
-  site promoted to VERIFIED_TRUE."
-- **claimant:** Builder session (this conversation)
-- **verifier:** fresh, non-forked Tier-1 session (background agent
-  `aa4464525b06f3cae`, "Independent verifier of wrong-call-promotion fix")
-- **method:** Six adversarial attacks against the real fix (commit
-  `20169ab`, extracted via `git archive` into an isolated scratch
-  directory, specifically to avoid any interference from concurrent work
-  on the live checkout — see verifier's own note below): (1) cross-function
-  leakage — two unambiguous single-call-site functions in one module, both
-  correctly promote independently; (2) N=3 off-by-one — three same-symbol
-  call sites in one function, all three correctly stay
-  UNRESOLVED_INCONCLUSIVE (gate is `count > 1`, not `count == 2`); (3) the
-  harvested-literal-argument path with an ambiguous same-symbol caller —
-  correctly stays UNRESOLVED_INCONCLUSIVE, confirming the gate applies
-  before `_probe_invocation_for` runs, not just on the zero-arg path; (4)
-  Milestone 16 regression check — two DIFFERENT sink symbols in one caller
-  still promote/don't-promote independently, unaffected by the new gate;
-  (5) the JS/TS path — two `child_process.exec` call sites in one exported
-  function, one dead after `return`, both correctly stay
-  UNRESOLVED_INCONCLUSIVE, confirming the gate is applied identically in
-  the JS probing block; (6) a sink call written once inside a loop —
-  correctly treated as one static call site regardless of runtime
-  iteration count.
-- **verdict:** REFUTED (the claim that the fix is broken) — no break found
-  in the real fix across any of the six attacks.
-- **note on method integrity:** the verifier flagged that the live checkout
-  at `/home/claude/code-sentinel` was mid-switch to a different branch
-  during its run (concurrent Builder work in this same session, on
-  `security/verification-hardening`, unrelated to this fix) and that
-  testing against that other branch's code produced a misleading
-  false-positive "break." The verifier caught this itself, did not touch
-  the live repo, and re-ran everything against an isolated
-  `git archive` snapshot of the actual fix commit instead — exactly the
-  kind of self-correction IVP exists to produce. Recorded here rather
-  than silently dropped, per IVP's point about a durable record over a
-  transcript that scrolls away.
-- **evidence:** `sentinel_zero/dogfood_scan.py` (`find_finding_plans`,
-  `_promote_if_sink_reached` docstring update),
-  `tests/test_ambiguous_sink_promotion.py`
+### sz-2026-10-21-16
+- **claim:** "The dynamic sink-reachability probe harness's own result
+  line (the trusted side of the nonce channel) cannot be forged by a
+  target module that reassigns `json.dumps` or `sys.stdout`/`print` at
+  import time."
+- **claimant:** Codex automated review (chatgpt-codex-connector[bot]) on
+  PR #2, commit `fec251c`, comment_id 4340475510, P1
+- **verifier:** Builder session (this conversation) — independently
+  reproduced by hand with a fixture (`/tmp/codex_verify/target/evil_dumps.py`:
+  a module that reassigns `json.dumps` at import time to rewrite any dict
+  containing a `nonce` key into a fake `sink_reached` payload, then defines
+  a harmless no-op function) BEFORE accepting the finding as real or
+  acting on it, per IVP's "never take a claim on its word" discipline —
+  not a fresh/non-forked Tier-1 session, so this is a Builder-side
+  reproduction, same tier as the Builder's own regression tests, not a
+  substitute for an independent Verifier pass.
+- **method:** Ran the fixture against the pre-fix harness: a function that
+  does nothing produced `{"status": "sink_reached", "symbol": "os.system",
+  ...}`. Fixed by capturing `json.dumps`/`os.write` as local variables in
+  `main()` before `_patch_sinks()` or the target import run, and writing
+  the final line directly to fd 1 via the captured `os.write`, bypassing
+  `print()`/`sys.stdout` entirely. Added
+  `tests/test_probe_verification_hardening.py::test_target_cannot_forge_output_by_hijacking_json_dumps_or_stdout`,
+  confirmed via `git stash` to fail against the pre-fix harness and pass
+  post-fix. Full suite re-run post-fix: 128 passed.
+- **verdict:** CONFIRMED (claim was FALSE pre-fix; fix closes this specific
+  vector) — still pending a fresh, non-forked Verifier pass before this is
+  asserted to the PR thread as closed, per IVP (a Builder's own test for a
+  bug the Builder found and fixed does not close an item on its own).
 - **date:** 2026-10-21
 
-### sz-2026-10-21-18
-- **claim:** "`find_finding_plans`'s ambiguity gate (sz-2026-10-21-04/-15)
-  catches every case where a probe run cannot disambiguate which call
-  site produced the observed sink symbol, including when the symbol is
-  reached only through a helper the probed caller delegates to."
-- **claimant:** Codex automated review (chatgpt-codex-connector[bot]) on
-  PR #3, commit `dfb86a1`, comment_id 4340617860, P1
-- **verifier:** Builder session (this conversation) — independently
-  reproduced by hand before accepting the finding (fixture:
-  `helper()` with its own, genuinely-reachable `os.system` call;
-  `run_it()` that calls `helper()` then `return`s, followed by dead-code
-  `os.system` of its own). Confirmed pre-fix: probing `run_it()` observes
-  `os.system` fire (via `helper`) and the then-current gate — which only
-  counted call sites directly inside `run_it`'s own body — saw a count of
-  1 for `run_it`, so `run_it`'s dead call site was wrongly promoted to
-  VERIFIED_TRUE off `helper`'s delegated evidence. Not a fresh/non-forked
-  Tier-1 session, so same tier as the Builder's own regression tests, not
-  a substitute for an independent Verifier pass.
-- **method:** Added `build_direct_sink_call_counts`/
-  `transitive_sink_symbol_counts` to `callgraph.py` (same depth-bounded,
-  cycle-safe pattern as the existing `transitively_guard_shaped`/
-  `external_packages_reached`), summing direct sink-symbol call counts
-  across a caller and everything transitively reachable from it through
-  the project's own call graph, not just that caller's own body.
-  `find_finding_plans` now uses this transitive count for its ambiguity
-  gate at both probe-attempt sites and the disposition-reason text,
-  replacing the same-function-only count from sz-2026-10-21-04/-15 (which
-  is still correct, just too narrow — the transitive count subsumes it:
-  a function with no callees gets the identical count as before).
-  Module-level (no enclosing function) sink calls keep the original
-  same-scope-only count, since there's no function identity to walk a
-  call graph from. Added
-  `test_unreachable_direct_call_is_not_promoted_off_a_helpers_delegated_reach`,
-  confirmed via `git stash` to fail against the pre-fix code and pass
-  after. Full suite re-run post-fix: 131 passed.
-- **verdict:** CONFIRMED (claim was FALSE pre-fix; fix closes this
-  specific delegated-call vector) — still pending a fresh, non-forked
-  Verifier pass before this fix is itself asserted closed, same as every
-  prior round.
+### sz-2026-10-21-17 — decision record, not a claim check
+- **claim under review:** "`_io.FileIO`/`posix.open` module-level aliases
+  bypass the `io.FileIO`/`os.open` patches already in `_patch_sinks()`."
+- **claimant:** Codex automated review on PR #2, commit `fec251c`,
+  comment_id 4340475522, P1
+- **check performed:** Builder session independently reproduced this as
+  real by hand (a target importing `_io` directly and calling `_io.FileIO`
+  bypasses the `io.FileIO` name patched in the `io` module, since they are
+  the same underlying type reachable via two import paths).
+- **decision:** NOT implemented as a new patch. This is the same open-ended
+  primitive-hunting pattern already decided against in sz-2026-10-21-14 —
+  a third instance of "one more unpatched alias/primitive" in the exact
+  same category as `/proc/self/environ` via `os.open` and the `io.FileIO`
+  bypass of `os.open` itself. Folded into item 1's existing "claim
+  downgraded, not closed" status in `docs/REMEDIATION_PLAN.md` rather than
+  treated as a new item or patched piecemeal. Flagged to the user as a
+  judgment call rather than decided unilaterally to patch or to dismiss,
+  per the standing PR-steward policy on borderline/architecturally-
+  significant review findings.
 - **date:** 2026-10-21
 
 ### sz-2026-10-21-08 (believed true, not independently verified to CONFIRMED/REFUTED rigor)
