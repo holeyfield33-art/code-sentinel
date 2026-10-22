@@ -62,11 +62,35 @@ _ENV_PASSTHROUGH_NAMES = ("PATH", "SYSTEMROOT", "SYSTEMDRIVE", "TEMP", "TMP", "H
 _NONCE_ENV_VAR = "SENTINEL_ZERO_PROBE_NONCE"
 
 
+_BACKEND_ENV_VAR = "SENTINEL_ZERO_PROBE_BACKEND"
+
+
 def run_sink_reachability_probe(
     repo_root: Path, module_qualname: str, function_name: str, args_repr: str | None = None
 ) -> dict:
-    """Runs the harness in an isolated `python -I` subprocess and returns
-    one of:
+    """Dispatches to one of two backends based on the
+    SENTINEL_ZERO_PROBE_BACKEND environment variable:
+
+      - unset, or "subprocess" (the default, unchanged by this dispatch):
+        the original bare-`python -I`-subprocess backend implemented
+        directly below. This is still what every existing caller gets
+        with zero behavior change.
+      - "docker": VERIFICATION_LEDGER.md sz-2026-10-21-19's OS-level
+        isolation backend (docker_sink_executor.py), ported from Ashura's
+        readme-tester project -- real container isolation (network
+        segmentation, cap-drop, read-only root, non-root, resource caps)
+        instead of an in-process monkeypatch table. NOT verified
+        end-to-end in the session that added it (no Docker daemon was
+        reachable there); explicitly opt-in, explicitly not the default,
+        until it's been smoke-tested somewhere Docker actually runs. If
+        requested but no daemon is reachable, this reports call_failed
+        with a clear reason rather than silently falling back to the
+        subprocess backend -- a silent fallback would make the two
+        backends' isolation guarantees indistinguishable from the
+        caller's side, exactly the kind of overclaim this whole ledger
+        exists to catch.
+
+    Returns one of:
       {"status": "sink_reached", "symbol": ..., "args": ...}
       {"status": "not_reached", "detail": ...}
       {"status": "call_failed", "detail": ...}
@@ -90,6 +114,38 @@ def run_sink_reachability_probe(
     _literal_argument_call_site). Passed straight through as one of the
     harness's argv entries; omitted entirely (zero-argument call) when None.
     """
+    backend = os.environ.get(_BACKEND_ENV_VAR, "subprocess")
+    if backend == "docker":
+        from sentinel_zero.probes.docker_sink_executor import (
+            docker_available,
+            run_sink_reachability_probe_docker,
+        )
+
+        available, detail = docker_available()
+        if not available:
+            return {
+                "status": "call_failed",
+                "detail": f"{_BACKEND_ENV_VAR}=docker requested but no Docker daemon is "
+                f"reachable: {detail}",
+            }
+        return run_sink_reachability_probe_docker(repo_root, module_qualname, function_name, args_repr)
+    if backend != "subprocess":
+        return {
+            "status": "call_failed",
+            "detail": f"unknown {_BACKEND_ENV_VAR}={backend!r}; expected 'subprocess' or 'docker'",
+        }
+    return _run_sink_reachability_probe_subprocess(repo_root, module_qualname, function_name, args_repr)
+
+
+def _run_sink_reachability_probe_subprocess(
+    repo_root: Path, module_qualname: str, function_name: str, args_repr: str | None = None
+) -> dict:
+    """The original backend: an isolated `python -I` subprocess, nonce-
+    authenticated. See VERIFICATION_LEDGER.md sz-2026-10-21-02 through
+    -17 for this backend's full, honestly-bounded forgery-resistance
+    history -- it is not claimed unforgeable against a determined,
+    in-process adversary, which is exactly why the docker backend above
+    exists as an alternative, not a replacement."""
     if not _HARNESS_PATH.is_file():
         raise FileNotFoundError(f"sandbox probe harness missing at {_HARNESS_PATH}")
 
