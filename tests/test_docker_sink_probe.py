@@ -1,15 +1,7 @@
-"""VERIFICATION_LEDGER.md sz-2026-10-21-19: the Docker-backed probe
-backend (sentinel_zero/probes/docker_sink_executor.py) and its dispatch
-from sink_reachability_probe.py.
+"""Container flags, report parsing, and fail-closed backend selection.
 
-No Docker daemon is reachable in this session (confirmed via
-docker_available() itself, exercised below as a real, unmocked call --
-not assumed), so these tests cover exactly what can honestly be checked
-without one: argument/flag construction for the execute phase, the
-nonce-authenticated result parser, and the dispatcher's behavior when the
-docker backend is requested but unavailable. They do NOT exercise a real
-container run -- that still needs a smoke test wherever Docker actually
-runs, per the module's own docstring.
+Public-adapter OS isolation is exercised separately in
+test_container_isolation.py against a real daemon and pinned images.
 """
 import json
 import os
@@ -19,10 +11,7 @@ from unittest import mock
 
 import pytest
 
-from sentinel_zero.probes import docker_sink_executor
 from sentinel_zero.probes.docker_sink_executor import (
-    _INSTALL_SCRIPT,
-    _install_user,
     build_docker_run_args,
     docker_available,
     parse_harness_result,
@@ -69,19 +58,17 @@ def test_execute_phase_args_carry_every_lock_down_flag():
             "--cap-drop", "ALL",
             "--security-opt", "no-new-privileges",
             "--read-only",
-            "--pids-limit", "128",
+            "--pids-limit", "64",
             "--cpus", "1",
-            "--memory", "1g",
+            "--memory", "512m",
             "--user", "1000:1000",
         ):
             assert flag in args, f"missing lock-down flag {flag!r} in execute-phase args"
-        # The harness is invoked through the mounted venv's own
-        # interpreter against the mounted, install-phase-populated
-        # source copy -- never the bare /repo mount (which the execute
-        # phase doesn't even receive -- see module docstring on why).
-        assert "/env/venv/bin/python" in args
+        # Use the image interpreter and read-only source directly.
+        # No host virtualenv or install-phase writable bind exists.
+        assert "/usr/local/bin/python" in args
         assert "/harness/_sink_reachability_harness.py" in args
-        assert "/env/src" in args
+        assert "/repo" in args
         assert "pkg.mod" in args
         assert "run_it" in args
 
@@ -168,7 +155,7 @@ def test_dispatcher_reports_a_clear_failure_when_docker_is_unavailable_mocked():
     the real environment, so this test (unlike the one above) passes the
     same way on every machine, including one with a reachable daemon."""
     with mock.patch(
-        "sentinel_zero.probes.docker_sink_executor.docker_available",
+        "sentinel_zero.probes.container_runner.docker_available",
         return_value=(False, "mocked: no daemon reachable"),
     ):
         os.environ["SENTINEL_ZERO_PROBE_BACKEND"] = "docker"
@@ -197,10 +184,8 @@ def test_dispatcher_rejects_an_unknown_backend_name_rather_than_guessing():
         del os.environ["SENTINEL_ZERO_PROBE_BACKEND"]
 
 
-def test_default_backend_is_unchanged_subprocess_behavior():
-    """No SENTINEL_ZERO_PROBE_BACKEND set at all -- every existing
-    caller, unmodified -- must still get the original subprocess
-    backend's real, working behavior, not a call_failed stub."""
+def test_default_backend_retains_positive_sink_report_inside_docker():
+    """The default retains benign reports, but only inside Docker."""
     assert "SENTINEL_ZERO_PROBE_BACKEND" not in os.environ
     with tempfile.TemporaryDirectory() as tmp:
         root = Path(tmp)
@@ -210,39 +195,25 @@ def test_default_backend_is_unchanged_subprocess_behavior():
         assert result["symbol"] == "subprocess.run"
 
 
-def test_install_script_never_swallows_a_real_pip_failure():
-    """Codex review, PR #5: `|| true` on either pip install line defeated
-    `set -e` for the one case that actually matters -- a manifest DOES
-    exist and pip genuinely fails -- making the install container
-    report success regardless, so `_install` believed a broken/partial
-    environment was fine to probe. Pinned directly against the script
-    text rather than a real docker run, since no daemon is reachable
-    here to exercise it end to end."""
-    assert "|| true" not in _INSTALL_SCRIPT
-    assert "pip install --no-cache-dir --quiet -e .\n" in _INSTALL_SCRIPT
-    assert "pip install --no-cache-dir --quiet -r requirements.txt\n" in _INSTALL_SCRIPT
+def test_probe_never_installs_untrusted_manifests():
+    with tempfile.TemporaryDirectory() as tmp:
+        args = build_docker_run_args(env_path=Path(tmp), module_qualname="mod", function_name="run_it", args_repr=None, nonce="n")
+        assert not any("pip" in arg or "npm" in arg for arg in args)
+        assert "/usr/local/bin/python" in args
 
 
-def test_install_user_matches_the_host_uid_so_cleanup_can_remove_its_files():
-    """Codex review, PR #5: the install container used to run as a
-    hardcoded 1000:1000, creating /env/src and the venv inside the
-    bind-mounted temp dir as that UID. On a host whose own process isn't
-    UID 1000, tempfile.TemporaryDirectory's cleanup can't remove files
-    it doesn't own, turning an otherwise-successful probe into a
-    PermissionError. _install_user() must report the HOST's actual
-    UID/GID (when os.getuid/getgid exist), not a hardcoded value."""
-    getuid = getattr(os, "getuid", None)
-    getgid = getattr(os, "getgid", None)
-    if getuid is None or getgid is None:
-        pytest.skip("os.getuid/getgid not available on this platform (not Linux/macOS)")
-    assert _install_user() == f"{getuid()}:{getgid()}"
+
+def test_source_mount_is_readonly_and_no_host_virtualenv_is_created():
+    with tempfile.TemporaryDirectory() as tmp:
+        args = build_docker_run_args(env_path=Path(tmp), module_qualname="mod", function_name="run_it", args_repr=None, nonce="n")
+        mounts = [args[i + 1] for i, arg in enumerate(args) if arg == "--mount"]
+        assert len(mounts) == 2
+        assert all(m.endswith(",readonly") for m in mounts)
+        assert not (Path(tmp) / "venv").exists()
 
 
-def test_install_user_falls_back_to_a_fixed_uid_without_getuid():
-    """The non-Linux/macOS fallback path, exercised deterministically by
-    removing os.getuid/getgid regardless of what this host actually
-    has."""
-    with mock.patch.object(docker_sink_executor.os, "getuid", None, create=True), mock.patch.object(
-        docker_sink_executor.os, "getgid", None, create=True
-    ):
-        assert _install_user() == "1000:1000"
+
+def test_container_user_is_nonroot_regardless_of_host_uid():
+    with tempfile.TemporaryDirectory() as tmp:
+        args = build_docker_run_args(env_path=Path(tmp), module_qualname="mod", function_name="run_it", args_repr=None, nonce="n")
+        assert args[args.index("--user") + 1] == "1000:1000"

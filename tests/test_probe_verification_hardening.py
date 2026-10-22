@@ -271,22 +271,13 @@ def test_target_cannot_read_a_real_secret_from_the_inherited_environment():
         (root / "reader.py").write_text(
             "import os\n"
             "LEAKED = os.environ.get('SENTINEL_ZERO_TEST_FAKE_SECRET', '')\n"
-            "def run_it():\n    pass\n"
+            "def run_it():\n    assert not LEAKED, 'parent environment leaked'\n"
         )
         os.environ["SENTINEL_ZERO_TEST_FAKE_SECRET"] = sentinel_value
         try:
-            # The probe itself has no way to report an import-time module
-            # global back to us -- what matters is the subprocess's own
-            # environment never contained the real value in the first
-            # place. Confirmed structurally: run_sink_reachability_probe
-            # builds `env` from a fixed small allowlist that does not
-            # include SENTINEL_ZERO_TEST_FAKE_SECRET, so the subprocess.run
-            # call itself cannot have passed it through, regardless of what
-            # the target does with it. This test exists to catch a future
-            # regression back to env=None (full inheritance), not to probe
-            # the target's own behavior.
-            from sentinel_zero.probes.sink_reachability_probe import _ENV_PASSTHROUGH_NAMES
-            assert "SENTINEL_ZERO_TEST_FAKE_SECRET" not in _ENV_PASSTHROUGH_NAMES
-            run_sink_reachability_probe(root, "reader", "run_it")
+            from sentinel_zero.probes.container_runner import CONTAINER_ENV
+            assert "SENTINEL_ZERO_TEST_FAKE_SECRET" not in CONTAINER_ENV
+            result = run_sink_reachability_probe(root, "reader", "run_it")
+            assert result["status"] == "not_reached", result
         finally:
             del os.environ["SENTINEL_ZERO_TEST_FAKE_SECRET"]

@@ -59,8 +59,8 @@ def analyze_repository(
             always says which one was actually used, and its version/generatedAt, so this
             is never silently treated as equivalent to a freshly-fetched taxonomy.
 
-        probe_mode: static (default) never executes target code. diagnostic executes
-            trusted target code and records untrusted reports, never VERIFIED_TRUE.
+        probe_mode: static (default) never executes target code. diagnostic requires
+            Docker isolation and records untrusted reports, never VERIFIED_TRUE.
 
     Returns:
         The same ledger dict `sentinel-zero analyze --format json` writes to disk:

@@ -1,5 +1,8 @@
 #!/usr/bin/env node
 'use strict';
+// This worker is launched by the mandatory container adapter. Its mutable
+// process and stdout are target-controlled diagnostics, not proof authority.
+// The OS container, rather than these monkeypatches, confines native I/O.
 /* Milestone 18: JS/TS mirror of _sink_reachability_harness.py (Python's
  * Milestone 6/16 dynamic reachability probe). Same safety model, same
  * three outcomes ("sink_reached" / "not_reached" / "call_failed"), same

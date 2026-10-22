@@ -5,8 +5,8 @@
 Scans are **static-only by default**: the CLI, MCP tool, and scan API do
 not import or invoke target code. Findings remain `UNRESOLVED_INCONCLUSIVE`.
 
-For code you already trust to execute, `--probe-mode diagnostic` opts into
-the legacy harnesses. Their output is validated and recorded as
+`--probe-mode diagnostic` opts into container-isolated harnesses. Their
+output is validated and recorded as
 `verification_method.probe_observation`, with parent-assigned requested
 call-site context, `trust: target_controlled`, and `site_verified: false`.
 These fields associate a report with a request; they do not prove that
@@ -20,10 +20,38 @@ comparison does not authorize a new verified finding.
 **No independent runtime verifier is implemented yet.** All current
 Python, JavaScript, and Docker harnesses share their process with the
 target, so their self-reports never grant verification, even in diagnostic
-mode. Docker can isolate that process from the host but does not protect
-the harness from the target inside it. Diagnostic mode is not safe for
-hostile repositories. The milestone descriptions below record historical
+mode. Docker isolates that process from the host but does not protect
+the harness from the target inside it. Diagnostics require a reachable
+Linux Docker daemon and the pinned runtime image; there is no host-process
+fallback. The milestone descriptions below record historical
 behavior; automatic probe-based promotion described there is disabled.
+
+## Diagnostic OS isolation
+
+Both Python and JS workers run as UID/GID 1000 in a container with no
+network, no capabilities, no privilege escalation, a read-only root and
+source mount, resource limits, and a per-container scratch tmpfs as cwd.
+Container environment values are fixed; host application variables, PATH,
+HOME, NODE_OPTIONS, and cwd are not passed through. Output is size-bounded
+in the parent, and timed-out workers are removed by container name.
+
+Runtime images are pinned by digest in `sentinel_zero/probes/container_runner.py`.
+Prepare those images explicitly before diagnostics:
+
+```bash
+python -c "from sentinel_zero.probes.container_runner import IMAGES; import subprocess; [subprocess.run(['docker', 'pull', image], check=True) for image in IMAGES.values()]"
+```
+
+Scans never pull images or install target manifests automatically. Missing
+images, unavailable Docker, missing target dependencies, and attempts to
+select the old `subprocess` backend report `call_failed`; they never retry
+with the host Python or Node. Python uses the container's standard-library
+environment; JS can use compatible dependencies inside the read-only repo.
+Kernel/container-runtime security remains part of the trusted boundary.
+Escaping source symlinks/junctions are refused before launch. The host
+source tree must remain stable during validation/execution; no atomic
+filesystem snapshot is claimed. Source files must be readable by the
+container's non-root user.
 
 A standalone AI-security assessment engine, built fresh instead of gluing
 together the earlier multi-repo pipeline (aletheia-redteam-kit + Code

@@ -27,8 +27,8 @@ sentinel-zero analyze /path/to/target-repo --format md
 This defaults to static-only analysis and never executes target code.
 The ledger records `probe_mode: static`.
 
-For a repository whose code you trust to execute with the scan user's
-privileges, diagnostics are an explicit option:
+Diagnostics are an explicit option and require Docker plus the pinned
+runtime images described in the README:
 
 ```bash
 sentinel-zero analyze /path/to/trusted-repo --probe-mode diagnostic --format md
@@ -37,7 +37,11 @@ sentinel-zero analyze /path/to/trusted-repo --probe-mode diagnostic --format md
 Diagnostic output is target-controlled and cannot authorize `VERIFIED_TRUE`.
 The parent's requested call site and the validated report are recorded in
 `verification_method.probe_observation`; `site_verified` remains false.
-No existing subprocess or Docker probe independently verifies runtime events.
+No current probe independently verifies runtime events.
+Both language adapters execute only inside locked-down Linux containers,
+with read-only source, private scratch cwd, fixed environment values, and
+no network. Missing isolation or dependencies produce `call_failed`, never
+a fallback to the scan user's Python or Node. Target manifests are not installed.
 
 `--format md` is worth using for bug hunting — it writes a `report.md`
 you can skim, grouped by disposition, alongside the full
