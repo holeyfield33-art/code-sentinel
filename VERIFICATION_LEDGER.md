@@ -319,3 +319,87 @@ Ashura to make, not something closed by further patching.
 - **verifier:** UNABLE_TO_VERIFY (this session did not build the package or
   reproduce an oversized run)
 - **date:** 2026-10-21
+
+### sz-2026-10-21-22
+- **claim:** "An inline anonymous function literal passed directly as a
+  call argument — the `app.get('/x', (req,res)=>{...})` shape — is
+  completely invisible to `extract_graph.js`: it is never indexed as its
+  own scope and its own body is never walked for `CallSite`s, so a sink
+  call inside one produces zero `CallSite`s, not even an Unresolved one."
+  (Remediation plan item 6, explicitly flagged there as "the highest
+  real-world-impact item in the whole list.")
+- **claimant:** `docs/REMEDIATION_PLAN.md` item 6 (originally from the
+  external audit)
+- **check performed:** Builder session on branch
+  `fix/js-inline-callback-invisibility`, mirroring item 5's shape on the
+  JS side as the plan's own fix direction specified. Added
+  `collectInlineFunctionNodes` (finds every `FunctionExpression`/
+  `ArrowFunctionExpression` reachable from a scope's body that isn't
+  already a named scope handled elsewhere — a top-level `const x =
+  function/arrow` or a class method/constructor, excluded by AST-node
+  reference identity — and stops at every `FunctionDeclaration`/
+  `ClassDeclaration`/`ClassExpression` boundary without recursing into
+  it, a stated "don't guess" bound) and `discoverInlineFunctions`
+  (assigns each one a qualname derived from its own source position,
+  `<enclosing>.<callback:L<line>C<col>>`, deterministic so pass 1
+  (`indexFile`) and pass 2 (`walkCalls`) always agree without sharing
+  insertion-order state, and accumulates `effectiveParamNames` across
+  every enclosing scope — the JS mirror of item 5's
+  `enclosing_param_names` — so a closure over an enclosing function's
+  own parameter classifies as `parameter` taint, not `unknown`).
+  `indexFile` now also indexes every discovered inline callback (module
+  scope, every top-level function, every class method/constructor);
+  `walkCalls` now also walks each one's body for `CallSite` recording,
+  including the concise-arrow-body case (`x => sink(x)`, no statement
+  list) via a direct `findCallsInExpr`/`recordCallsFromNodes` call
+  instead of `walkStmts`, and including `this` resolution for a callback
+  nested inside a class method (same `bindings` window the method's own
+  body already walks in, a stated simplification since real JS only
+  lexically inherits `this` for an arrow callback, never a plain
+  `function(){}` one — this resolver does not distinguish the two here).
+- **tests added:** `tests/test_js_inline_callback_visibility.py` (9
+  tests) — the plan's own Express fixture (a sink call inside
+  `app.get('/x', (req,res)=>{...})`); a closure over the enclosing
+  function's own parameter (`setTimeout`); the plan's suggested second,
+  more realistic fixture (several routes, only one with a sink in its
+  inline handler); a callback nested inside a callback, discovered at
+  depth; a callback living directly at module scope with no enclosing
+  function; a callback inside a class method correctly resolving
+  `this.execute()` back to the owning class; a concise-expression-body
+  arrow (`cmd => exec(cmd)`, no braces); a regression guard confirming a
+  top-level named `const handler = (req,res) => {...}` is still indexed
+  once, under its own name, never double-indexed under a synthetic
+  `<callback:...>` qualname too; and a function literal assigned as an
+  object-literal property's value (not passed as a call argument at
+  all), confirming the fix is wider than the plan's own acceptance claim
+  strictly asked for.
+- **`git stash` confirmation:** stashing just the `extract_graph.js`
+  change and rerunning the new test file: 7 of 8 then-existing cases
+  failed (the regression-guard test, scoped to pre-existing named-const
+  behavior, passed either way, as expected) — every inline-callback case
+  came back with zero `CallSite`s, confirming the bug was real and the
+  tests actually exercise the fix. Popping the stash and rerunning: all
+  pass. Full suite (Python + JS, all skip-guarded on Node.js
+  availability): **144 passed, 0 failed** (135 pre-existing + 9 new,
+  after the object-literal-property test was added). The pre-existing 38
+  JS-resolver tests also re-ran clean with no changes, confirming the
+  wrapper-middleware/guard-shape/delegation/argument-taint machinery this
+  fix sits beside was not disturbed.
+- **verdict:** CONFIRMED by the Builder's own testing — **pending a
+  fresh, non-forked Tier-1 Verifier pass** before this is asserted as
+  closed to anyone outside this session, per IVP (a Builder's own
+  regression tests for a bug the Builder found and fixed do not close an
+  item on their own). The Verifier method hint in the plan (the Express
+  fixture plus a more-realistic multi-route one) is covered by the
+  committed tests. Note for the Verifier: `collectInlineFunctionNodes` is
+  a fully generic tree walk, not limited to call-argument position — an
+  inline function assigned to an object-literal property value is also
+  discovered (now a committed test), and an array element presumably is
+  too by the same generic traversal (not separately tested), wider than
+  the plan's own acceptance claim strictly asked for. A fresh Verifier
+  should confirm this breadth holds and look for the actual boundary: an
+  IIFE's own invocation wrapper, a callback forwarded through a variable
+  before being passed on, and a named (non-anonymous) function expression
+  used as an argument are all untested shapes worth trying, rather than
+  only re-running the Builder's own tests.
+- **date:** 2026-10-21
