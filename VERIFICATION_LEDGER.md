@@ -450,9 +450,18 @@ Ashura to make, not something closed by further patching.
   it to the child's raw, un-authenticated result only after reading it
   back) — a real architecture change to `_sink_reachability_harness.py`,
   shared with the subprocess backend, not a local patch to this file.
-- **decision:** flagged to the user per the standing PR-steward policy
-  for an ambiguous/architecturally-significant finding on a PR the
-  Builder opened, rather than deciding unilaterally whether to invest in
-  that redesign now or accept and re-disclose the gap. Not implemented
-  as part of this entry.
+- **decision:** put to the user per the standing PR-steward policy for
+  an ambiguous/architecturally-significant finding on a PR the Builder
+  opened, rather than deciding unilaterally whether to invest in that
+  redesign now or accept and re-disclose the gap. **User decision:
+  accept and disclose — merge as-is, no harness redesign now.** The
+  module docstring's own "Explicit, disclosed gap in this module's OWN
+  isolation claim" section (added in the same commit as the other three
+  fixes, 4adc640) already states this plainly for anyone reading the
+  code, consistent with the module's existing "STATED PLAINLY, NOT
+  GLOSSED OVER" posture on its other known gaps (no pinned image digest,
+  no real-daemon smoke test yet). This remains a real, open limitation —
+  accepting it is not the same as closing it — and the same gap applies
+  equally to the subprocess backend's own nonce protocol, already
+  covered by the existing sz-2026-10-21-14/-17 decision record.
 - **date:** 2026-10-22
