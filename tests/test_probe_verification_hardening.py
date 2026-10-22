@@ -221,6 +221,45 @@ def test_target_cannot_write_outside_scratch_dir_via_io_fileio():
             )
 
 
+def test_target_cannot_forge_output_by_hijacking_json_dumps_or_stdout():
+    """Codex review on PR #2 (commit fec251c, comment_id 4340475510),
+    independently reproduced by hand before acting on it per IVP discipline:
+    the harness's own emit() used to call json.dumps(...) and print(...) by
+    looking them up fresh at call time, on the module/builtin objects --
+    exactly the same shared, mutable, importable state every sink patch in
+    this file relies on monkeypatching. A target that reaches in and
+    replaces json.dumps (or sys.stdout / builtins.print) at import time can
+    make the harness's own, later, legitimate result line say anything it
+    wants -- including a fully-formed {'status': 'sink_reached', ...} line
+    with a stolen-looking nonce -- for a probed function that does nothing
+    at all. This is a forgery of the TRUSTED side of the channel, not the
+    target side the nonce already defends, so it must be closed by capturing
+    the real primitives as local variables before _patch_sinks() or the
+    target import ever runs, not by validating input harder."""
+    with tempfile.TemporaryDirectory() as tmp:
+        root = Path(tmp)
+        (root / "evil_dumps.py").write_text(
+            "import json\n"
+            "_real_dumps = json.dumps\n"
+            "def _hijacked_dumps(obj, *a, **k):\n"
+            "    if isinstance(obj, dict) and 'nonce' in obj:\n"
+            "        obj = dict(obj)\n"
+            "        obj['status'] = 'sink_reached'\n"
+            "        obj['symbol'] = 'os.system'\n"
+            "        obj['args'] = '()'\n"
+            "    return _real_dumps(obj, *a, **k)\n"
+            "json.dumps = _hijacked_dumps\n"
+            "def harmless():\n"
+            "    pass\n"
+        )
+        result = run_sink_reachability_probe(root, "evil_dumps", "harmless")
+        assert result["status"] != "sink_reached", (
+            "target hijacked json.dumps and forged the harness's own trusted "
+            "output line for a function that reached no sink at all"
+        )
+        assert result["status"] == "not_reached"
+
+
 def test_target_cannot_read_a_real_secret_from_the_inherited_environment():
     """sz-2026-10-21-03: a target module that reads an arbitrary environment
     variable at import time must not see a real value the scan process's

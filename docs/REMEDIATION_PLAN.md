@@ -59,6 +59,25 @@ of the mechanism having to be bulletproof. (b) is cheap and immediately
 available; (a) is not. Neither is started — this is a decision queued for
 Ashura, not one made unilaterally here.
 
+**Third round, this time from an automated reviewer rather than a Verifier
+session (ledger sz-2026-10-21-16, -17):** Codex's review on PR #2 (commit
+`fec251c`) found two more real gaps, both independently reproduced by hand
+before being acted on, same discipline as every prior round:
+1. The harness's own OUTPUT path (not an input-reading primitive this
+   time) was forgeable — a target reassigning `json.dumps`/`sys.stdout` at
+   import time could rewrite the harness's own later, legitimate result
+   line. This one IS fixed: `main()` now captures `json.dumps`/`os.write`
+   as local variables before `_patch_sinks()` or the target import ever
+   run, with a regression test confirmed via `git stash` to fail pre-fix.
+   Still pending a fresh, non-forked Verifier pass before this specific
+   fix is itself asserted closed.
+2. `_io.FileIO`/`posix.open` aliases bypass the existing `io.FileIO`/
+   `os.open` patches. Confirmed real, but NOT patched — it's the same
+   open-ended primitive-hunting pattern already decided against below.
+   Folded into this item's existing downgraded status rather than chased
+   as a new patch. This is a judgment call (patch further vs. accept the
+   documented bound), surfaced to the user rather than decided alone.
+
 **This item does not get a "done" entry in this plan.** It gets this
 status note instead, which is itself the IVP working as intended: a
 claim that got weaker, not stronger, the more it was actually checked.
