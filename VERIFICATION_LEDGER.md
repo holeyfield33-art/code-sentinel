@@ -319,3 +319,58 @@ Ashura to make, not something closed by further patching.
 - **verifier:** UNABLE_TO_VERIFY (this session did not build the package or
   reproduce an oversized run)
 - **date:** 2026-10-21
+
+### sz-2026-10-21-21
+- **claim:** "A nested Python function (a `def` inside another `def`) is
+  invisible to the static resolver: it is never indexed into
+  `project_functions` and its own body is never walked for `CallSite`s, so a
+  sink call inside one produces zero finding plans — not even
+  `UNRESOLVED_INCONCLUSIVE` — the worst possible outcome, since it does not
+  even surface as something to triage." (Remediation plan item 5.)
+- **claimant:** `docs/REMEDIATION_PLAN.md` item 5 (originally from the
+  external audit)
+- **check performed:** Builder session on branch
+  `fix/nested-function-invisibility`. Added `_direct_nested_function_defs`
+  (recurses through if/try/for/while/with to find a `FunctionDef`/
+  `AsyncFunctionDef` belonging to the current scope, stopping at a nested
+  function/class boundary) and `_index_function_and_nested` (indexes a
+  function, then its nested defs, qualnamed the way Python's own
+  `__qualname__` does: `module.outer.<locals>.inner`), wired into both the
+  top-level and class-method indexing loops in
+  `sentinel_zero/resolvers/python_resolver.py`. Extended `walk_fn` with an
+  `enclosing_param_names` accumulator so a nested function's own
+  `param_names` set includes every enclosing function's parameters too
+  (closure-correct taint classification), and extended `walk_stmts` to
+  recurse into a nested `FunctionDef`/`AsyncFunctionDef` as a real scope of
+  its own — but ONLY when walking inside a real function scope
+  (`fn_node is not None`), not when walking the true module scope, which
+  already has its own dedicated top-level loop.
+- **regression hit during implementation:** the first version of the
+  `walk_stmts` change had no such guard, so the module-level walk's own
+  pass over `tree.body` ALSO matched every top-level `FunctionDef` as a
+  "nested" def, producing a second, duplicate `CallSite` per top-level
+  function under a qualname missing the module prefix. Caught immediately
+  by the existing suite (`26 failed, 109 passed`), root-caused to that
+  scope conflation, fixed with the `fn_node is not None` guard. Full suite
+  returned to green before any new tests were even written.
+- **tests added:** `tests/test_nested_function_visibility.py` (6 tests) —
+  a sink call in a one-level-nested function now produces exactly one
+  finding plan (`mod.outer.<locals>.inner`); a closure over the ENCLOSING
+  function's own parameter classifies as `parameter` taint, not `unknown`;
+  three levels of nesting resolve to the correctly-chained qualname; a
+  nested def buried inside an `if` block is still found; and two explicit
+  regression guards confirm a plain top-level function and a plain class
+  method each still produce exactly one finding with their original,
+  unmodified qualname (no spurious `.<locals>.` duplicate).
+- **`git stash` confirmation:** stashing just the
+  `python_resolver.py` change and rerunning the new test file: 4 of 6
+  failed (the two scoped on pre-existing behavior still passed, as
+  expected) — `assert 0 == 1` on every nested-function case, confirming the
+  bug was real and the tests actually exercise the fix. Popping the stash
+  and rerunning: 6/6 pass. Full suite: **141 passed, 0 failed** (135
+  pre-existing + 6 new).
+- **verdict:** CONFIRMED by the Builder's own testing — **pending a fresh,
+  non-forked Tier-1 Verifier pass** before this is asserted as closed to
+  anyone outside this session, per IVP (a Builder's own regression tests
+  for a bug the Builder found and fixed do not close an item on their own).
+- **date:** 2026-10-21
