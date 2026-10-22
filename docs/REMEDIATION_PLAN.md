@@ -298,9 +298,9 @@ and worth trying, rather than only re-running the Builder's own tests.
 
 ---
 
-## 7. Output-cap crash — STATUS: fixed, pending fresh Verifier pass
+## 7. Output-cap crash — STATUS: fixed, merged (PR #9)
 **Ledger:** sz-2026-10-21-08 claim 1 (UNABLE_TO_VERIFY) -> sz-2026-10-22-01
-(CONFIRMED, fixed).
+(CONFIRMED, fixed) -> sz-2026-10-22-03 (Codex P2 follow-up, fixed).
 
 Reproduced for real before any fix was written: a synthetic 3500-module
 repo, each with its own `os.system(user_input)` sink call, produced a
@@ -310,15 +310,24 @@ uncaught `ValueError` traceback instead of this project's own
 `except (ToolFailure, UnknownAttackClass)` never covered the plain
 `ValueError` the byte cap raises.
 
-**Fix:** `dogfood_scan._write_or_fail_cleanly()` catches that specific
+**Fix:** `dogfood_scan.write_or_fail_cleanly()` catches that specific
 `ValueError` at both the `verification_ledger.json` and `graph.json` write
 sites and re-raises it as a `ToolFailure` naming the real size and the
 cap. `cli.cmd_analyze()`'s `report.md` write (`--format md`) had the
-identical gap and is now inside the same try/except, wrapped the same
-way — and the already-written ledger is left on disk rather than lost
-when only the markdown render is too large. See sz-2026-10-22-01 for full
-detail (tests added, stash confirmation, real-repro re-run against the
-fix).
+identical gap and now calls the same shared helper rather than a second,
+separately-maintained copy. The already-written ledger is left on disk
+rather than lost when only the markdown render is too large. See
+sz-2026-10-22-01 for full detail (tests added, stash confirmation,
+real-repro re-run against the fix).
+
+**Codex P2 follow-up (sz-2026-10-22-03):** the original wrapper caught
+`ValueError` generically and always claimed "too large... were
+discarded" — wrong for `safe_write_text`'s other two `ValueError`
+causes (a `resolve_inside` path-containment refusal; a
+`UnicodeEncodeError`), both currently unreachable from this project's
+own fixed-literal call sites but worth fixing honestly regardless.
+`write_or_fail_cleanly()` now independently recomputes whether `text` is
+actually over `max_bytes` before choosing which message to raise.
 
 **Not changed:** the byte caps themselves (5MB ledger/report, 20MB
 graph). The confirmed bug was the crash's shape (uncaught traceback vs.
@@ -327,16 +336,33 @@ unasked-for design decision this fix does not make.
 
 ---
 
-## 8. Missing wheel asset for the JS probe harness
-**Ledger:** sz-2026-10-21-08 claim 2 — not yet independently verified to
-be real.
+## 8. Missing wheel asset for the JS probe harness — STATUS: fixed, pending fresh Verifier pass
+**Ledger:** sz-2026-10-21-08 claim 2 (UNABLE_TO_VERIFY) -> sz-2026-10-22-02
+(CONFIRMED, fixed) -> sz-2026-10-22-04 (Codex P2 follow-up, fixed).
+See PR #10 (`fix/js-harness-missing-from-wheel`).
 
-**Before writing any fix:** build the actual wheel (`python -m build` or
-equivalent) in a clean venv, install it, and try to run a scan that needs
-the JS probe harness from the installed package rather than the source
-checkout. Only once reproduced does it get its own ledger entry and fix
-direction — writing a fix for an unreproduced claim is exactly the
-self-certification pattern this whole plan exists to avoid.
+Reproduced for real before any fix was written: built the actual wheel
+with `python -m build`, installed it into a fresh venv, and called
+`run_js_sink_reachability_probe()` against it — a genuine
+`FileNotFoundError` for
+`.../site-packages/sentinel_zero/probes/js/_sink_reachability_harness.js`,
+because `pyproject.toml`'s `package-data` list covered
+`resolvers/js/*.js` but never `probes/js/*.js`, where the JS probe
+harness actually lives.
+
+**Fix:** added `"probes/js/*.js"` to `pyproject.toml`'s `package-data`
+list for `sentinel_zero`. The Python-side harness was never affected --
+it ships as ordinary package source, not a package-data asset. See
+sz-2026-10-22-02 for full detail (two-layer test: a fast glob-coverage
+check plus a skippable real-wheel-build check).
+
+**Codex P2 follow-up (sz-2026-10-22-04):** the real-wheel test built
+directly from the repo checkout, so a leftover `build/` directory from
+an earlier build could let setuptools silently reuse a previously-
+included asset and make the test pass even against a broken
+`pyproject.toml` — confirmed for real (twice: `build/` alone wasn't
+enough, a leftover `*.egg-info` let the same bug through a second way).
+Fixed by building from an isolated, cache-free copy of the source tree.
 
 ---
 
