@@ -142,6 +142,30 @@ from sentinel_zero.callgraph import (
 from sentinel_zero.graph import ProjectGraph, Symbol
 from sentinel_zero.graph_export import export_graph
 from sentinel_zero.ledger_writer import safe_write_text
+
+
+def _write_or_fail_cleanly(root: str, relative: str, text: str, max_bytes: int, *, what: str) -> None:
+    """VERIFICATION_LEDGER.md sz-2026-10-22-01 / REMEDIATION_PLAN.md item 7:
+    `safe_write_text` raises a bare `ValueError` when its output exceeds
+    `max_bytes` -- correct refusal-before-writing behavior on its own, but
+    nothing downstream of it (dogfood_scan.run(), cli.cmd_analyze) ever
+    caught that specific ValueError, so it propagated all the way out as
+    an uncaught traceback instead of this project's own
+    CRITICAL_TOOL_FAILURE convention. Confirmed by an actual oversized run
+    in this session (3500 real sink findings -> a 5.5MB ledger -> the raw
+    traceback, reproduced before this fix existed). This wrapper is the
+    single place that turns that one specific, expected failure mode into
+    a clean ToolFailure with the real size and the cap in the message, so
+    the operator knows exactly what happened and that none of the
+    analysis work -- real or not -- was silently lost without a trace."""
+    try:
+        safe_write_text(root, relative, text, max_bytes)
+    except ValueError as exc:
+        raise ToolFailure(
+            f"could not write {what} to {relative}: {exc}. The scan completed and found real "
+            f"results, but they were too large to write out under this project's own safety cap "
+            f"and were discarded rather than silently truncated."
+        ) from exc
 from sentinel_zero.probes.sink_reachability_probe import run_sink_reachability_probe
 from sentinel_zero.probes.js_sink_reachability_probe import run_js_sink_reachability_probe
 from sentinel_zero.resolvers.python_resolver import build_project_graph as build_python_project_graph
@@ -722,7 +746,10 @@ def run(
             "metadata": catalog.meta,
         },
     }
-    safe_write_text(str(out_dir), "verification_ledger.json", json.dumps(ledger, indent=2), 5_000_000)
+    _write_or_fail_cleanly(
+        str(out_dir), "verification_ledger.json", json.dumps(ledger, indent=2), 5_000_000,
+        what="the verification ledger",
+    )
 
     # Milestone 14: the full node/edge graph, not just the flat findings --
     # a pure re-serialization of data already in `graph`/`ledger["plans"]`,
@@ -730,7 +757,10 @@ def run(
     # graph_export.py for why this exists (nothing a future 3D view or a
     # Code Atlas adapter needs survives past this function otherwise).
     graph_doc = export_graph(graph, ledger["plans"], repo_root.name)
-    safe_write_text(str(out_dir), "graph.json", json.dumps(graph_doc, indent=2), 20_000_000)
+    _write_or_fail_cleanly(
+        str(out_dir), "graph.json", json.dumps(graph_doc, indent=2), 20_000_000,
+        what="the call graph",
+    )
 
     print(
         f"{repo_root.name}: {len(graph.modules)} modules, {len(graph.functions)} functions indexed, "

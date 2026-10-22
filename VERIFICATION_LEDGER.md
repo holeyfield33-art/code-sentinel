@@ -465,3 +465,58 @@ Ashura to make, not something closed by further patching.
   equally to the subprocess backend's own nonce protocol, already
   covered by the existing sz-2026-10-21-14/-17 decision record.
 - **date:** 2026-10-22
+
+### sz-2026-10-22-01
+- **claim:** From sz-2026-10-21-08 claim 1 / `docs/REMEDIATION_PLAN.md` item 7:
+  "A ledger over 5 MB crashes the scan with no partial output" —
+  `dogfood_scan.py`'s hardcoded `5_000_000`-byte cap passed to
+  `safe_write_text` raises a bare `ValueError` when exceeded, and neither
+  `dogfood_scan.run()` nor `cli.cmd_analyze()` caught that specific
+  exception, so it propagated as an uncaught traceback instead of this
+  project's own `CRITICAL_TOOL_FAILURE` convention.
+- **claimant:** External audit (previously UNABLE_TO_VERIFY in
+  sz-2026-10-21-08, not reproduced with an actual oversized run).
+- **check performed:** Reproduced for real, not just reasoned about.
+  Built a synthetic 3500-module Python repo, each module with its own
+  `os.system(user_input)` sink call, and ran
+  `python -m sentinel_zero.cli analyze` against it. The scan found 3500
+  real sink findings, serialized them to a genuine 5,548,527-byte ledger,
+  and crashed with:
+  `ValueError: refused: 5548527 bytes is over the 5000000-byte limit`
+  as an uncaught traceback through `dogfood_scan.py:687` ->
+  `ledger_writer.py:24` — exactly the mechanism sz-2026-10-21-08 predicted,
+  now confirmed with a real run rather than left as a plausible read of
+  the source.
+- **fix:** Added `_write_or_fail_cleanly()` in `dogfood_scan.py`, a thin
+  wrapper around `safe_write_text()` that catches the specific
+  oversize `ValueError` and re-raises it as a `ToolFailure` naming the
+  real byte count, the cap, and that the scan's own results were real
+  but too large to write out — never silently truncated, never a bare
+  traceback. Applied to both the `verification_ledger.json` write and the
+  `graph.json` write in `run()`. The equivalent `report.md` write in
+  `cli.cmd_analyze()` had the identical gap (it sat entirely outside the
+  `except (ToolFailure, UnknownAttackClass)` block) — moved inside that
+  block and wrapped the same way, so a report.md over its own 5MB cap
+  now also produces a clean `CRITICAL_TOOL_FAILURE` and exit code 3,
+  with the already-written ledger left intact rather than lost.
+- **tests added:** `tests/test_tool_failure.py`:
+  `test_run_raises_tool_failure_not_a_bare_valueerror_when_the_ledger_is_too_big`
+  (monkeypatches `safe_write_text` to reproduce the exact oversize raise
+  cheaply, asserts `ToolFailure` not `ValueError`, asserts the real byte
+  count and cap appear in the message),
+  `test_write_or_fail_cleanly_still_writes_normally_sized_output`
+  (regression guard: the common case is unaffected), and
+  `test_cmd_analyze_reports_a_clean_critical_tool_failure_when_the_markdown_report_is_too_big`
+  (same shape for the `report.md` path, also asserts the ledger file
+  itself was written successfully first — this is not a total loss).
+- **stash confirmation:** `git stash push -- sentinel_zero/dogfood_scan.py
+  sentinel_zero/cli.py`; all 3 new tests failed pre-fix with the exact
+  predicted shape (an uncaught `ValueError` propagating out of
+  `cli.cmd_analyze`, visible in the pytest traceback); `git stash pop`;
+  all 10 tests in the file passed post-fix; full suite (154 tests) passed.
+  Also re-ran the original 3500-module real-world repro end-to-end
+  against the fixed code: now prints a single `CRITICAL_TOOL_FAILURE:
+  could not write the verification ledger to verification_ledger.json:
+  ...` line to stderr and exits 3 — no traceback.
+- **verdict:** CONFIRMED (claim) / fixed, pending fresh Verifier pass.
+- **date:** 2026-10-22

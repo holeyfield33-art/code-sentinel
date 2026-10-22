@@ -157,17 +157,32 @@ def cmd_analyze(args: argparse.Namespace) -> int:
                 "Run `sentinel-zero install-js-deps` once, then re-run this scan."
             )
         run_scan(repo_root, catalog_path, out_dir, language, is_bundled_snapshot_catalog=is_bundled)
+
+        ledger = json.loads((out_dir / "verification_ledger.json").read_text(encoding="utf-8"))
+
+        if args.format == "md":
+            # VERIFICATION_LEDGER.md sz-2026-10-22-01 / REMEDIATION_PLAN.md item 7:
+            # this write has the exact same "refuses before writing, raises a
+            # bare ValueError over the byte cap" shape dogfood_scan.run()'s own
+            # writes have, and used to sit entirely outside this try/except --
+            # a report.md over 5MB crashed with an uncaught traceback instead
+            # of this same CRITICAL_TOOL_FAILURE message. Moved inside so the
+            # existing (ToolFailure, UnknownAttackClass) handler also catches
+            # it once it's wrapped as a ToolFailure below.
+            try:
+                safe_write_text(str(out_dir), "report.md", _render_markdown(ledger), 5_000_000)
+            except ValueError as exc:
+                raise ToolFailure(
+                    f"could not write the markdown report to report.md: {exc}. The ledger was "
+                    f"written successfully at {out_dir / 'verification_ledger.json'}; only the "
+                    f"human-readable report.md render was too large for this project's own safety cap."
+                ) from exc
+            print(f"markdown report -> {out_dir / 'report.md'}")
+        else:
+            print(f"ledger -> {out_dir / 'verification_ledger.json'} (graph: {out_dir / 'graph.json'})")
     except (ToolFailure, UnknownAttackClass) as exc:
         print(f"CRITICAL_TOOL_FAILURE: {exc}", file=sys.stderr)
         return 3
-
-    ledger = json.loads((out_dir / "verification_ledger.json").read_text(encoding="utf-8"))
-
-    if args.format == "md":
-        safe_write_text(str(out_dir), "report.md", _render_markdown(ledger), 5_000_000)
-        print(f"markdown report -> {out_dir / 'report.md'}")
-    else:
-        print(f"ledger -> {out_dir / 'verification_ledger.json'} (graph: {out_dir / 'graph.json'})")
 
     return 0
 

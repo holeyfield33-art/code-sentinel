@@ -264,23 +264,45 @@ over-narrow fix that only handles the single-argument pattern.
 
 ---
 
-## 7–8. Output-cap crash and missing wheel asset
-**Ledger:** sz-2026-10-21-08 — not yet independently verified to be real.
+## 7. Output-cap crash — STATUS: fixed, pending fresh Verifier pass
+**Ledger:** sz-2026-10-21-08 claim 1 (UNABLE_TO_VERIFY) -> sz-2026-10-22-01
+(CONFIRMED, fixed).
 
-**Before writing any fix:** reproduce both, for real, in this session or the
-next one:
-- Run a scan that genuinely produces a ledger over 5 MB and confirm what
-  actually happens (clean `CRITICAL_TOOL_FAILURE` message, or an uncaught
-  traceback — the ledger entry only has a plausible mechanism, not a
-  reproduction).
-- Build the actual wheel (`python -m build` or equivalent) in a clean venv,
-  install it, and try to run a scan that needs the JS probe harness from the
-  installed package rather than the source checkout.
+Reproduced for real before any fix was written: a synthetic 3500-module
+repo, each with its own `os.system(user_input)` sink call, produced a
+genuine 5,548,527-byte ledger and crashed `sentinel-zero analyze` with an
+uncaught `ValueError` traceback instead of this project's own
+`CRITICAL_TOOL_FAILURE` convention — `cli.py`'s
+`except (ToolFailure, UnknownAttackClass)` never covered the plain
+`ValueError` the byte cap raises.
 
-Only once each is reproduced does it get its own ledger entry and its own
-item in this plan with a fix direction — writing a fix for an unreproduced
-claim is exactly the self-certification pattern this whole plan exists to
-avoid.
+**Fix:** `dogfood_scan._write_or_fail_cleanly()` catches that specific
+`ValueError` at both the `verification_ledger.json` and `graph.json` write
+sites and re-raises it as a `ToolFailure` naming the real size and the
+cap. `cli.cmd_analyze()`'s `report.md` write (`--format md`) had the
+identical gap and is now inside the same try/except, wrapped the same
+way — and the already-written ledger is left on disk rather than lost
+when only the markdown render is too large. See sz-2026-10-22-01 for full
+detail (tests added, stash confirmation, real-repro re-run against the
+fix).
+
+**Not changed:** the byte caps themselves (5MB ledger/report, 20MB
+graph). The confirmed bug was the crash's shape (uncaught traceback vs.
+clean failure), not the cap values — raising the caps is a separate,
+unasked-for design decision this fix does not make.
+
+---
+
+## 8. Missing wheel asset for the JS probe harness
+**Ledger:** sz-2026-10-21-08 claim 2 — not yet independently verified to
+be real.
+
+**Before writing any fix:** build the actual wheel (`python -m build` or
+equivalent) in a clean venv, install it, and try to run a scan that needs
+the JS probe harness from the installed package rather than the source
+checkout. Only once reproduced does it get its own ledger entry and fix
+direction — writing a fix for an unreproduced claim is exactly the
+self-certification pattern this whole plan exists to avoid.
 
 ---
 
