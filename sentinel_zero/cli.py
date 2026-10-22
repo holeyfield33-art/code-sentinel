@@ -208,7 +208,7 @@ def build_parser() -> argparse.ArgumentParser:
     analyze.add_argument("path", help="path to the target repository (not this one)")
     analyze.add_argument(
         "--probe-mode", choices=["static", "diagnostic"], default="static",
-        help="static (default): never execute target code. diagnostic: execute trusted target code "
+        help="static (default): never execute target code. diagnostic: execute target code in Docker "
              "and record untrusted reports; no existing probe can authorize VERIFIED_TRUE.",
     )
     analyze.add_argument(

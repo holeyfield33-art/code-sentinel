@@ -682,7 +682,7 @@ def find_finding_plans(
                 ):
                     fn_name = _js_top_level_function_name(module.module_qualname, caller)
                     if fn_name:
-                        probe_result = run_js_sink_reachability_probe(module.file_path, fn_name)
+                        probe_result = run_js_sink_reachability_probe(module.file_path, fn_name, repo_root=repo_root)
                         _record_probe_diagnostic(plan, probe_result, call, caller, "with zero arguments")
                 plans.append(plan)
     return plans

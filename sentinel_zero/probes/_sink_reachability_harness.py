@@ -1,4 +1,10 @@
-"""Bounded dynamic reachability probe (Milestone 6, widened in Milestone 16
+"""Worker for mandatory container-isolated, untrusted diagnostics.
+
+Monkeypatches observe a subset of sink names; they do not authenticate
+reports or confine arbitrary native I/O. The parent adapter's OS container
+is the host-isolation boundary. Historical mechanism notes follow.
+
+Bounded dynamic reachability probe (Milestone 6, widened in Milestone 16
 to cover FILE_IO and DESERIALIZATION in addition to the original
 PROCESS_EXEC-only scope, and in Milestone 17 to call a function with
 harvested literal arguments instead of only zero-argument functions --
