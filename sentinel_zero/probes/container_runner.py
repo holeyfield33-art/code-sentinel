@@ -122,6 +122,18 @@ def _docker_run(args: list[str], timeout: int = PROBE_TIMEOUT_SECONDS) -> tuple[
     process = None
     readers = []
     timed_out = False
+    errors: list[str] = []
+    code = -1
+
+    def remove_container():
+        try:
+            removed = subprocess.run([executable, "rm", "-f", name], capture_output=True,
+                                     text=True, timeout=10, cwd=_HARNESS_DIR)
+            # --rm may already have removed a normally completed container.
+            if removed.returncode != 0 and "no such container" not in removed.stderr.lower():
+                errors.append(f"container cleanup failed: {removed.stderr[:500]}")
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            errors.append(f"container cleanup failed: {exc}")
 
     def drain(stream, dest):
         try:
@@ -151,25 +163,34 @@ def _docker_run(args: list[str], timeout: int = PROBE_TIMEOUT_SECONDS) -> tuple[
         if process.poll() is None:
             # Removing the named container stops target code, rather than
             # only terminating the local Docker client process.
-            subprocess.run([executable, "rm", "-f", name], capture_output=True, timeout=10, cwd=_HARNESS_DIR)
+            remove_container()
             process.kill()
         process.wait(timeout=10)
         for reader in readers:
             reader.join(timeout=2)
-        stdout, stderr = (bytes(part).decode("utf-8", "replace") for part in chunks)
-        if exceeded.is_set():
-            return -1, "", "container diagnostic output exceeded its byte limit", False
-        return process.returncode, stdout, stderr, timed_out
+        code = process.returncode
     except (OSError, subprocess.TimeoutExpired) as exc:
-        return -1, "", str(exc), isinstance(exc, subprocess.TimeoutExpired)
+        errors.insert(0, f"container execution failed: {exc}")
+        timed_out = timed_out or isinstance(exc, subprocess.TimeoutExpired)
     finally:
-        if process is not None and process.poll() is None:
-            process.kill()
-            process.wait(timeout=10)
         try:
-            subprocess.run([executable, "rm", "-f", name], capture_output=True, timeout=10, cwd=_HARNESS_DIR)
-        except (OSError, subprocess.TimeoutExpired):
-            pass  # Failure remains call_failed; never fall back to host execution.
+            if process is not None and process.poll() is None:
+                process.kill()
+                process.wait(timeout=10)
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            errors.append(f"Docker client cleanup failed: {exc}")
+        remove_container()
+        for reader in readers:
+            reader.join(timeout=2)
+    stdout, stderr = (bytes(part).decode("utf-8", "replace") for part in chunks)
+    if exceeded.is_set():
+        errors.insert(0, "container diagnostic output exceeded its byte limit")
+        code, stdout = -1, ""
+    if errors:
+        stderr = "\n".join([stderr, *errors]).strip()
+        if code == 0:
+            code = -1
+    return code, stdout, stderr, timed_out
 
 
 def parse_result(stdout: str, nonce: str | None = None) -> dict:
@@ -198,7 +219,7 @@ def run_container_probe(language: str, repo_root: Path, harness_args: list[str],
         return {"status": "call_failed", "detail": str(exc)}
     code, stdout, stderr, timed_out = _docker_run(args)
     if timed_out:
-        return {"status": "call_failed", "detail": f"container probe exceeded {PROBE_TIMEOUT_SECONDS}s timeout"}
+        return {"status": "call_failed", "detail": f"container probe exceeded {PROBE_TIMEOUT_SECONDS}s timeout: {stderr[:1500]}"}
     if code != 0:
-        return {"status": "call_failed", "detail": f"container probe exited {code}: {stderr[-1000:]}"}
+        return {"status": "call_failed", "detail": f"container probe exited {code}: {stderr[:1500]}"}
     return parse_result(stdout, nonce)
