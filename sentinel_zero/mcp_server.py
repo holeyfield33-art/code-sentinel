@@ -1,18 +1,13 @@
-"""Sentinel-Zero as an MCP server: lets an agent call this engine as a
-disposition authority -- "is this call path actually reachable and
-guarded, or is that just a hunch" -- instead of asking an LLM to eyeball
-a call graph and guess.
+"""Local stdio MCP transport for source-code security triage.
 
-One tool, `analyze_repository`, deliberately thin: it does exactly what
-`sentinel-zero analyze` does on the command line (same run_scan() call,
-same bundled-snapshot-catalog fallback, same three invariants -- no
-silent tool failure, live-catalog-only attack-class resolution, every
-reported finding is a real FindingPlan), returned as the same ledger
-dict instead of written to a file. This file adds no analysis logic of
-its own; it is a transport, same as cli.py is.
+`analyze_repository` shares the CLI's scan pipeline and returns its ledger.
+Static mode does not execute target code. Optional Docker diagnostics
+record target-controlled observations and cannot authorize verified states.
+Temporary server-side artifacts are removed after the request; use the CLI
+to retain graph exports or Markdown reports.
 
-Run with:  sentinel-zero-mcp   (stdio transport, for an agent's MCP
-client config), or `python -m sentinel_zero.mcp_server`.
+Run `sentinel-zero-mcp` or `python -m sentinel_zero.mcp_server` in the
+installed environment. Client setup and result interpretation: USAGE.md.
 """
 from __future__ import annotations
 
@@ -32,11 +27,13 @@ server = MCPServer(
     name="sentinel-zero",
     version="0.1.0",
     instructions=(
-        "A resolved-identity call-graph security analysis engine for Python and JS/TS repositories. "
-        "Call analyze_repository with a repo path to get a verification ledger: every sink reachable "
-        "from a resolved call graph, each one a disposition of exactly VERIFIED_TRUE, VERIFIED_FALSE, "
-        "UNRESOLVED_INCONCLUSIVE, or TOOL_FAILURE -- never a bare guess, and never silently absent for "
-        "a path that exists. Treat UNRESOLVED_INCONCLUSIVE as 'needs a human/deeper look', not as clean."
+        "Source-code security triage for Python, JavaScript, and TypeScript repositories. "
+        "Call analyze_repository with an absolute local repo path to obtain a ledger of "
+        "supported, resolved sink calls and bounded structural evidence. Static mode is the default. "
+        "Diagnostic mode requires Docker and records untrusted reports; current scans cannot "
+        "authorize VERIFIED_TRUE or VERIFIED_FALSE. Treat UNRESOLVED_INCONCLUSIVE as requiring "
+        "review. Inspect parse_errors, unresolved_call_sites, and diagnostic failures; zero "
+        "plans or a completed command does not establish repository safety."
     ),
 )
 

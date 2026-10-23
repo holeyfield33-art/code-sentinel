@@ -1,109 +1,157 @@
-# Using Sentinel-Zero for bug hunting
+# Usage guide
 
-A one-page walkthrough: install it, point it at a repo, and know what to
-trust in the result. If you haven't read `README.md`'s **Known bounds**
-section, read that first — this guide assumes you know what the tool
-does and doesn't claim.
+Start with the [installation instructions](README.md#install-from-source).
+Use a writable virtual environment; run `sentinel-zero install-js-deps`
+once if you will analyze JavaScript or TypeScript.
 
-## 1. Install
+## CLI reference
 
-```bash
-pip install .            # from a checkout of this repo
-sentinel-zero --help
-```
-
-If your target is JS/TS, run this once:
-
-```bash
+```text
+sentinel-zero analyze PATH [--probe-mode {static,diagnostic}]
+  [--format {json,md}] [--language {python,javascript}]
+  [--catalog PATH] [--out DIRECTORY]
 sentinel-zero install-js-deps
 ```
 
-## 2. Run it
+`python -m sentinel_zero.cli` accepts the same arguments when the package
+is installed in that interpreter's environment.
 
-```bash
-sentinel-zero analyze /path/to/target-repo --format md
+| Option | Default | Behavior |
+| --- | --- | --- |
+| `PATH` | Required | Local target repository directory |
+| `--probe-mode` | `static` | Parse source only; `diagnostic` additionally attempts eligible container probes |
+| `--format` | `json` | Write ledger and graph; `md` also writes `report.md` |
+| `--language` | Auto-detected | `python` or `javascript`; the latter includes supported `.ts` files |
+| `--catalog` | Bundled snapshot | Use the supplied ASI catalog export and record its provenance |
+| `--out` | Sibling `<target-name>.sentinel-zero` | Output directory; existing same-name artifacts can be overwritten |
+
+Auto-detection counts supported source files and picks the larger language
+group, choosing Python on a tie. It is not a combined scan. For a mixed
+repository, keep two outputs:
+
+```sh
+sentinel-zero analyze "/path/to/project" --language python --format md --out "./results/python"
+sentinel-zero analyze "/path/to/project" --language javascript --format md --out "./results/javascript"
 ```
 
-This defaults to static-only analysis and never executes target code.
-The ledger records `probe_mode: static`.
+TypeScript uses `--language javascript`. JSX and TSX files are not collected.
 
-Diagnostics are an explicit option and require Docker plus the pinned
-runtime images described in the README:
+## Read the output
 
-```bash
-sentinel-zero analyze /path/to/trusted-repo --probe-mode diagnostic --format md
+`verification_ledger.json` is the primary analysis record. Important fields:
+
+| Field | Meaning |
+| --- | --- |
+| `probe_mode` | Whether the operator selected static analysis or execution diagnostics |
+| `catalog` | Source path, snapshot flag, and taxonomy metadata |
+| `plans` / `plan_count` | Finding plans for supported, resolved sink calls |
+| `parse_errors` | Files the resolver could not parse; the rest of the project may still be analyzed |
+| `unresolved_call_sites` | Call targets the resolver could not establish |
+| `external_dependencies` | Package references reached through the modeled call graph |
+
+For each plan, read `hypothesis.source_node` for the file and line,
+`hypothesis.sink_node` for the API, and `hypothesis.symbol_binding` for the
+enclosing caller. `argument_taint` describes bounded argument evidence;
+`parameter` is a review lead, not proof of attacker control.
+
+### Dispositions
+
+| Status | Interpretation |
+| --- | --- |
+| `UNRESOLVED_INCONCLUSIVE` | Current scan output: the evidence does not establish a vulnerability or safety |
+| `VERIFIED_TRUE` | Reserved for independent verification; current code rejects attempts to authorize this status |
+| `VERIFIED_FALSE` | Reserved for independent verification; current code rejects attempts to authorize this status |
+| `TOOL_FAILURE` | A schema-supported failure status; ordinary CLI analysis failures are surfaced as a nonzero command result |
+
+`PENDING` is an internal construction state, not a completed review result.
+Older ledgers can contain verified statuses from earlier policies. Re-scan
+with the current implementation before comparing their certainty to new output.
+
+### Diagnostics
+
+After [Docker setup](docs/SECURITY.md#docker-setup), opt in explicitly:
+
+```sh
+sentinel-zero analyze "/path/to/project" --probe-mode diagnostic --format md --out "./results/diagnostic"
 ```
 
-Diagnostic output is target-controlled and cannot authorize `VERIFIED_TRUE`.
-The parent's requested call site and the validated report are recorded in
-`verification_method.probe_observation`; `site_verified` remains false.
-No current probe independently verifies runtime events.
-Both language adapters execute only inside locked-down Linux containers,
-with read-only source, private scratch cwd, fixed environment values, and
-no network. Missing isolation or dependencies produce `call_failed`, never
-a fallback to the scan user's Python or Node. Target manifests are not installed.
+Where a probe is attempted, `verification_method.probe_observation` holds
+the parent's requested call site, `trust: "target_controlled"`,
+`site_verified: false`, and a shape-validated report. Report statuses are
+`sink_reached`, `not_reached`, or `call_failed`. None grants a verified
+disposition. Some findings are deliberately not probed; absence of an
+observation is not a negative runtime result.
 
-`--format md` is worth using for bug hunting — it writes a `report.md`
-you can skim, grouped by disposition, alongside the full
-`verification_ledger.json`. Both land in `<target-repo-name>.sentinel-
-zero/` next to the target by default (`--out DIR` to change that).
+Missing Docker, unavailable pinned images, missing target dependencies,
+timeouts, and malformed worker reports can become `call_failed` observations
+while the overall analysis command still exits zero.
 
-You'll see a line like:
+## Exit codes and incomplete runs
 
-```
-NOTICE: no --catalog given -- using the ASI catalog snapshot bundled with
-this install (version 0.2.0-draft, generated 2026-09-12, status=draft).
-```
+| Code | Meaning |
+| --- | --- |
+| `0` | Command completed; inspect findings, coverage, parse errors, and diagnostic failures |
+| `2` | CLI argument parsing failed |
+| `3` | CLI-reported tool/catalog/setup failure, such as an invalid target or unavailable JS extractor |
 
-That's not an error — it's telling you which taxonomy version labeled
-your findings. If you have a fresher ASI catalog export, pass
-`--catalog path/to/asi-catalog.json` and that notice won't appear.
+`install-js-deps` returns zero on success, reports missing npm as code 3,
+and reports an npm installation failure as a nonzero result. Run `--help`
+for the current parser rather than assuming unsupported flags or subcommands.
 
-## 3. Read the dispositions — this is the part that matters
+Output files are written individually. An error writing a later artifact
+can leave earlier files in place; an old output directory can also contain
+stale artifacts. Use a new directory for each retained scan and check the
+command result before consuming its files. Size caps are 5,000,000 bytes
+for the ledger and Markdown report and 20,000,000 bytes for the graph.
+Path, size, and UTF-8 encoding refusals surface as `ToolFailure`.
 
-Every finding in `plans` has a `disposition.status`. There are exactly
-four, and they mean specific, different things:
+## MCP server
 
-| Status | What it actually means | What to do with it |
-|---|---|---|
-| **`VERIFIED_TRUE`** | Reserved for independent verification. Current scans never grant it from a probe self-report. | Treat this status in older reports according to the older scanner's limitations. |
-| **`UNRESOLVED_INCONCLUSIVE`** | Static analysis found a resolved call to a sink, and either found no guard or found a guard whose protection isn't fully proven (same-function call order, not full CFG dominance — see Known bounds). | This is a worklist, not noise. Triage by `asi_classification.category` and whether `hypothesis.external_dependencies_reached` looks interesting. Read `disposition.reason` for exactly what was and wasn't checked. |
-| **`VERIFIED_FALSE`** | Reserved for a future independent verifier; current scans never establish safety from a negative probe report. | — |
-| **`TOOL_FAILURE`** | The engine itself broke partway through. | This should never appear inside `plans` — a `TOOL_FAILURE` halts the whole run (nonzero exit, nothing written) rather than showing up as one finding among others. If the CLI exits nonzero with `CRITICAL_TOOL_FAILURE: ...`, that's this — read the message, it names exactly what failed (bad catalog, resolver crash, missing Node.js, etc). |
+Start the installed stdio server:
 
-**The one rule that matters most:** `UNRESOLVED_INCONCLUSIVE` is not
-"probably fine." It means exactly what it says — the tool could not
-resolve this to either confirmed-reachable or confirmed-safe. Treat the
-whole `UNRESOLVED_INCONCLUSIVE` list as the actual bug-hunting surface;
-Current diagnostic reports do not prove reachability or safety on their own.
-
-## 4. Triage order that works in practice
-
-1. Sort by `asi_classification.attack_id` — `AAC-11` (process execution)
-   findings are usually the highest-value to check by hand first.
-2. Within a category, read `hypothesis.external_dependencies_reached` —
-   a finding on a path that also reaches third-party packages is a wider
-   blast radius if it's real.
-3. For each `UNRESOLVED_INCONCLUSIVE` finding you care about, open
-   `hypothesis.source_node` (`file:line`) and manually check whether
-   user/attacker-controlled input can actually reach that call — this is
-   exactly the step the tool is explicit it does not do for you (see
-   "Guard precedes sink" in Known bounds).
-4. If you confirm a finding is real, that's your bug report:
-   `hypothesis.sink_node`, `hypothesis.symbol_binding`, and the file:line
-   are enough to point someone straight at it.
-
-## 5. As an MCP tool instead of a CLI
-
-If you're driving this from an agent rather than a terminal:
-
-```bash
+```sh
 sentinel-zero-mcp
 ```
 
-exposes `analyze_repository(repo_path, language=None, catalog_path=None)`
-returning the same ledger as a dict. Same triage rules apply — the
-agent still has to read `disposition.status` and `disposition.reason`
-per finding, the tool does not summarize "is this repo safe" for you,
-on purpose: a single boolean would hide exactly the nuance this guide
-just walked through.
+For a client that uses an `mcpServers` configuration object:
+
+```json
+{
+  "mcpServers": {
+    "sentinel-zero": {
+      "command": "/path/to/code-sentinel-venv/bin/sentinel-zero-mcp"
+    }
+  }
+}
+```
+
+On Windows, use an absolute executable path such as
+`C:/path/to/code-sentinel-venv/Scripts/sentinel-zero-mcp.exe`.
+Adapt the surrounding configuration to your client's format.
+
+The tool signature is:
+
+```python
+analyze_repository(repo_path, language=None, catalog_path=None, probe_mode="static")
+```
+
+Use an absolute target path. The tool returns the ledger dictionary;
+temporary server-side output files are removed after the request. To keep
+graph exports or Markdown reports, use the CLI. Diagnostic mode requires
+the server host's Docker setup, not merely Docker on the MCP client.
+
+## Troubleshooting
+
+| Symptom | Check |
+| --- | --- |
+| `sentinel-zero` is not found | Activate the installation environment or use its Python with `-m sentinel_zero.cli` |
+| JS/TS extractor dependencies missing | Run `sentinel-zero install-js-deps` in the same installed environment |
+| npm cannot write into the package | Reinstall into a user-owned virtual environment; avoid a protected global installation |
+| Auto-detection chooses the wrong language | Pass `--language` and scan each language separately |
+| No finding plans | Review supported sinks, file extensions, parse errors, and unresolved calls; zero plans is not a safety verdict |
+| Docker diagnostic fails | Check daemon availability, pinned images, source readability, mount paths, and the observation's detail |
+| Viewer rejects an upload | Select `graph.json`, not `verification_ledger.json`; inspect the validation message |
+| Catalog rejected | Use a valid ASI export with an `attackClasses` array and usable IDs/aliases, or omit `--catalog` for the bundled snapshot |
+
+See [analysis limits](docs/isbg-limits.md) and the
+[execution model](docs/SECURITY.md) before interpreting missing evidence.

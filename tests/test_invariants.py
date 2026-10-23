@@ -22,6 +22,20 @@ from sentinel_zero.catalog_loader import bundled_snapshot_path
 from sentinel_zero.disposition import load_catalog
 
 
+def test_mcp_scan_keeps_stdout_free_of_scan_summaries(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    from sentinel_zero.mcp_server import analyze_repository
+
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "app.py").write_text("import os\ndef run():\n    os.open('example', os.O_RDONLY)\n", encoding="utf-8")
+    ledger = analyze_repository(str(repo), language="python")
+    captured = capsys.readouterr()
+    assert captured.out == ""
+    assert "1 finding plans" in captured.err
+    assert ledger["plan_count"] == 1
+    assert ledger["probe_mode"] == "static"
+
+
 def _write_catalog(path: Path, class_ids: list[str]) -> None:
     path.write_text(
         json.dumps({"attackClasses": [{"id": cid, "name": f"Class {cid}"} for cid in class_ids]})

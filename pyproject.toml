@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "sentinel-zero"
 version = "0.12.0"
-description = "Resolved-identity call-graph security analysis for Python and JS/TS -- no text/name matching, no silent tool failure, no hardcoded attack taxonomy."
+description = "Source-code security triage for Python, JavaScript, and TypeScript."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
