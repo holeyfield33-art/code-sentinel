@@ -200,7 +200,7 @@ def cmd_install_js_deps(_args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="sentinel-zero",
-        description="Resolved-identity call-graph security analysis -- never a text/name-matching scanner.",
+        description="Source-code security triage for Python, JavaScript, and TypeScript.",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 

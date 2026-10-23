@@ -800,7 +800,8 @@ def run(
     print(
         f"{repo_root.name}: {len(graph.modules)} modules, {len(graph.functions)} functions indexed, "
         f"{unresolved_calls} unresolved call sites, {len(plans)} finding plans -> "
-        f"{out_dir / 'verification_ledger.json'} (graph: {out_dir / 'graph.json'})"
+        f"{out_dir / 'verification_ledger.json'} (graph: {out_dir / 'graph.json'})",
+        file=sys.stderr,
     )
     return 0
 
