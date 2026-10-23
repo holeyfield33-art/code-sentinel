@@ -18,6 +18,38 @@ pytestmark = pytest.mark.skipif(
 )
 
 
+def test_bodyless_class_signatures_do_not_crash_or_hide_implementations(tmp_path: Path) -> None:
+    (tmp_path / "svc.ts").write_text(
+        "import { exec } from 'child_process';\n"
+        "declare class Ambient { constructor(x: string); run(x: string): void; }\n"
+        "class Worker {\n"
+        "  constructor(x: string);\n"
+        "  constructor(x: string) {}\n"
+        "  run(x: string): void;\n"
+        "  run(x: string): void { exec(x); }\n"
+        "}\n",
+        encoding="utf-8",
+    )
+    graph = build_project_graph(tmp_path)
+    assert graph.parse_errors == []
+    assert "svc.Ambient.run" not in graph.functions
+    assert "svc.Ambient.constructor" not in graph.functions
+    assert "svc.Worker.run" in graph.functions
+    calls = [call for call in graph.all_calls() if call.target == Symbol("child_process.exec")]
+    assert len(calls) == 1
+    assert calls[0].caller == "svc.Worker.run"
+    assert calls[0].arg_taint == ("parameter",)
+
+
+def test_node_graph_json_uses_utf8_for_unicode_source_paths(tmp_path: Path) -> None:
+    source = tmp_path / "\u010d.ts"
+    source.write_text("import { exec } from 'child_process';\nfunction run() { exec('example'); }\n", encoding="utf-8")
+    graph = build_project_graph(tmp_path)
+    assert graph.parse_errors == []
+    assert any(module.file_path == str(source) for module in graph.modules.values())
+    assert any(call.target == Symbol("child_process.exec") for call in graph.all_calls())
+
+
 def test_type_annotations_and_interfaces_are_ignored_not_fatal():
     """Interfaces, type annotations and a typed param must not change what
     gets indexed -- confirmed as the real pre-Milestone-10 failure mode:
@@ -144,7 +176,7 @@ def test_parameter_property_mixed_with_plain_param_keeps_correct_index():
         assert wrapper.dispatch_is_guarded
 
 
-def test_tsx_file_not_collected_known_bound():
+def test_tsx_file_is_collected():
     """.tsx is explicitly out of scope for this milestone (JSX-in-TS is a
     separate parser mode) -- a .tsx file must be silently skipped, not
     attempted and reported as a parse error."""
@@ -155,7 +187,7 @@ def test_tsx_file_not_collected_known_bound():
         graph = build_project_graph(root)
         assert graph.parse_errors == []
         assert "plain.ok" in graph.functions
-        assert not any(m.startswith("component") for m in graph.functions)
+        assert "component.App" in graph.functions
 
 
 def test_dts_declaration_file_not_collected():

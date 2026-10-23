@@ -60,20 +60,70 @@
 const fs = require('fs');
 const path = require('path');
 const acorn = require('acorn');
+const JsParser = acorn.Parser.extend(require('acorn-jsx')());
 const tsEstree = require('@typescript-eslint/typescript-estree');
 
-const SKIP_DIR_NAMES = new Set(['node_modules', '.git', 'dist', 'build', '.next', 'coverage', '__pycache__']);
+const SKIP_DIR_NAMES = new Set(['node_modules', '.git', '.next', '__pycache__', '.venv', 'venv', '.tox', '.mypy_cache', '.pytest_cache']);
+const coverage = { collected_files: 0, parsed_files: 0, skipped_directories: [], excluded_declarations: [], unsupported_files: [], warnings: [] };
+const moduleIds = new Map();
+const exportAliases = new Map();
+const localModuleIds = new Set();
 
-// Milestone 10: TypeScript support, bounded to plain .ts only -- NOT .tsx.
-// JSX inside a .tsx file is a real, separate parser mode and out of scope
-// for this pass; a .tsx file is simply not collected (same "don't guess"
-// bound as the original JS-only scope). .d.ts is also excluded: a type-only
-// declaration file has no runtime code, so collecting it would only ever
-// add TSInterfaceDeclaration/TSTypeAliasDeclaration noise our walkers
-// already ignore -- never a real function, class or call.
+function resolveExportAlias(name, seen = new Set()) {
+  if (seen.has(name)) return name;
+  let prefix = name;
+  while (prefix) {
+    if (exportAliases.has(prefix)) {
+      seen.add(name);
+      return resolveExportAlias(exportAliases.get(prefix) + name.slice(prefix.length), seen);
+    }
+    const dot = prefix.lastIndexOf('.');
+    prefix = dot < 0 ? '' : prefix.slice(0,dot);
+  }
+  return name;
+}
+
+function normalizeExports(program, modQ, filePath, root) {
+  const body = [];
+  for (const stmt of program.body) {
+    if (stmt.type !== 'ExportNamedDeclaration' && stmt.type !== 'ExportDefaultDeclaration' && stmt.type !== 'ExportAllDeclaration') {
+      body.push(stmt);
+      continue;
+    }
+    if (stmt.type === 'ExportAllDeclaration') {
+      coverage.warnings.push({kind:'export_star_unresolved',path:filePath,line:stmt.loc.start.line,detail:'Star re-exports are not expanded; inspect imported symbol resolution.'});
+      continue;
+    }
+    if (stmt.declaration) {
+      let declaration = stmt.declaration;
+      if (stmt.type === 'ExportDefaultDeclaration') {
+        if (declaration.type === 'FunctionDeclaration' || declaration.type === 'ClassDeclaration') {
+          if (!declaration.id) declaration.id = {type:'Identifier',name:'__default__',loc:declaration.loc};
+          exportAliases.set(`${modQ}.default`, `${modQ}.${declaration.id.name}`);
+        } else if (declaration.type === 'Identifier') {
+          exportAliases.set(`${modQ}.default`,`${modQ}.${declaration.name}`);
+          continue;
+        } else {
+          declaration = {type:'VariableDeclaration',kind:'const',loc:declaration.loc,declarations:[{type:'VariableDeclarator',id:{type:'Identifier',name:'__default__'},init:declaration}]};
+          exportAliases.set(`${modQ}.default`,`${modQ}.__default__`);
+        }
+      }
+      body.push(declaration);
+    }
+    for (const spec of stmt.specifiers || []) {
+      const source = stmt.source ? resolveRequireSpecifier(stmt.source.value,filePath,root) : modQ;
+      if (source) exportAliases.set(`${modQ}.${spec.exported.name || spec.exported.value}`, `${source}.${spec.local.name || spec.local.value}`);
+    }
+  }
+  program.body = body;
+}
+
+// TypeScript source uses ESTree; TSX enables JSX mode explicitly.
+// JSX in JavaScript is parsed by the Acorn JSX plugin.
+// Declaration-only files have no executable body and are recorded as exclusions.
 function isCollectableFile(name) {
-  if (name.endsWith('.d.ts')) return false;
-  return /\.(js|mjs|cjs|ts)$/.test(name);
+  if (/\.d\.(ts|mts|cts)$/.test(name)) return false;
+  return /\.(js|mjs|cjs|ts|tsx|jsx|mts|cts)$/.test(name);
 }
 
 function findJsFiles(root) {
@@ -83,14 +133,22 @@ function findJsFiles(root) {
     try {
       entries = fs.readdirSync(dir, { withFileTypes: true });
     } catch (e) {
-      return; // unreadable dir (permissions, broken symlink) -- skipped, not fatal to the whole scan
+      coverage.warnings.push({ kind: 'unreadable_directory', path: dir, detail: String(e.message) });
+      return;
     }
     for (const entry of entries) {
       if (entry.isDirectory()) {
-        if (SKIP_DIR_NAMES.has(entry.name)) continue;
+        if (SKIP_DIR_NAMES.has(entry.name)) {
+          coverage.skipped_directories.push(path.join(dir, entry.name));
+          continue;
+        }
         walk(path.join(dir, entry.name));
       } else if (isCollectableFile(entry.name)) {
         out.push(path.join(dir, entry.name));
+      } else if (/\.d\.(ts|mts|cts)$/.test(entry.name)) {
+        coverage.excluded_declarations.push(path.join(dir, entry.name));
+      } else if (/\.(py|rs|go|java|rb|php|c|cc|cpp|h|cs|vue|svelte|mdx)$/.test(entry.name)) {
+        coverage.unsupported_files.push(path.join(dir, entry.name));
       }
     }
   }
@@ -99,7 +157,12 @@ function findJsFiles(root) {
 }
 
 function moduleQualname(filePath, root) {
-  const rel = path.relative(root, filePath).replace(/\.(js|mjs|cjs|ts)$/, '');
+  if (moduleIds.has(path.resolve(filePath))) return moduleIds.get(path.resolve(filePath));
+  return legacyModuleQualname(filePath, root);
+}
+
+function legacyModuleQualname(filePath, root) {
+  const rel = path.relative(root, filePath).replace(/\.(js|mjs|cjs|ts|tsx|jsx|mts|cts)$/, '');
   let parts = rel.split(path.sep);
   if (parts[parts.length - 1] === 'index') parts = parts.slice(0, -1);
   return parts.length ? parts.join('.') : path.basename(filePath);
@@ -112,6 +175,8 @@ function moduleQualname(filePath, root) {
 // key 'guard.requireRole'). A bare specifier ('child_process', 'lodash')
 // is an external package -- returned unchanged, not resolved to a file.
 function resolveRequireSpecifier(specifier, currentFilePath, root) {
+  // Node's explicit builtin scheme and bare builtin have one sink identity.
+  if (specifier.startsWith('node:') && require('module').isBuiltin(specifier)) return specifier.slice(5);
   if (!specifier.startsWith('.') && !specifier.startsWith('/')) {
     return specifier;
   }
@@ -120,20 +185,32 @@ function resolveRequireSpecifier(specifier, currentFilePath, root) {
   const candidates = [
     resolved,
     `${resolved}.ts`,
+    `${resolved}.tsx`,
+    `${resolved}.jsx`,
+    `${resolved}.mts`,
+    `${resolved}.cts`,
     `${resolved}.js`,
     `${resolved}.cjs`,
     `${resolved}.mjs`,
+    ...(/\.(js|jsx|mjs|cjs)$/.test(resolved) ? [resolved.replace(/\.(js|jsx|mjs|cjs)$/,'.ts'), resolved.replace(/\.(js|jsx|mjs|cjs)$/,'.tsx'), resolved.replace(/\.mjs$/,'.mts'), resolved.replace(/\.cjs$/,'.cts')] : []),
     path.join(resolved, 'index.ts'),
+    path.join(resolved, 'index.tsx'),
+    path.join(resolved, 'index.jsx'),
+    path.join(resolved, 'index.mjs'),
+    path.join(resolved, 'index.cjs'),
+    path.join(resolved, 'index.mts'),
+    path.join(resolved, 'index.cts'),
     path.join(resolved, 'index.js'),
   ];
   for (const candidate of candidates) {
     try {
-      if (fs.statSync(candidate).isFile()) return moduleQualname(candidate, root);
+      if (fs.statSync(candidate).isFile() && moduleIds.has(path.resolve(candidate))) return moduleQualname(candidate, root);
     } catch (e) {
       // doesn't exist at this candidate path -- try the next one
     }
   }
-  return null; // can't resolve to a real file -- binding left unmade, not guessed at
+  coverage.warnings.push({kind:'unresolved_local_import',path:currentFilePath,specifier,detail:'No collected source file resolved this local import.'});
+  return null;
 }
 
 function collectBindings(programBody, currentFilePath, root) {
@@ -143,7 +220,9 @@ function collectBindings(programBody, currentFilePath, root) {
       const source = resolveRequireSpecifier(stmt.source.value, currentFilePath, root);
       if (source === null) continue;
       for (const spec of stmt.specifiers) {
-        if (spec.type === 'ImportDefaultSpecifier' || spec.type === 'ImportNamespaceSpecifier') {
+        if (spec.type === 'ImportDefaultSpecifier' && localModuleIds.has(source)) {
+          bindings[spec.local.name] = `${source}.default`;
+        } else if (spec.type === 'ImportDefaultSpecifier' || spec.type === 'ImportNamespaceSpecifier') {
           bindings[spec.local.name] = source;
         } else if (spec.type === 'ImportSpecifier') {
           bindings[spec.local.name] = `${source}.${spec.imported.name}`;
@@ -580,14 +659,14 @@ function parseFile(filePath) {
   } catch (e) {
     return { error: `could not read file: ${e.message}` };
   }
-  const isTs = filePath.endsWith('.ts');
+  const isTs = /\.(ts|tsx|mts|cts)$/.test(filePath);
   try {
     let program;
     if (isTs) {
-      program = tsEstree.parse(source, { loc: true, range: true, jsx: false, errorOnUnknownASTType: false });
+      program = tsEstree.parse(source, { loc: true, range: true, jsx: filePath.endsWith('.tsx'), errorOnUnknownASTType: false });
       backfillRanges(program);
     } else {
-      program = acorn.parse(source, {
+      program = JsParser.parse(source, {
         ecmaVersion: 'latest',
         sourceType: 'module',
         locations: true,
@@ -649,6 +728,8 @@ function indexFile(program, filePath, modQ) {
     const otherMethods = [];
     for (const member of classNode.body.body) {
       if (member.type !== 'MethodDefinition' || member.key.type !== 'Identifier' || member.computed) continue;
+      // TypeScript overload/ambient signatures have no executable body.
+      if (!member.value.body) continue;
       if (member.kind === 'constructor') {
         ctorNode = member.value;
         const ctorQualname = `${classQualname}.constructor`;
@@ -797,7 +878,7 @@ function walkCalls(
         const qualifiedIsKnown =
           Object.prototype.hasOwnProperty.call(projectFunctions, qualified) ||
           Object.prototype.hasOwnProperty.call(projectWrapperClasses, qualified);
-        const resolvedName = qualifiedIsKnown ? qualified : dotted;
+        const resolvedName = resolveExportAlias(qualifiedIsKnown ? qualified : dotted);
         target = { kind: 'symbol', qualified_name: resolvedName };
         if (resolvedName.includes('.')) {
           const topLevel = resolvedName.split('.')[0];
@@ -978,7 +1059,7 @@ function walkCalls(
       if (member.kind !== 'constructor' && member.kind !== 'method') continue; // getters/setters/static out of scope for v0
       const methodName = member.kind === 'constructor' ? 'constructor' : member.key.name;
       const methodQualname = `${classQualname}.${methodName}`;
-      if (member.value.body.type !== 'BlockStatement') continue;
+      if (!member.value.body || member.value.body.type !== 'BlockStatement') continue;
       inlineExclude.add(member.value);
       bindings = Object.assign({}, fileBindings, { this: classQualname });
       const methodParamNames = paramNamesFromFnNode(member.value);
@@ -1012,6 +1093,21 @@ function main() {
     return;
   }
   const files = findJsFiles(root);
+  coverage.collected_files = files.length;
+  const groups = new Map();
+  for (const file of files) {
+    const legacy = legacyModuleQualname(file,root);
+    if (!groups.has(legacy)) groups.set(legacy,[]);
+    groups.get(legacy).push(file);
+  }
+  for (const [legacy,members] of groups) {
+    if (members.length>1) coverage.warnings.push({kind:'module_identity_disambiguated',legacy_id:legacy,files:members,detail:'Each file has a distinct identity; legacy IDs changed for this collision group.'});
+    for (const file of members) {
+      const id = members.length>1 ? `file://${encodeURIComponent(path.relative(root,file).split(path.sep).join('/'))}` : legacy;
+      moduleIds.set(path.resolve(file),id);
+      localModuleIds.add(id);
+    }
+  }
   const projectTopLevelNames = new Set(files.map((f) => moduleQualname(f, root).split('.')[0]));
   const builtinModules = new Set(require('module').builtinModules);
 
@@ -1029,9 +1125,13 @@ function main() {
       continue;
     }
     const modQ = moduleQualname(filePath, root);
+    normalizeExports(result.program,modQ,filePath,root);
     const bindings = collectBindings(result.program.body, filePath, root);
     parsed.push({ filePath, modQ, program: result.program, source: result.source, bindings });
   }
+  coverage.parsed_files = parsed.length;
+  if (errors.length) coverage.warnings.push({kind:'parse_failures',count:errors.length,detail:'These files were collected but not analyzed.'});
+  if (coverage.unsupported_files.length) coverage.warnings.push({kind:'unsupported_languages',count:coverage.unsupported_files.length,detail:'Other source languages require a separate resolver or tool.'});
 
   // Pass 1: index every function/class across the WHOLE project before
   // resolving a single call -- see walkCalls's docstring for exactly why
@@ -1055,12 +1155,13 @@ function main() {
       projectTopLevelNames,
       builtinModules
     );
+    if (Object.prototype.hasOwnProperty.call(modules,modQ)) throw new Error(`duplicate module identity: ${modQ}`);
     modules[modQ] = { file_path: filePath, calls: walked.calls };
     externalReferences.push(...walked.external_references);
   }
 
   process.stdout.write(
-    JSON.stringify({ modules, functions, wrapper_classes: wrapperClasses, errors, external_references: externalReferences })
+    JSON.stringify({ modules, functions, wrapper_classes: wrapperClasses, errors, external_references: externalReferences, coverage })
   );
 }
 

@@ -53,24 +53,27 @@ def _validate_source_links(root: Path) -> None:
     with analysis itself, the host filesystem must not be adversarially
     mutated while the scan is running; this is not a filesystem snapshot.
     """
-    def unreadable(exc):
-        raise ValueError(f"cannot inspect diagnostic source tree: {exc}") from exc
-
-    for directory, dirs, files in os.walk(root, followlinks=False, onerror=unreadable):
-        linked_dirs = set()
-        for name in dirs + files:
-            path = Path(directory) / name
-            try:
-                linked = path.is_symlink() or bool(getattr(path.lstat(), "st_file_attributes", 0) & 0x400)
-                if linked:
-                    path.resolve(strict=True).relative_to(root)
-                    linked_dirs.add(name)
-            except (OSError, RuntimeError, ValueError) as exc:
-                raise ValueError(f"diagnostic source has an escaping or unreadable link: {path}") from exc
-        # Windows junctions may be traversed by os.walk even when ordinary
-        # symlink following is disabled. Their real in-tree target is
-        # visited through its canonical path instead.
-        dirs[:] = [name for name in dirs if name not in linked_dirs]
+    pending = [root]
+    while pending:
+        directory = pending.pop()
+        try:
+            # DirEntry caches Windows enumeration metadata. Path.is_symlink
+            # followed by Path.lstat otherwise repeats expensive host calls
+            # for every file on every probe of a large mounted checkout.
+            with os.scandir(directory) as entries:
+                for entry in entries:
+                    path = Path(entry.path)
+                    try:
+                        metadata = entry.stat(follow_symlinks=False)
+                        linked = entry.is_symlink() or bool(getattr(metadata, "st_file_attributes", 0) & 0x400)
+                        if linked:
+                            path.resolve(strict=True).relative_to(root)
+                        elif entry.is_dir(follow_symlinks=False):
+                            pending.append(path)
+                    except (OSError, RuntimeError, ValueError) as exc:
+                        raise ValueError(f"diagnostic source has an escaping or unreadable link: {path}") from exc
+        except OSError as exc:
+            raise ValueError(f"cannot inspect diagnostic source tree: {exc}") from exc
 
 
 def docker_available() -> tuple[bool, str]:

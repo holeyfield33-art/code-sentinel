@@ -186,6 +186,7 @@ class ProjectGraph:
     wrap_constructions: list[WrapConstruction] = field(default_factory=list)
     external_references: list[ExternalReference] = field(default_factory=list)
     parse_errors: list[dict] = field(default_factory=list)
+    coverage: dict = field(default_factory=dict)
     # A file this resolver's language parser could not handle at all (real
     # syntax it doesn't support, a decode error, ...). Language-agnostic by
     # design, like every other field here: any resolver can hit a file it

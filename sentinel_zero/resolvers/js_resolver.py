@@ -20,8 +20,8 @@ wrapper-middleware detection (graph.wrapper_classes) and switched to a
 real project-wide two-pass (index everything, then resolve calls) --
 graph.wrap_constructions is populated via callgraph.find_wrap_constructions,
 the same shared, language-agnostic helper python_resolver.py now calls too.
-Milestone 10 added TypeScript support, bounded to plain .ts (NOT .tsx --
-JSX-in-TS is a separate parser mode, out of scope). Dogfooded against
+Milestone 10 originally added plain .ts support. The resolver now also
+collects TSX, JSX, MTS and CTS, with explicit coverage accounting. Dogfooded against
 Vercel's own CLI (vercel/vercel, packages/cli): 2194 modules / 2034
 functions indexed from real TS source, versus 209 modules of mostly dev-
 server test fixtures before this milestone, when every real .ts file in
@@ -92,6 +92,7 @@ def build_project_graph(repo_root: Path) -> ProjectGraph:
             ["node", str(_EXTRACT_SCRIPT), str(repo_root)],
             capture_output=True,
             text=True,
+            encoding="utf-8",
             timeout=EXTRACT_TIMEOUT_SECONDS,
         )
     except subprocess.TimeoutExpired as exc:
@@ -165,6 +166,7 @@ def build_project_graph(repo_root: Path) -> ProjectGraph:
     # a per-item gap does not" split dogfood_scan.py already draws for
     # Python's unresolved call sites.
     graph.parse_errors = data.get("errors", [])
+    graph.coverage = data.get("coverage", {})
     return graph
 
 
