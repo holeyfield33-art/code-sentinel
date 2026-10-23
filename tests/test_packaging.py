@@ -40,7 +40,7 @@ def _load_pyproject() -> dict:
     try:
         import tomllib
     except ModuleNotFoundError:  # pragma: no cover -- py<3.11 fallback
-        import tomli as tomllib  # type: ignore[no-redef]
+        import tomli as tomllib
     with open(REPO_ROOT / "pyproject.toml", "rb") as f:
         return tomllib.load(f)
 

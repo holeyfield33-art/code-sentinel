@@ -17,7 +17,6 @@ client config), or `python -m sentinel_zero.mcp_server`.
 from __future__ import annotations
 
 import json
-import sys
 import tempfile
 from pathlib import Path
 from typing import Any
@@ -107,4 +106,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()

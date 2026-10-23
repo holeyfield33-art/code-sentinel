@@ -127,20 +127,23 @@ def export_graph(graph: ProjectGraph, plans: list[dict[str, Any]], repo_name: st
 
     for module in graph.modules.values():
         for call in module.calls:
-            resolved = isinstance(call.target, Symbol)
-            target_name = call.target.qualified_name if resolved else None
-            matching_plans = (
-                plans_by_call_site.get((module.file_path, call.lineno, target_name), [])
-                if resolved
-                else []
-            )
+            target_name: str | None
+            unresolved_reason: str | None
+            if isinstance(call.target, Symbol):
+                target_name = call.target.qualified_name
+                unresolved_reason = None
+                matching_plans = plans_by_call_site.get((module.file_path, call.lineno, target_name), [])
+            else:
+                target_name = None
+                unresolved_reason = call.target.reason
+                matching_plans = []
             edges.append(
                 {
                     "source": call.caller or module.module_qualname,
                     "target": target_name,
                     "kind": "calls",
-                    "resolved": resolved,
-                    "unresolved_reason": None if resolved else call.target.reason,
+                    "resolved": isinstance(call.target, Symbol),
+                    "unresolved_reason": unresolved_reason,
                     "lineno": call.lineno,
                     "finding_plan_ids": [p["plan_id"] for p in matching_plans],
                     "finding_uids": [p.get("finding_uid") for p in matching_plans if p.get("finding_uid")],

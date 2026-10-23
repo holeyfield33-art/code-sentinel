@@ -30,7 +30,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: python -m pip install -e . pytest build tomli
+      - run: python -m pip install -e ".[dev]" build tomli
+      - name: Pinned mypy, including unannotated test bodies
+        run: python -m mypy --ignore-missing-imports --no-error-summary sentinel_zero tests
       - run: npm --prefix sentinel_zero/resolvers/js ci
       - name: Require real Docker and pinned runtime images
         run: |
@@ -65,13 +67,16 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: python -m pip install -e . pytest
+      - run: python -m pip install -e ".[dev]"
       - run: npm --prefix sentinel_zero/resolvers/js ci
       - name: Real Node parser regressions
         run: python -m pytest tests/test_js_resolver.py tests/test_ts_resolver.py tests/test_js_argument_taint.py tests/test_js_inline_callback_visibility.py -q -ra
       - run: npm --prefix viewer ci
       - run: npm --prefix viewer test
       - run: npm --prefix viewer run build
+      - run: node viewer/node_modules/@playwright/test/cli.js install --with-deps chromium
+      - name: Built viewer in real Chromium
+        run: npm --prefix viewer run test:e2e
 
   wheel:
     name: Clean wheel / ${{ matrix.os }}
@@ -116,7 +121,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: python -m pip install -e . pytest build
+      - run: python -m pip install -e ".[dev]" build
       - run: npm --prefix sentinel_zero/resolvers/js ci
       - run: docker info
       - run: python -c "import subprocess; from sentinel_zero.probes.container_runner import IMAGES; [subprocess.run(['docker','pull',image],check=True) for image in IMAGES.values()]"

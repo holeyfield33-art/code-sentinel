@@ -89,7 +89,9 @@ def test_public_cli_docker_outcome(tmp_path, language):
     available, detail = runner.docker_available()
     if not available:
         pytest.skip(detail)
-    image = subprocess.run([runner._docker_executable(), "image", "inspect", runner.IMAGES[language]],
+    executable = runner._docker_executable()
+    assert executable is not None
+    image = subprocess.run([executable, "image", "inspect", runner.IMAGES[language]],
                            capture_output=True, timeout=15)
     if image.returncode:
         pytest.skip("pinned runtime image must already be installed")
