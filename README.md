@@ -329,6 +329,13 @@ filter/diff tests (`viewer/` has its own test runner; see
 
 ### Continuous integration
 
+Install development tools with `python -m pip install -e ".[dev]"`.
+The development extra pins pytest and mypy. Run
+`python -m mypy --ignore-missing-imports --no-error-summary sentinel_zero tests`;
+`pyproject.toml` targets Python 3.10 and checks unannotated function bodies
+as well, including tests. Intentional worker monkeypatches use `setattr`
+to replace class attributes with diagnostic recorder callables.
+
 `.github/workflows/ci.yml` runs the full Python suite on Python 3.10,
 3.12, and 3.14 with real Linux Docker workers and explicitly pulled,
 pinned runtime images. It also runs the Node parser regressions, viewer

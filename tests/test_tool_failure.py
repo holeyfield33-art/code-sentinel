@@ -34,6 +34,34 @@ def _write_catalog(path: Path) -> None:
     )
 
 
+@pytest.mark.parametrize("document", [
+    None, [], {}, {"attackClasses": None}, {"attackClasses": [None]},
+    {"attackClasses": [{"id": 42}]},
+    {"attackClasses": [{"id": "AAC-11", "aliases": "alias"}]},
+    {"attackClasses": [{"id": "AAC-11", "aliases": [None]}]},
+    {"attackClasses": [{"id": "AAC-11", "legacyId": []}]},
+    {"attackClasses": [], "catalog": []},
+])
+def test_malformed_catalog_shape_is_a_tool_failure(tmp_path, document):
+    path = tmp_path / "catalog.json"
+    path.write_text(json.dumps(document), encoding="utf-8")
+    with pytest.raises(ToolFailure, match="usable ASI catalog"):
+        load_catalog(str(path))
+
+
+def test_typed_catalog_keeps_aliases_metadata_and_extension_fields(tmp_path):
+    from sentinel_zero.catalog_loader import load_asi_catalog
+    path = tmp_path / "catalog.json"
+    document = {"attackClasses": [{"id": "AAC-11", "name": "Example", "aliases": ["old"],
+                                    "legacyId": "legacy", "extension": {"value": 1}}],
+                "catalog": {"version": "test"}, "extension": ["retained"]}
+    path.write_text(json.dumps(document), encoding="utf-8")
+    assert load_asi_catalog(str(path)) == document
+    catalog = load_catalog(str(path))
+    assert catalog.resolve("old") == catalog.resolve("legacy") == catalog.resolve("AAC-11")
+    assert catalog.meta == {"version": "test"}
+
+
 def test_load_catalog_raises_tool_failure_on_missing_file():
     with pytest.raises(ToolFailure):
         load_catalog("/tmp/this-catalog-path-does-not-exist-sz-test.json")
@@ -184,6 +212,14 @@ def test_write_or_fail_cleanly_does_not_mislabel_a_non_size_valueerror_as_too_bi
         assert "not inside" in message
         assert "too large" not in message
         assert "discarded" not in message
+
+
+def test_write_or_fail_cleanly_reports_invalid_unicode_without_reencoding(tmp_path):
+    from sentinel_zero.dogfood_scan import write_or_fail_cleanly
+    with pytest.raises(ToolFailure, match="not valid UTF-8") as failure:
+        write_or_fail_cleanly(str(tmp_path), "x", "\ud800", 10, what="test")
+    assert isinstance(failure.value.__cause__, UnicodeEncodeError)
+    assert not (tmp_path / "x").exists()
 
 
 def test_write_or_fail_cleanly_still_writes_normally_sized_output():

@@ -193,7 +193,9 @@ def _patch_sinks() -> None:
     subprocess.call = _recorder("subprocess.call")
     subprocess.check_call = _recorder("subprocess.check_call")
     subprocess.check_output = _recorder("subprocess.check_output")
-    subprocess.Popen = _recorder("subprocess.Popen")
+    # These class attributes intentionally become recorder callables in
+    # the diagnostic worker; they are not assignments to Python types.
+    setattr(subprocess, "Popen", _recorder("subprocess.Popen"))
 
     builtins.open = _recorder("builtins.open")
     os.open = _recorder("os.open")
@@ -210,7 +212,7 @@ def _patch_sinks() -> None:
     # interpreter startup but are two independent, independently-patchable
     # names). Both are patched here too, confirmed safe the same way
     # (see tests/test_probe_verification_hardening.py).
-    io.FileIO = _recorder("io.FileIO")
+    setattr(io, "FileIO", _recorder("io.FileIO"))
     io.open = _recorder("io.open")
 
     json_module.load = _recorder("json.load")

@@ -180,12 +180,13 @@ def write_or_fail_cleanly(root: str, relative: str, text: str, max_bytes: int, *
     discarded", which would be a flatly wrong, misleading message for
     either of those other cases -- worse than the traceback it replaced
     for exactly the cases it wasn't written for, since it actively lies
-    about why the write failed. Fixed by independently recomputing
-    whether `text` is actually over `max_bytes` before choosing which
-    message to raise, rather than assuming every ValueError here is the
-    size refusal."""
+    about why the write failed. Encoding failures are handled separately.
+    For other ValueErrors, the wrapper checks whether `text` is actually
+    over `max_bytes` before choosing the size-refusal message."""
     try:
         safe_write_text(root, relative, text, max_bytes)
+    except UnicodeEncodeError as exc:
+        raise ToolFailure(f"could not write {what} to {relative}: text is not valid UTF-8: {exc}") from exc
     except ValueError as exc:
         if len(text.encode("utf-8")) > max_bytes:
             raise ToolFailure(
@@ -681,9 +682,9 @@ def find_finding_plans(
                     and call.target.qualified_name != "fs.readFileSync"
                     and caller
                 ):
-                    fn_name = _js_top_level_function_name(module.module_qualname, caller)
-                    if fn_name:
-                        probe_result = run_js_sink_reachability_probe(module.file_path, fn_name, repo_root=repo_root)
+                    js_fn_name = _js_top_level_function_name(module.module_qualname, caller)
+                    if js_fn_name:
+                        probe_result = run_js_sink_reachability_probe(module.file_path, js_fn_name, repo_root=repo_root)
                         _record_probe_diagnostic(plan, probe_result, call, caller, "with zero arguments")
                 plans.append(plan)
     return plans
@@ -748,6 +749,7 @@ def run(
         1 for c in graph.all_calls() if not isinstance(c.target, Symbol)
     )
 
+    serialized_plans = [p.as_dict() for p in plans]
     ledger = {
         "target_repository": repo_root.name,
         "probe_mode": probe_mode,
@@ -755,7 +757,7 @@ def run(
         "functions_indexed": len(graph.functions),
         "unresolved_call_sites": unresolved_calls,
         "plan_count": len(plans),
-        "plans": [p.as_dict() for p in plans],
+        "plans": serialized_plans,
         "wrapper_middleware_detected": [
             {
                 "class": w.qualified_name,
@@ -789,7 +791,7 @@ def run(
     # so this can never disagree with the ledger for the same finding. See
     # graph_export.py for why this exists (nothing a future 3D view or a
     # Code Atlas adapter needs survives past this function otherwise).
-    graph_doc = export_graph(graph, ledger["plans"], repo_root.name)
+    graph_doc = export_graph(graph, serialized_plans, repo_root.name)
     write_or_fail_cleanly(
         str(out_dir), "graph.json", json.dumps(graph_doc, indent=2), 20_000_000,
         what="the call graph",

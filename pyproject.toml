@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=7"]
+dev = ["pytest==9.1.1", "mypy==2.4.0"]
 
 [project.scripts]
 sentinel-zero = "sentinel_zero.cli:main"
@@ -36,3 +36,10 @@ sentinel_zero = [
 markers = [
     "docker_integration: executes a real Docker diagnostic backend; flag and mock tests are not integration",
 ]
+
+[tool.mypy]
+python_version = "3.10"
+files = ["sentinel_zero", "tests"]
+ignore_missing_imports = true
+check_untyped_defs = true
+warn_unused_ignores = true

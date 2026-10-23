@@ -76,16 +76,25 @@ not an oversight.
 
 ## Testing it
 
+The viewer pins Vite 7.3.7 on the [maintained 7.3 release line](https://vite.dev/releases).
+It requires Node.js 20.19+ in the 20.x line, or 22.12+. Three.js is
+unchanged by this tooling upgrade. Use the checked-in lockfile with
+`npm ci` for reproducible dev dependencies.
+
 ```bash
 npm test     # node's built-in test runner, test/*.test.js — pure-function
              # unit tests for graphLoader.js and diff.js, no browser needed
-npm run build && npm run preview
-             # then drive it with a headless browser for an end-to-end
-             # check; this project's own dogfooding runs used Playwright
-             # against the built `vite preview` output, asserting on
-             # window.__sentinelZeroViewer.scene's live state (node
-             # counts, diff classifications) rather than just screenshots
+npm run build
+npx playwright install chromium
+npm run test:e2e
+             # starts the built preview on loopback and drives Chromium:
+             # actual WebGL rendering, file upload, search/caller context,
+             # isolate/reset, click inspection, baseline diff, bad-input refusal
 ```
+
+The browser tests use one worker, no retries, and a fresh preview server.
+Their output goes to the OS temporary directory. CI runs these checks on
+Windows and Linux; Linux browser setup uses Playwright's `--with-deps`.
 
 ## Status
 
