@@ -9,11 +9,13 @@ behavior can produce unresolved calls or no matching finding plans.
 | Resolver | Collected files | Parser |
 | --- | --- | --- |
 | Python | `.py` | The scan interpreter's `ast` module |
-| JavaScript/TypeScript | `.js`, `.mjs`, `.cjs`, `.ts` | Acorn and TypeScript ESTree through the shipped Node extractor |
+| JavaScript/TypeScript | `.js`, `.mjs`, `.cjs`, `.jsx`, `.ts`, `.tsx`, `.mts`, `.cts` | Acorn with JSX and TypeScript ESTree through the shipped Node extractor |
 
-JSX/TSX files are not collected. A run selects one resolver; auto-detection
-is a source-file count, not mixed-language analysis. Dependency/build
-directories are skipped according to resolver-specific lists. Tests are
+JSX/TSX files are collected. A run selects one resolver; auto-detection
+is a source-file count, not mixed-language analysis. Dependency and cache
+directories are skipped according to resolver-specific lists. JS/TS source
+under `build`, `dist` and `coverage` is included. Declaration-only `.d.ts`,
+`.d.mts` and `.d.cts` files are recorded as excluded. Tests are
 not universally excluded. Python grammar support follows the interpreter
 used for the scan, so newer target syntax can produce parse errors on an
 older scan interpreter.
@@ -22,6 +24,16 @@ Per-file parse failures are retained in `parse_errors`; they do not
 necessarily stop analysis of other files. Unresolved calls remain graph
 edges, but only supported resolved sinks generate plans. Always inspect
 both coverage indicators before interpreting a zero-plan result.
+
+JS/TS `coverage` records collected/parsed counts, skipped directories,
+excluded declarations and recognized unsupported source extensions.
+Warnings expose parse failures, unreadable directories, unresolved local
+imports, star re-exports and module-name collisions. This is an inventory
+of recognized source types, not a claim to classify every possible file.
+Named/default declarations and named re-exports are modeled; star
+re-exports, TypeScript path aliases and package export maps are not complete.
+Colliding legacy dotted module names receive distinct encoded file identities;
+adding a collision can change identifiers used in graph comparisons.
 
 ## Supported sink families
 

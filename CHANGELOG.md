@@ -23,6 +23,14 @@ and historical version tags are not inferred from development commits.
 
 ### Analysis
 
+- Recover named/default exported JavaScript and TypeScript declarations,
+  named re-exports, JSX/TSX and `.mts`/`.cts` source. Include genuine source
+  directories named `build`, `dist` and `coverage`.
+- Preserve colliding module identities instead of overwriting files;
+  normalize Node builtin `node:` imports to the supported sink identities.
+- Expose collection, parsing, exclusions, unsupported source files and
+  resolution warnings in the ledger, graph export and Markdown report.
+  Star re-exports remain explicitly unsupported.
 - Index nested Python functions and pre-bind siblings across a lexical
   scope, including forward references, while respecting modeled shadowing.
 - Record supported inline JavaScript/TypeScript callback scopes.

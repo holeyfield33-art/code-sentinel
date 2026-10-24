@@ -743,6 +743,8 @@ def run(
         raise ToolFailure(f"ISBG resolver failed on {repo_root}: {exc}") from exc
 
     plan_counter = [0]
+    for warning in graph.coverage.get("warnings", []):
+        print(f"COVERAGE_WARNING: {warning.get('kind')}: {warning.get('detail', '')}", file=sys.stderr)
     plans = find_finding_plans(graph, repo_root.name, catalog, plan_counter, repo_root, language, probe_mode=probe_mode)
 
     unresolved_calls = sum(
@@ -775,6 +777,7 @@ def run(
         ],
         "external_dependencies": _dependency_summary(graph),
         "parse_errors": graph.parse_errors,
+        "coverage": graph.coverage,
         "catalog": {
             "path": catalog.source_path,
             "is_bundled_snapshot": catalog.is_bundled_snapshot,

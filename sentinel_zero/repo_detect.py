@@ -12,12 +12,12 @@ from sentinel_zero.disposition import ToolFailure
 
 LANGUAGE_EXTENSIONS = {
     "python": {".py"},
-    "javascript": {".js", ".mjs", ".cjs", ".ts"},
+    "javascript": {".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx", ".mts", ".cts"},
 }
 
 _SKIP_DIR_NAMES = {
     ".git", "node_modules", "__pycache__", ".venv", "venv", ".tox",
-    "dist", "build", ".mypy_cache", ".pytest_cache",
+    ".next", ".mypy_cache", ".pytest_cache",
 }
 
 
@@ -30,7 +30,7 @@ def detect_language(repo_root: Path) -> str:
     for path in repo_root.rglob("*"):
         if not path.is_file():
             continue
-        if any(part in _SKIP_DIR_NAMES for part in path.parts):
+        if any(part in _SKIP_DIR_NAMES for part in path.relative_to(repo_root).parts):
             continue
         for lang, exts in LANGUAGE_EXTENSIONS.items():
             if path.suffix in exts:

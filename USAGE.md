@@ -21,7 +21,7 @@ is installed in that interpreter's environment.
 | `PATH` | Required | Local target repository directory |
 | `--probe-mode` | `static` | Parse source only; `diagnostic` additionally attempts eligible container probes |
 | `--format` | `json` | Write ledger and graph; `md` also writes `report.md` |
-| `--language` | Auto-detected | `python` or `javascript`; the latter includes supported `.ts` files |
+| `--language` | Auto-detected | `python` or `javascript`; the latter includes JS/TS, JSX/TSX and MTS/CTS files |
 | `--catalog` | Bundled snapshot | Use the supplied ASI catalog export and record its provenance |
 | `--out` | Sibling `<target-name>.sentinel-zero` | Output directory; existing same-name artifacts can be overwritten |
 
@@ -34,7 +34,9 @@ sentinel-zero analyze "/path/to/project" --language python --format md --out "./
 sentinel-zero analyze "/path/to/project" --language javascript --format md --out "./results/javascript"
 ```
 
-TypeScript uses `--language javascript`. JSX and TSX files are not collected.
+TypeScript, TSX and JSX use `--language javascript`. Declaration-only
+`.d.ts`, `.d.mts` and `.d.cts` files are excluded explicitly. Genuine source
+directories named `build`, `dist` and `coverage` are included.
 
 ## Read the output
 
@@ -46,6 +48,7 @@ TypeScript uses `--language javascript`. JSX and TSX files are not collected.
 | `catalog` | Source path, snapshot flag, and taxonomy metadata |
 | `plans` / `plan_count` | Finding plans for supported, resolved sink calls |
 | `parse_errors` | Files the resolver could not parse; the rest of the project may still be analyzed |
+| `coverage` | JS/TS collection and parsing counts, directory/declaration exclusions, unsupported source files and warnings |
 | `unresolved_call_sites` | Call targets the resolver could not establish |
 | `external_dependencies` | Package references reached through the modeled call graph |
 

@@ -35,8 +35,8 @@ not proof of attacker reachability or exploitability. See
 | 3D viewer | Node 20.19+ in the 20.x line, or Node 22.12+; a WebGL-capable browser |
 | Optional diagnostics | A running Linux-container Docker daemon and the pinned runtime images |
 
-The resolvers collect `.py`, `.js`, `.mjs`, `.cjs`, and `.ts` files.
-`.jsx` and `.tsx` are not collected. A run uses one language resolver;
+The resolvers collect `.py`, `.js`, `.mjs`, `.cjs`, `.ts`, `.jsx`, `.tsx`,
+`.mts`, and `.cts` files. A run uses one language resolver;
 scan mixed-language repositories separately with `--language`.
 
 ## Install from source

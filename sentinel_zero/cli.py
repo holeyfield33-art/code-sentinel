@@ -96,6 +96,17 @@ def _render_markdown(ledger: dict) -> str:
     )
     lines.append("")
 
+    if ledger.get("coverage"):
+        coverage = ledger["coverage"]
+        lines.extend([
+            "## Coverage", "",
+            f"Collected: {coverage.get('collected_files', 'unknown')}; "
+            f"parsed: {coverage.get('parsed_files', 'unknown')}.", "",
+        ])
+        for warning in coverage.get("warnings", []):
+            lines.append(f"- **{warning.get('kind')}**: {warning.get('detail', '')}")
+        lines.append("")
+
     by_status: dict[str, list[dict]] = {}
     for plan in ledger["plans"]:
         by_status.setdefault(plan["disposition"]["status"], []).append(plan)

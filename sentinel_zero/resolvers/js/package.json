@@ -4,7 +4,8 @@
   "version": "0.1.0",
   "description": "Node-side AST extraction for Sentinel-Zero's JS/TS resolver (Milestone 7). Not published; invoked as a subprocess by js_resolver.py.",
   "dependencies": {
+    "@typescript-eslint/typescript-estree": "^8.0.0",
     "acorn": "^8.14.0",
-    "@typescript-eslint/typescript-estree": "^8.0.0"
+    "acorn-jsx": "5.3.2"
   }
 }

@@ -157,4 +157,5 @@ def export_graph(graph: ProjectGraph, plans: list[dict[str, Any]], repo_name: st
         "edge_count": len(edges),
         "nodes": nodes,
         "edges": edges,
+        "coverage": graph.coverage,
     }
