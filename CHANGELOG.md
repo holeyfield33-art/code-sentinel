@@ -20,6 +20,10 @@ and historical version tags are not inferred from development commits.
   Preserve execution errors when bounded container cleanup also fails.
 - Suppress ambiguous same-symbol diagnostic attempts across direct and
   transitive call sites. A sink name or nonce is not proof of call-site identity.
+- Add `sentinel-zero pull-images [--language ...]` to explicitly pull the
+  digest-pinned runtime images. Scans still never pull (`--pull never`); a
+  missing image now fails closed with the missing digest and this command
+  instead of an opaque Docker exit 125.
 
 ### Analysis
 

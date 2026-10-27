@@ -37,6 +37,7 @@ from sentinel_zero.catalog_loader import bundled_snapshot_path
 from sentinel_zero.disposition import ToolFailure, UnknownAttackClass
 from sentinel_zero.dogfood_scan import run as run_scan
 from sentinel_zero.dogfood_scan import write_or_fail_cleanly
+from sentinel_zero.probes.container_runner import IMAGES, docker_available, pull_image
 from sentinel_zero.repo_detect import detect_language, js_deps_installed
 
 
@@ -208,6 +209,22 @@ def cmd_install_js_deps(_args: argparse.Namespace) -> int:
     return _install_js_deps()
 
 
+def cmd_pull_images(args: argparse.Namespace) -> int:
+    available, detail = docker_available()
+    if not available:
+        print(f"CRITICAL_TOOL_FAILURE: Docker daemon required to pull runtime images: {detail}", file=sys.stderr)
+        return 3
+    languages = [args.language] if args.language else list(IMAGES)
+    for language in languages:
+        print(f"pulling pinned {language} runtime image {IMAGES[language]} ...")
+        ok, result = pull_image(language)
+        if not ok:
+            print(f"CRITICAL_TOOL_FAILURE: {result}", file=sys.stderr)
+            return 3
+    print("pinned runtime images installed; --probe-mode diagnostic can now run.")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="sentinel-zero",
@@ -245,6 +262,16 @@ def build_parser() -> argparse.ArgumentParser:
         "install-js-deps", help="run `npm install` for the JS/TS resolver's own subprocess dependencies"
     )
     install_js.set_defaults(func=cmd_install_js_deps)
+
+    pull = sub.add_parser(
+        "pull-images",
+        help="explicitly pull the digest-pinned Docker runtime images that --probe-mode diagnostic requires",
+    )
+    pull.add_argument(
+        "--language", choices=["python", "javascript"], default=None,
+        help="pull only this runtime's image. Defaults to both.",
+    )
+    pull.set_defaults(func=cmd_pull_images)
 
     return parser
 

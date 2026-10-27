@@ -74,6 +74,8 @@ def test_cleanup_failure_invalidates_otherwise_successful_report():
 
 def test_timeout_keeps_execution_and_cleanup_diagnostics(tmp_path):
     with patch.object(runner, "docker_available", return_value=(True, "available")), patch.object(
+        runner, "image_available", return_value=(True, "sha256:present")
+    ), patch.object(
         runner, "_docker_run", return_value=(-1, "", "original error; cleanup failed", True)
     ):
         result = runner.run_container_probe("javascript", tmp_path, [])

@@ -16,16 +16,26 @@ details; treat them according to the target's data classification.
 
 Diagnostics require a Linux-container daemon. On Windows, use Docker
 Desktop in Linux-container mode and ensure it can mount the checkout.
-The scanner never automatically pulls runtime images. Pull the pinned
-images explicitly before requesting diagnostics:
+The scanner never automatically pulls runtime images: probes run with
+`--pull never` so a scan cannot fetch code from a registry. Pull the pinned
+images explicitly, once, before requesting diagnostics:
 
 ```sh
-docker info
+sentinel-zero pull-images                       # both runtimes
+sentinel-zero pull-images --language python     # or just one
+```
+
+That command pulls exactly the digests in
+`sentinel_zero/probes/container_runner.py::IMAGES`. The equivalent manual
+commands are:
+
+```sh
 docker pull python@sha256:cb33f7f771ecec2ef1225cf39b159591a040391bd73e4c01f00fdfc4c47611d2
 docker pull node@sha256:de170b39439eb0e5a3444ad7d60b015614a381e10fecae2e30ec9e735122f38d
 ```
 
-These values come from `sentinel_zero/probes/container_runner.py::IMAGES`.
+If an image is missing, each affected probe records `call_failed` with the
+missing digest and this remedy, instead of an opaque Docker exit code.
 Pull only the runtime needed for your target language, or both for the full
 integration suite. Pull success also establishes image compatibility with
 your daemon's platform. Named image tags are not a substitute for these digests.
