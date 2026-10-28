@@ -108,8 +108,33 @@ def _render_markdown(ledger: dict) -> str:
             lines.append(f"- **{warning.get('kind')}**: {warning.get('detail', '')}")
         lines.append("")
 
+    graph_artifact = (ledger.get("artifacts") or {}).get("graph")
+    if graph_artifact and not graph_artifact.get("written"):
+        lines.extend(["## Call graph not written", "", f"- {graph_artifact.get('reason', '')}", ""])
+
+    # Untriaged plans (older ledgers) are treated as priority, never hidden.
+    def is_priority(plan: dict) -> bool:
+        tag = plan.get("triage")
+        return True if not tag else bool(tag.get("priority"))
+
+    priority_plans = [p for p in ledger["plans"] if is_priority(p)]
+    other_plans = [p for p in ledger["plans"] if not is_priority(p)]
+
+    summary = ledger.get("triage_summary")
+    if summary:
+        lines.extend([
+            "## Triage", "",
+            f"- Priority (high-signal sink in production code): **{summary.get('priority', 0)}**",
+            f"- By signal: {summary.get('by_signal', {})}",
+            f"- By code context: {summary.get('by_context', {})}",
+            "",
+            "Triage only orders this report; no finding is removed and no disposition changes. "
+            "Each finding records the rule that tagged it.",
+            "",
+        ])
+
     by_status: dict[str, list[dict]] = {}
-    for plan in ledger["plans"]:
+    for plan in priority_plans:
         by_status.setdefault(plan["disposition"]["status"], []).append(plan)
 
     status_order = ["VERIFIED_TRUE", "VERIFIED_FALSE", "UNRESOLVED_INCONCLUSIVE", "TOOL_FAILURE"]
@@ -127,6 +152,20 @@ def _render_markdown(ledger: dict) -> str:
                 f"  - sink: `{hyp['sink_node']}` via `{hyp['symbol_binding']}`\n"
                 f"  - {plan['disposition']['reason']}\n"
                 f"  - residual uncertainty: {plan['disposition']['residual_uncertainty']}"
+            )
+        lines.append("")
+
+    if other_plans:
+        lines.append(f"## Lower-priority findings ({len(other_plans)})")
+        lines.append("")
+        lines.append("Low-signal sinks or non-production code. Listed in full; open the ledger for detail.")
+        lines.append("")
+        for plan in other_plans:
+            tag = plan["triage"]
+            hyp = plan["hypothesis"]
+            lines.append(
+                f"- `{plan['plan_id']}` {plan['disposition']['status']} `{hyp['sink_node']}` at "
+                f"`{hyp['source_node']}` — {tag['code_context']} ({tag['context_rule']}), {tag['signal']} signal"
             )
         lines.append("")
 
@@ -197,7 +236,9 @@ def cmd_analyze(args: argparse.Namespace) -> int:
             )
             print(f"markdown report -> {out_dir / 'report.md'}")
         else:
-            print(f"ledger -> {out_dir / 'verification_ledger.json'} (graph: {out_dir / 'graph.json'})")
+            graph_written = (ledger.get("artifacts") or {}).get("graph", {}).get("written", True)
+            graph_note = out_dir / "graph.json" if graph_written else "skipped, over size cap"
+            print(f"ledger -> {out_dir / 'verification_ledger.json'} (graph: {graph_note})")
     except (ToolFailure, UnknownAttackClass) as exc:
         print(f"CRITICAL_TOOL_FAILURE: {exc}", file=sys.stderr)
         return 3

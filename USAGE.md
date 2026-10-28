@@ -57,6 +57,22 @@ For each plan, read `hypothesis.source_node` for the file and line,
 enclosing caller. `argument_taint` describes bounded argument evidence;
 `parameter` is a review lead, not proof of attacker control.
 
+### Triage
+
+Every plan carries a `triage` block, and the ledger a `triage_summary`.
+Triage orders the report; it never removes a plan or changes a disposition.
+
+- `signal`: `low` for sinks that cannot run code by themselves (JSON
+  parsing: `json.load`, `json.loads`, `JSON.parse`); `high` otherwise.
+- `code_context`: `test`, `example`, `docs`, `build_tooling`, or
+  `production`. Test, example, and docs directory names match at any depth;
+  tooling names (`scripts`, `tools`, `.github`, `benchmarks`, ...) only as
+  the repository's top-level directory, because nested `tools/` is often
+  product code. Anything unmatched is `production`.
+- `priority`: high signal in production code. The report lists these
+  first; everything else follows under "Lower-priority findings".
+- `context_rule` and `signal_reason` name the rule that produced each tag.
+
 ### Dispositions
 
 | Status | Interpretation |
@@ -107,7 +123,11 @@ Output files are written individually. An error writing a later artifact
 can leave earlier files in place; an old output directory can also contain
 stale artifacts. Use a new directory for each retained scan and check the
 command result before consuming its files. Size caps are 5,000,000 bytes
-for the ledger and Markdown report and 20,000,000 bytes for the graph.
+for the ledger and Markdown report and 20,000,000 bytes for the graph. A graph
+over its cap is skipped whole (never truncated): the scan still exits zero,
+`artifacts.graph.written` is `false` with the reason, stderr prints a
+`graph_skipped` warning, and any older `graph.json` in that directory is
+removed so it cannot be mistaken for this run's graph.
 Path, size, and UTF-8 encoding refusals surface as `ToolFailure`.
 
 ## MCP server

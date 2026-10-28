@@ -145,6 +145,7 @@ class FindingPlan:
     verification_method: dict[str, Any]
     execution_gate: dict[str, Any]
     disposition: dict[str, Any] = field(default_factory=dict)
+    triage: dict[str, Any] = field(default_factory=dict)
     generated_at: str = field(
         default_factory=lambda: datetime.datetime.now(datetime.timezone.utc).isoformat()
     )
@@ -162,6 +163,8 @@ class FindingPlan:
             "disposition": self.disposition,
             "generated_at": self.generated_at,
         }
+        if self.triage:
+            payload["triage"] = self.triage
         # Re-run the same structural gate the schema was built against --
         # a plan that can't pass its own field check never leaves this module.
         require_finding_plan_fields(payload)
