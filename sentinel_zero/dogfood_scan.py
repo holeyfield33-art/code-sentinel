@@ -589,7 +589,7 @@ def find_finding_plans(
                 plan.triage = triage_for(
                     f"{module.file_path}:{call.lineno}", call.target.qualified_name, str(repo_root),
                     guard=relevant_guard,
-                    arg_taint=call.arg_taint,
+                    arg_taint=tuple(call.arg_taint) + tuple(call.kwarg_taint),
                 )
                 if guard_hit:
                     set_disposition(

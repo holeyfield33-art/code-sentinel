@@ -114,3 +114,36 @@ def test_guard_reaches_sink_through_an_assignment(tmp_path):
                            "    if not is_safe(tree_id + '-' + filename):\n        raise ValueError(filename)\n"
                            "    file_path = base.joinpath(tree_id).joinpath(filename)\n    return open(file_path)\n")
     assert plan["triage"]["guarded_by"] == "app.is_safe"
+
+
+# --- Codex review on #21: each of these hid a reachable sink ---------------
+
+def test_reassignment_after_check_invalidates_guard(tmp_path):
+    plan = _only(tmp_path, "def read(p, q):\n    if not is_safe(p):\n        raise ValueError(p)\n"
+                           "    p = q\n    return open(p)\n")
+    assert plan["triage"]["guarded_by"] is None
+
+
+def test_tuple_reassignment_after_check_invalidates_guard(tmp_path):
+    plan = _only(tmp_path, "def read(p, q):\n    if not is_safe(p):\n        raise ValueError(p)\n"
+                           "    p, r = q, 1\n    return open(p)\n")
+    assert plan["triage"]["guarded_by"] is None
+
+
+@pytest.mark.parametrize("test_expr", ["strict and not is_safe(p)", "not (is_safe(p) or strict)"])
+def test_short_circuited_check_does_not_guard(tmp_path, test_expr):
+    plan = _only(tmp_path, f"def read(p, strict):\n    if {test_expr}:\n        return None\n    return open(p)\n")
+    assert plan["triage"]["guarded_by"] is None
+
+
+def test_or_of_checks_still_guards(tmp_path):
+    # Continuing past `if not a or not b: raise` means both ran and passed.
+    plan = _only(tmp_path, "def read(p):\n    if not is_safe(p) or not p:\n        raise ValueError(p)\n"
+                           "    return open(p)\n")
+    assert plan["triage"]["guarded_by"] == "app.is_safe"
+
+
+def test_call_inside_check_argument_is_not_the_guard(tmp_path):
+    plan = _only(tmp_path, "def read(p):\n    if not bool(is_safe(p)):\n        raise ValueError(p)\n"
+                           "    return open(p)\n")
+    assert plan["triage"]["guarded_by"] is None

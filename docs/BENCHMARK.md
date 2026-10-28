@@ -70,8 +70,8 @@ gap to close.
 |---|---|---|---|---|
 | swr | 7 | 0 | 0 | 0 |
 | stytch-node | 0 | 0 | 0 | 0 |
-| django-DefectDojo | 486 | 0 | 4 | 9 |
-| chia-blockchain | 271 | **51** (was 58) | 23 | 9 |
+| django-DefectDojo | 486 | 0 | 4 | 0 |
+| chia-blockchain | 271 | **52** (was 58) | 22 | 6 |
 
 - `chia/data_layer/data_layer_server.py` (both handlers) is now credited to
   `is_filename_valid` and leaves the priority list.
@@ -81,7 +81,13 @@ gap to close.
   read, directly or through an earlier assignment. The same relevance rule
   now decides whether the older callee-raises guard affects triage; it had
   been crediting calls such as `calculate_iterations_quality`.
-- Expected a sharp drop; got 58 to 51. Of the 51, 36 sinks take arguments
+- Codex review on #21 found four ways the first cut could hide reachable
+  sinks; all fixed: a reassignment between check and sink now invalidates the
+  guard (names carry an assignment version); only calls that always run and
+  decide the exit count (`if strict and not ok(p): return` does not);
+  keyword arguments count for the constant check; and only proven constants
+  count (`getenv("X")` is not one). Priority went 51 -> 52 as a result.
+- Expected a sharp drop; got 58 to 52. Of the remaining, most sinks take arguments
   of unknown origin (config and computed paths). Without a model of where
   untrusted input enters (HTTP handlers, CLI arguments), the scanner cannot
   separate a pid-file path from a request path. That is the next real gap.

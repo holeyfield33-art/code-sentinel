@@ -159,6 +159,33 @@ def _ends_in_exit(stmts: list[ast.stmt]) -> bool:
     return bool(stmts) and isinstance(stmts[-1], (ast.Raise, ast.Return, ast.Continue, ast.Break))
 
 
+def _decisive_guard_calls(test: ast.expr, exiting: str) -> frozenset:
+    """ids of the calls in an `if` test that always run and whose result
+    alone can trigger the exit, so execution continuing past the `if`
+    proves each one returned the passing value.
+
+    Exit in the body: the test is a call, `not call`, or an `or` of those
+    (continuing means every disjunct was evaluated and was false). Exit in
+    the else: a call, `not call`, or an `and` of those. Anything else --
+    `strict and not ok(p)`, nested boolean logic, a call buried in an
+    argument -- yields nothing, because the call may be skipped or may not
+    decide the exit (`if strict and not ok(p): return` does not validate p
+    when strict is false)."""
+    def atom(expr: ast.expr) -> int | None:
+        if isinstance(expr, ast.UnaryOp) and isinstance(expr.op, ast.Not):
+            expr = expr.operand
+        return id(expr) if isinstance(expr, ast.Call) else None
+
+    if not exiting:
+        return frozenset()
+    if isinstance(test, ast.BoolOp):
+        if not isinstance(test.op, ast.Or if exiting == "body" else ast.And):
+            return frozenset()
+        return frozenset(i for i in (atom(v) for v in test.values) if i is not None)
+    single = atom(test)
+    return frozenset({single}) if single is not None else frozenset()
+
+
 def _is_raise_guard_shaped(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
     """Stricter sibling of _is_guard_shaped, used only for the DELEGATION
     case -- another function calling `fn` and trusting its shape to
@@ -697,10 +724,13 @@ def _resolve_module(
         # "unknown", or the exact case this fix targets would silently
         # regress to the wrong (weaker) classification one call deeper.
         param_names = _param_names(fn_node) | enclosing_param_names
-        # name -> names its assigned value read, in source order. Flow-
-        # insensitive across branches on purpose: it only links a guard's
-        # arguments to a sink's, it never proves the data is the same.
+        # name -> names its latest assigned value read, and how many times
+        # the name has been assigned so far. Names are compared with their
+        # version, so `if not ok(p): raise; p = q; open(p)` does not credit
+        # ok() -- the sink reads a new p. Branches are walked in order and the
+        # last assignment wins, which can only withhold credit, never add it.
         derived: dict[str, set[str]] = {}
+        versions: dict[str, int] = {}
 
         def names_read(nodes: list[ast.AST]) -> frozenset:
             direct = {n.id for node in nodes for n in ast.walk(node) if isinstance(n, ast.Name)}
@@ -712,15 +742,23 @@ def _resolve_module(
                     continue
                 seen.add(name)
                 pending.extend(derived.get(name, ()))
-            return frozenset(seen - {"self", "cls"})
+            return frozenset((name, versions.get(name, 0)) for name in seen - {"self", "cls"})
 
         def note_assignment(target: ast.AST, value: ast.AST | None) -> None:
-            if isinstance(target, ast.Name) and value is not None:
-                derived.setdefault(target.id, set()).update(
-                    n.id for n in ast.walk(value) if isinstance(n, ast.Name) and n.id != target.id
-                )
+            read = {n.id for n in ast.walk(value) if isinstance(n, ast.Name)} if value is not None else set()
+            for node in ast.walk(target):
+                if isinstance(node, ast.Name):
+                    versions[node.id] = versions.get(node.id, 0) + 1
+                    derived[node.id] = read - {node.id}
 
-        def record_calls_in_expr(expr: ast.AST, branch_path: tuple, exit_guard: tuple = ()) -> None:
+        def note_walrus(expr: ast.AST) -> None:
+            for node in ast.walk(expr):
+                if isinstance(node, ast.NamedExpr):
+                    note_assignment(node.target, node.value)
+
+        def record_calls_in_expr(
+            expr: ast.AST, branch_path: tuple, exit_guard: tuple = (), guard_call_ids: frozenset = frozenset()
+        ) -> None:
             """Find every ast.Call nested in this expression (but not inside
             a nested def/lambda, which is a separate caller scope handled by
             its own walk_fn call), in source order, and record it."""
@@ -782,6 +820,7 @@ def _resolve_module(
                 except Exception:
                     arg_texts = ()
                 arg_taint = tuple(_classify_arg_taint(a, param_names) for a in node.args)
+                kwarg_taint = tuple(_classify_arg_taint(k.value, param_names) for k in node.keywords)
                 order_counter[0] += 1
                 calls.append(
                     CallSite(
@@ -791,13 +830,15 @@ def _resolve_module(
                         order=order_counter[0],
                         args=arg_texts,
                         arg_taint=arg_taint,
+                        kwarg_taint=kwarg_taint,
                         branch_path=branch_path,
                         # Only a project-defined check counts: stdlib/external
                         # predicates (os.path.exists, isinstance) gate
                         # behavior, not trust, and would credit almost
                         # every `if ...: return` as a security guard.
                         exit_guard=exit_guard if (
-                            isinstance(target, Symbol) and target.qualified_name in project_functions
+                            id(node) in guard_call_ids
+                            and isinstance(target, Symbol) and target.qualified_name in project_functions
                         ) else (),
                         arg_names=names_read([*node.args, *(k.value for k in node.keywords)]),
                     )
@@ -839,11 +880,10 @@ def _resolve_module(
                 if isinstance(stmt, (ast.Import, ast.ImportFrom)):
                     local_bindings.update(_import_bindings(ast.Module(body=[stmt], type_ignores=[]), module_qualname))
                     continue
-                if isinstance(stmt, (ast.Assign, ast.AnnAssign)):
-                    for assigned in (stmt.targets if isinstance(stmt, ast.Assign) else [stmt.target]):
-                        note_assignment(assigned, stmt.value)
                 if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1 and isinstance(stmt.targets[0], ast.Name):
                     record_calls_in_expr(stmt.value, branch_path)
+                    note_walrus(stmt.value)
+                    note_assignment(stmt.targets[0], stmt.value)  # after the RHS runs
                     resolved_rhs = _resolve_dotted(stmt.value, local_bindings)
                     # Only propagate the alias when it's actually trustworthy
                     # -- see _alias_rhs_is_trustworthy's docstring for the two
@@ -859,8 +899,12 @@ def _resolve_module(
                 if isinstance(stmt, ast.If):
                     tag = id(stmt)
                     exiting = "body" if _ends_in_exit(stmt.body) else ("orelse" if _ends_in_exit(stmt.orelse) else "")
-                    # test always runs
-                    record_calls_in_expr(stmt.test, branch_path, (tag, exiting) if exiting else ())
+                    # test always runs; only its decisive calls can guard
+                    record_calls_in_expr(
+                        stmt.test, branch_path, (tag, exiting) if exiting else (),
+                        _decisive_guard_calls(stmt.test, exiting),
+                    )
+                    note_walrus(stmt.test)
                     walk_stmts(stmt.body, branch_path + ((tag, "body"),))
                     walk_stmts(stmt.orelse, branch_path + ((tag, "orelse"),))
                     continue
@@ -873,11 +917,12 @@ def _resolve_module(
                     walk_stmts(stmt.finalbody, branch_path)  # finally always runs
                     continue
                 if isinstance(stmt, (ast.For, ast.AsyncFor, ast.While)):
-                    if isinstance(stmt, (ast.For, ast.AsyncFor)):
-                        note_assignment(stmt.target, stmt.iter)
                     test_or_iter = getattr(stmt, "test", None) or getattr(stmt, "iter", None)
                     if test_or_iter is not None:
                         record_calls_in_expr(test_or_iter, branch_path)
+                        note_walrus(test_or_iter)
+                    if isinstance(stmt, (ast.For, ast.AsyncFor)):
+                        note_assignment(stmt.target, stmt.iter)
                     tag = id(stmt)
                     # a loop body may run zero or many times; treated as a
                     # single pass for v0 -- a known approximation, not a
@@ -888,6 +933,7 @@ def _resolve_module(
                 if isinstance(stmt, (ast.With, ast.AsyncWith)):
                     for item in stmt.items:
                         record_calls_in_expr(item.context_expr, branch_path)
+                        note_walrus(item.context_expr)
                         if item.optional_vars is not None:
                             note_assignment(item.optional_vars, item.context_expr)
                     walk_stmts(stmt.body, branch_path)
@@ -913,6 +959,12 @@ def _resolve_module(
                 # simple statement (Expr, Return, Raise, Assert, AugAssign, ...):
                 # record every call nested in it at the current branch_path.
                 record_calls_in_expr(stmt, branch_path)
+                note_walrus(stmt)
+                if isinstance(stmt, ast.Assign):
+                    for assigned in stmt.targets:
+                        note_assignment(assigned, stmt.value)
+                elif isinstance(stmt, (ast.AnnAssign, ast.AugAssign)):
+                    note_assignment(stmt.target, stmt.value)
 
         walk_stmts(body, ())
         # Closures see the enclosing scope's completed lexical bindings,

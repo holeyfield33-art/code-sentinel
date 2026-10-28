@@ -90,14 +90,13 @@ def sink_signal(sink_name: str) -> tuple[str, str]:
     return "high", "sink can execute code, read/write files, or construct objects"
 
 
-_LITERAL_TAINT = frozenset({"literal", "traced:literal"})
-
-
 def literal_only(arg_taint: list[str] | tuple[str, ...]) -> bool:
     """Every argument is a constant (or built only from constants), so no
-    caller can influence what the sink receives. No arguments is not
-    literal-only: the sink's input is then not visible at the call site."""
-    return bool(arg_taint) and all(t in _LITERAL_TAINT for t in arg_taint)
+    caller can influence what the sink receives. Only "literal" counts:
+    "traced:literal" is a call with constant inputs, such as
+    getenv("USER_CODE"), whose result can still be external. No arguments
+    is not literal-only: the sink's input is then not visible here."""
+    return bool(arg_taint) and all(t == "literal" for t in arg_taint)
 
 
 def triage_for(
