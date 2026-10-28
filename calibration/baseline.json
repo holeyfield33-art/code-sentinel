@@ -1,0 +1,732 @@
+{
+  "summary": {
+    "cases": 41,
+    "correct": 32,
+    "reachable_priority_rate": 0.9583,
+    "near_miss_priority_rate": 0.1,
+    "near_miss_downgrade_rate": 0.9,
+    "youden": 0.8583,
+    "priority_precision": 0.9583,
+    "near_miss_not_detected": [],
+    "guard_evidence_accuracy": 0.9167,
+    "constant_accuracy": 0.8333,
+    "coverage_gaps": {
+      "detected": [],
+      "resolved-not-sink": [
+        "gap-urlopen",
+        "gap-requests",
+        "gap-shutil-rmtree"
+      ],
+      "unresolved": [
+        "gap-getattr",
+        "gap-dunder-import",
+        "gap-pathlib-write",
+        "gap-pathlib-open"
+      ],
+      "silent": []
+    },
+    "by_dimension": {
+      "alias": "5/5",
+      "baseline": "6/6",
+      "callee-guard": "2/2",
+      "caller-guard": "9/10",
+      "code-context": "4/4",
+      "constant-args": "5/6",
+      "dynamic-dispatch": "0/2",
+      "signal": "1/1",
+      "sink-family:file-ops": "0/1",
+      "sink-family:network": "0/2",
+      "sink-family:pathlib": "0/2"
+    }
+  },
+  "rows": [
+    {
+      "id": "base-subprocess",
+      "family": "reachable",
+      "dimension": "baseline",
+      "sink": "subprocess.run",
+      "plans": 1,
+      "priority": true,
+      "unresolved": 0,
+      "guarded_by": [],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {},
+      "correct": true
+    },
+    {
+      "id": "base-os-system",
+      "family": "reachable",
+      "dimension": "baseline",
+      "sink": "os.system",
+      "plans": 1,
+      "priority": true,
+      "unresolved": 0,
+      "guarded_by": [],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {},
+      "correct": true
+    },
+    {
+      "id": "base-open",
+      "family": "reachable",
+      "dimension": "baseline",
+      "sink": "builtins.open",
+      "plans": 1,
+      "priority": true,
+      "unresolved": 1,
+      "guarded_by": [],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {},
+      "correct": true
+    },
+    {
+      "id": "base-pickle",
+      "family": "reachable",
+      "dimension": "baseline",
+      "sink": "pickle.loads",
+      "plans": 1,
+      "priority": true,
+      "unresolved": 0,
+      "guarded_by": [],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {},
+      "correct": true
+    },
+    {
+      "id": "base-eval",
+      "family": "reachable",
+      "dimension": "baseline",
+      "sink": "builtins.eval",
+      "plans": 1,
+      "priority": true,
+      "unresolved": 0,
+      "guarded_by": [],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {},
+      "correct": true
+    },
+    {
+      "id": "base-yaml",
+      "family": "reachable",
+      "dimension": "baseline",
+      "sink": "yaml.load",
+      "plans": 1,
+      "priority": true,
+      "unresolved": 0,
+      "guarded_by": [],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {},
+      "correct": true
+    },
+    {
+      "id": "guard-caller-ok",
+      "family": "near_miss",
+      "dimension": "caller-guard",
+      "sink": "builtins.open",
+      "plans": 1,
+      "priority": false,
+      "unresolved": 2,
+      "guarded_by": [
+        "app.is_safe_name"
+      ],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {
+        "guard": true
+      },
+      "correct": true
+    },
+    {
+      "id": "guard-caller-wrong-var",
+      "family": "reachable",
+      "dimension": "caller-guard",
+      "sink": "builtins.open",
+      "plans": 1,
+      "priority": true,
+      "unresolved": 2,
+      "guarded_by": [],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {
+        "guard": true
+      },
+      "correct": true
+    },
+    {
+      "id": "guard-caller-via-assignment",
+      "family": "near_miss",
+      "dimension": "caller-guard",
+      "sink": "builtins.open",
+      "plans": 1,
+      "priority": false,
+      "unresolved": 2,
+      "guarded_by": [
+        "app.is_safe_name"
+      ],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {
+        "guard": true
+      },
+      "correct": true
+    },
+    {
+      "id": "guard-caller-partial",
+      "family": "reachable",
+      "dimension": "caller-guard",
+      "sink": "builtins.open",
+      "plans": 1,
+      "priority": false,
+      "unresolved": 2,
+      "guarded_by": [
+        "app.is_safe_name"
+      ],
+      "constant": [
+        false
+      ],
+      "outcome": "under-ranked",
+      "checks": {
+        "guard": false
+      },
+      "correct": false
+    },
+    {
+      "id": "guard-caller-reassigned",
+      "family": "reachable",
+      "dimension": "caller-guard",
+      "sink": "builtins.open",
+      "plans": 1,
+      "priority": true,
+      "unresolved": 2,
+      "guarded_by": [],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {
+        "guard": true
+      },
+      "correct": true
+    },
+    {
+      "id": "guard-caller-short-circuit",
+      "family": "reachable",
+      "dimension": "caller-guard",
+      "sink": "builtins.open",
+      "plans": 1,
+      "priority": true,
+      "unresolved": 2,
+      "guarded_by": [],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {
+        "guard": true
+      },
+      "correct": true
+    },
+    {
+      "id": "guard-caller-not-dominating",
+      "family": "reachable",
+      "dimension": "caller-guard",
+      "sink": "builtins.open",
+      "plans": 1,
+      "priority": true,
+      "unresolved": 2,
+      "guarded_by": [],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {
+        "guard": true
+      },
+      "correct": true
+    },
+    {
+      "id": "guard-caller-after-sink",
+      "family": "reachable",
+      "dimension": "caller-guard",
+      "sink": "builtins.open",
+      "plans": 1,
+      "priority": true,
+      "unresolved": 2,
+      "guarded_by": [],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {
+        "guard": true
+      },
+      "correct": true
+    },
+    {
+      "id": "guard-caller-loop-continue",
+      "family": "near_miss",
+      "dimension": "caller-guard",
+      "sink": "builtins.open",
+      "plans": 1,
+      "priority": false,
+      "unresolved": 3,
+      "guarded_by": [
+        "app.is_safe_name"
+      ],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {
+        "guard": true
+      },
+      "correct": true
+    },
+    {
+      "id": "guard-stdlib-predicate",
+      "family": "reachable",
+      "dimension": "caller-guard",
+      "sink": "builtins.open",
+      "plans": 1,
+      "priority": true,
+      "unresolved": 1,
+      "guarded_by": [],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {
+        "guard": true
+      },
+      "correct": true
+    },
+    {
+      "id": "guard-callee-ok",
+      "family": "near_miss",
+      "dimension": "callee-guard",
+      "sink": "subprocess.run",
+      "plans": 1,
+      "priority": false,
+      "unresolved": 1,
+      "guarded_by": [
+        "app.require_safe_name"
+      ],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {
+        "guard": true
+      },
+      "correct": true
+    },
+    {
+      "id": "guard-callee-unrelated",
+      "family": "reachable",
+      "dimension": "callee-guard",
+      "sink": "subprocess.run",
+      "plans": 1,
+      "priority": true,
+      "unresolved": 1,
+      "guarded_by": [],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {
+        "guard": true
+      },
+      "correct": true
+    },
+    {
+      "id": "const-literal",
+      "family": "near_miss",
+      "dimension": "constant-args",
+      "sink": "subprocess.run",
+      "plans": 1,
+      "priority": false,
+      "unresolved": 0,
+      "guarded_by": [],
+      "constant": [
+        true
+      ],
+      "outcome": "correct",
+      "checks": {
+        "constant": true
+      },
+      "correct": true
+    },
+    {
+      "id": "const-param",
+      "family": "reachable",
+      "dimension": "constant-args",
+      "sink": "subprocess.run",
+      "plans": 1,
+      "priority": true,
+      "unresolved": 0,
+      "guarded_by": [],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {
+        "constant": true
+      },
+      "correct": true
+    },
+    {
+      "id": "const-default-param",
+      "family": "reachable",
+      "dimension": "constant-args",
+      "sink": "subprocess.run",
+      "plans": 1,
+      "priority": true,
+      "unresolved": 0,
+      "guarded_by": [],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {
+        "constant": true
+      },
+      "correct": true
+    },
+    {
+      "id": "const-kwarg-user",
+      "family": "reachable",
+      "dimension": "constant-args",
+      "sink": "subprocess.run",
+      "plans": 1,
+      "priority": true,
+      "unresolved": 0,
+      "guarded_by": [],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {
+        "constant": true
+      },
+      "correct": true
+    },
+    {
+      "id": "const-env-call",
+      "family": "reachable",
+      "dimension": "constant-args",
+      "sink": "builtins.eval",
+      "plans": 1,
+      "priority": true,
+      "unresolved": 0,
+      "guarded_by": [],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {
+        "constant": true
+      },
+      "correct": true
+    },
+    {
+      "id": "const-module-constant",
+      "family": "near_miss",
+      "dimension": "constant-args",
+      "sink": "subprocess.run",
+      "plans": 1,
+      "priority": true,
+      "unresolved": 0,
+      "guarded_by": [],
+      "constant": [
+        false
+      ],
+      "outcome": "over-ranked",
+      "checks": {
+        "constant": false
+      },
+      "correct": false
+    },
+    {
+      "id": "ctx-test-dir",
+      "family": "near_miss",
+      "dimension": "code-context",
+      "sink": "subprocess.run",
+      "plans": 1,
+      "priority": false,
+      "unresolved": 0,
+      "guarded_by": [],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {},
+      "correct": true
+    },
+    {
+      "id": "ctx-test-file",
+      "family": "near_miss",
+      "dimension": "code-context",
+      "sink": "subprocess.run",
+      "plans": 1,
+      "priority": false,
+      "unresolved": 0,
+      "guarded_by": [],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {},
+      "correct": true
+    },
+    {
+      "id": "ctx-examples",
+      "family": "near_miss",
+      "dimension": "code-context",
+      "sink": "subprocess.run",
+      "plans": 1,
+      "priority": false,
+      "unresolved": 0,
+      "guarded_by": [],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {},
+      "correct": true
+    },
+    {
+      "id": "ctx-nested-tools-is-product",
+      "family": "reachable",
+      "dimension": "code-context",
+      "sink": "subprocess.run",
+      "plans": 1,
+      "priority": true,
+      "unresolved": 0,
+      "guarded_by": [],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {},
+      "correct": true
+    },
+    {
+      "id": "signal-json",
+      "family": "near_miss",
+      "dimension": "signal",
+      "sink": "json.loads",
+      "plans": 1,
+      "priority": false,
+      "unresolved": 0,
+      "guarded_by": [],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {},
+      "correct": true
+    },
+    {
+      "id": "alias-from-as",
+      "family": "reachable",
+      "dimension": "alias",
+      "sink": "subprocess.run",
+      "plans": 1,
+      "priority": true,
+      "unresolved": 0,
+      "guarded_by": [],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {},
+      "correct": true
+    },
+    {
+      "id": "alias-module-as",
+      "family": "reachable",
+      "dimension": "alias",
+      "sink": "subprocess.run",
+      "plans": 1,
+      "priority": true,
+      "unresolved": 0,
+      "guarded_by": [],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {},
+      "correct": true
+    },
+    {
+      "id": "alias-chain-2",
+      "family": "reachable",
+      "dimension": "alias",
+      "sink": "subprocess.run",
+      "plans": 1,
+      "priority": true,
+      "unresolved": 0,
+      "guarded_by": [],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {},
+      "correct": true
+    },
+    {
+      "id": "alias-from-import",
+      "family": "reachable",
+      "dimension": "alias",
+      "sink": "os.system",
+      "plans": 1,
+      "priority": true,
+      "unresolved": 0,
+      "guarded_by": [],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {},
+      "correct": true
+    },
+    {
+      "id": "alias-wrapper",
+      "family": "reachable",
+      "dimension": "alias",
+      "sink": "subprocess.run",
+      "plans": 1,
+      "priority": true,
+      "unresolved": 0,
+      "guarded_by": [],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {},
+      "correct": true
+    },
+    {
+      "id": "gap-getattr",
+      "family": "coverage_gap",
+      "dimension": "dynamic-dispatch",
+      "sink": "os.system",
+      "plans": 0,
+      "priority": false,
+      "unresolved": 1,
+      "guarded_by": [],
+      "constant": [],
+      "outcome": "unresolved",
+      "checks": {},
+      "correct": false
+    },
+    {
+      "id": "gap-dunder-import",
+      "family": "coverage_gap",
+      "dimension": "dynamic-dispatch",
+      "sink": "os.system",
+      "plans": 0,
+      "priority": false,
+      "unresolved": 1,
+      "guarded_by": [],
+      "constant": [],
+      "outcome": "unresolved",
+      "checks": {},
+      "correct": false
+    },
+    {
+      "id": "gap-pathlib-write",
+      "family": "coverage_gap",
+      "dimension": "sink-family:pathlib",
+      "sink": "pathlib.Path.write_text",
+      "plans": 0,
+      "priority": false,
+      "unresolved": 1,
+      "guarded_by": [],
+      "constant": [],
+      "outcome": "unresolved",
+      "checks": {},
+      "correct": false
+    },
+    {
+      "id": "gap-pathlib-open",
+      "family": "coverage_gap",
+      "dimension": "sink-family:pathlib",
+      "sink": "pathlib.Path.open",
+      "plans": 0,
+      "priority": false,
+      "unresolved": 2,
+      "guarded_by": [],
+      "constant": [],
+      "outcome": "unresolved",
+      "checks": {},
+      "correct": false
+    },
+    {
+      "id": "gap-urlopen",
+      "family": "coverage_gap",
+      "dimension": "sink-family:network",
+      "sink": "urllib.request.urlopen",
+      "plans": 0,
+      "priority": false,
+      "unresolved": 1,
+      "guarded_by": [],
+      "constant": [],
+      "outcome": "resolved-not-sink",
+      "checks": {},
+      "correct": false
+    },
+    {
+      "id": "gap-requests",
+      "family": "coverage_gap",
+      "dimension": "sink-family:network",
+      "sink": "requests.get",
+      "plans": 0,
+      "priority": false,
+      "unresolved": 0,
+      "guarded_by": [],
+      "constant": [],
+      "outcome": "resolved-not-sink",
+      "checks": {},
+      "correct": false
+    },
+    {
+      "id": "gap-shutil-rmtree",
+      "family": "coverage_gap",
+      "dimension": "sink-family:file-ops",
+      "sink": "shutil.rmtree",
+      "plans": 0,
+      "priority": false,
+      "unresolved": 0,
+      "guarded_by": [],
+      "constant": [],
+      "outcome": "resolved-not-sink",
+      "checks": {},
+      "correct": false
+    }
+  ]
+}
