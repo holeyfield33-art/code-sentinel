@@ -128,6 +128,8 @@ README.md's Known Bounds section rather than silently worked around.
 """
 from __future__ import annotations
 
+from typing import Any
+
 import ast
 import json
 import sys
@@ -153,6 +155,8 @@ from sentinel_zero.ledger_writer import safe_write_text
 from sentinel_zero.probes.evidence import validate_probe_result
 from sentinel_zero.probes.sink_reachability_probe import run_sink_reachability_probe
 from sentinel_zero.probes.js_sink_reachability_probe import run_js_sink_reachability_probe
+from sentinel_zero.triage import summarize as summarize_triage
+from sentinel_zero.triage import triage_for
 from sentinel_zero.resolvers.python_resolver import build_project_graph as build_python_project_graph
 from sentinel_zero.resolvers.python_resolver import dominates
 from sentinel_zero.resolvers.js_resolver import build_project_graph as build_js_project_graph
@@ -195,6 +199,8 @@ def write_or_fail_cleanly(root: str, relative: str, text: str, max_bytes: int, *
                 f"and were discarded rather than silently truncated."
             ) from exc
         raise ToolFailure(f"could not write {what} to {relative}: {exc}") from exc
+
+GRAPH_MAX_BYTES = 20_000_000
 
 SINK_ATTACK_IDS = {
     "FILE_IO": "AAC-17",
@@ -556,6 +562,9 @@ def find_finding_plans(
                         "timeout_seconds": 15,
                     },
                 )
+                plan.triage = triage_for(
+                    f"{module.file_path}:{call.lineno}", call.target.qualified_name, str(repo_root)
+                )
                 if guard_hit:
                     set_disposition(
                         plan,
@@ -752,7 +761,8 @@ def run(
     )
 
     serialized_plans = [p.as_dict() for p in plans]
-    ledger = {
+    triage_summary = summarize_triage(serialized_plans)
+    ledger: dict[str, Any] = {
         "target_repository": repo_root.name,
         "probe_mode": probe_mode,
         "modules_scanned": len(graph.modules),
@@ -778,32 +788,58 @@ def run(
         "external_dependencies": _dependency_summary(graph),
         "parse_errors": graph.parse_errors,
         "coverage": graph.coverage,
+        "triage_summary": triage_summary,
         "catalog": {
             "path": catalog.source_path,
             "is_bundled_snapshot": catalog.is_bundled_snapshot,
             "metadata": catalog.meta,
         },
     }
-    write_or_fail_cleanly(
-        str(out_dir), "verification_ledger.json", json.dumps(ledger, indent=2), 5_000_000,
-        what="the verification ledger",
-    )
-
     # Milestone 14: the full node/edge graph, not just the flat findings --
     # a pure re-serialization of data already in `graph`/`ledger["plans"]`,
     # so this can never disagree with the ledger for the same finding. See
     # graph_export.py for why this exists (nothing a future 3D view or a
     # Code Atlas adapter needs survives past this function otherwise).
+    #
+    # The graph is a derived view; the ledger is the result. A graph over
+    # its cap used to abort the whole run (exit 3, no report) on any
+    # real-size repo -- the 2026-10-28 benchmark hit it on both
+    # django-DefectDojo (59 MB) and chia-blockchain (38 MB). It is now
+    # written compact, and if still over the cap it is skipped and the
+    # ledger says so, never silently truncated.
     graph_doc = export_graph(graph, serialized_plans, repo_root.name)
-    write_or_fail_cleanly(
-        str(out_dir), "graph.json", json.dumps(graph_doc, indent=2), 20_000_000,
-        what="the call graph",
-    )
+    graph_text = json.dumps(graph_doc, separators=(",", ":"))
+    graph_bytes = len(graph_text.encode("utf-8"))
+    graph_path = out_dir / "graph.json"
+    if graph_bytes > GRAPH_MAX_BYTES:
+        graph_artifact = {
+            "written": False,
+            "bytes": graph_bytes,
+            "max_bytes": GRAPH_MAX_BYTES,
+            "reason": f"call graph is {graph_bytes} bytes, over the {GRAPH_MAX_BYTES}-byte cap; "
+                      "skipped whole rather than truncated. Findings in this ledger are complete.",
+        }
+        print(f"COVERAGE_WARNING: graph_skipped: {graph_artifact['reason']}", file=sys.stderr)
+    else:
+        graph_artifact = {"written": True, "bytes": graph_bytes, "max_bytes": GRAPH_MAX_BYTES}
+    ledger["artifacts"] = {"graph": graph_artifact}
 
+    write_or_fail_cleanly(
+        str(out_dir), "verification_ledger.json", json.dumps(ledger, indent=2), 5_000_000,
+        what="the verification ledger",
+    )
+    if graph_artifact["written"]:
+        write_or_fail_cleanly(str(out_dir), "graph.json", graph_text, GRAPH_MAX_BYTES, what="the call graph")
+    elif graph_path.is_file() and not graph_path.is_symlink():
+        # A graph.json left by an earlier run would not match this ledger.
+        graph_path.unlink()
+
+    graph_note = str(graph_path) if graph_artifact["written"] else "skipped, over size cap"
     print(
         f"{repo_root.name}: {len(graph.modules)} modules, {len(graph.functions)} functions indexed, "
-        f"{unresolved_calls} unresolved call sites, {len(plans)} finding plans -> "
-        f"{out_dir / 'verification_ledger.json'} (graph: {out_dir / 'graph.json'})",
+        f"{unresolved_calls} unresolved call sites, {len(plans)} finding plans "
+        f"({triage_summary['priority']} priority) -> "
+        f"{out_dir / 'verification_ledger.json'} (graph: {graph_note})",
         file=sys.stderr,
     )
     return 0

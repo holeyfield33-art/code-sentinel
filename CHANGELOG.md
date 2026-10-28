@@ -27,6 +27,15 @@ and historical version tags are not inferred from development commits.
 
 ### Analysis
 
+- Add generic triage tags (`signal`, `code_context`, `priority`) to every plan
+  plus a ledger `triage_summary`; the report lists priority plans first. No
+  plan is removed and no disposition changes. Measured on held-out repos
+  (django-DefectDojo, chia-blockchain): the 764 undifferentiated plans become 58
+  priority plans, all in chia.
+- A call graph over its 20 MB cap no longer aborts the run (exit 3, no report)
+  on large repositories. It is written compact; if still too large it is
+  skipped whole and recorded in `artifacts.graph`.
+
 - Recover named/default exported JavaScript and TypeScript declarations,
   named re-exports, JSX/TSX and `.mts`/`.cts` source. Include genuine source
   directories named `build`, `dist` and `coverage`.
