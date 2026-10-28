@@ -31,6 +31,13 @@ and historical version tags are not inferred from development commits.
 
 ### Analysis
 
+- Recognise caller-side guards (`if not check(x): raise`/`return`/`continue`/
+  `break` with a project-defined check) that dominate a sink. A guard, of
+  either shape, takes a plan out of the priority list only when its arguments
+  read the sink's data. Sinks whose arguments are all constants are no longer
+  priority. Dispositions are unchanged. Held-out benchmark: chia 58 to 52
+  priority plans; see docs/BENCHMARK.md for why the drop is small.
+
 - Add generic triage tags (`signal`, `code_context`, `priority`) to every plan
   plus a ledger `triage_summary`; the report lists priority plans first. No
   plan is removed and no disposition changes. Measured on held-out repos

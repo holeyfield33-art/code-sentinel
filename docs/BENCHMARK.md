@@ -64,9 +64,40 @@ because it only recognizes guards that raise inside the called function, not
 the caller-side `if not valid(x): raise` pattern. That is the next precision
 gap to close.
 
+### 2026-10-28, caller-side guards and constant arguments
+
+| Repo | Plans | Priority | Guarded (data-relevant) | Constant args |
+|---|---|---|---|---|
+| swr | 7 | 0 | 0 | 0 |
+| stytch-node | 0 | 0 | 0 | 0 |
+| django-DefectDojo | 486 | 0 | 4 | 0 |
+| chia-blockchain | 271 | **52** (was 58) | 22 | 6 |
+
+- `chia/data_layer/data_layer_server.py` (both handlers) is now credited to
+  `is_filename_valid` and leaves the priority list.
+- A first version credited any project call in an exiting `if` test, which
+  over-credited (`if not self.synced(): return` before an `open`). A guard
+  now counts only if its arguments read a variable the sink's arguments
+  read, directly or through an earlier assignment. The same relevance rule
+  now decides whether the older callee-raises guard affects triage; it had
+  been crediting calls such as `calculate_iterations_quality`.
+- Codex review on #21 found four ways the first cut could hide reachable
+  sinks; all fixed: a reassignment between check and sink now invalidates the
+  guard (names carry an assignment version); only calls that always run and
+  decide the exit count (`if strict and not ok(p): return` does not);
+  keyword arguments count for the constant check; and only proven constants
+  count (`getenv("X")` is not one). Priority went 51 -> 52 as a result.
+- Expected a sharp drop; got 58 to 52. Of the remaining, most sinks take arguments
+  of unknown origin (config and computed paths). Without a model of where
+  untrusted input enters (HTTP handlers, CLI arguments), the scanner cannot
+  separate a pid-file path from a request path. That is the next real gap.
+
 ## Open gaps
 
-- Caller-side boolean guards (`if not check(x): raise`) are not recognized.
+- No entry-point (source) model: the scanner does not know which functions
+  receive untrusted input, so most remaining priority plans are internal
+  file and process calls of unknown argument origin.
+- Caller-side guards are Python-only; the JS resolver does not record them.
 - `stytch-node` returned 0 plans with 825 unresolved call sites; 0 is not yet
   a demonstrated true negative.
 - Graphs for large repositories exceed the cap even when written compact.

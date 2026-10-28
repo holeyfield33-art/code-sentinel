@@ -146,3 +146,30 @@ def test_oversize_graph_removes_stale_symlink_but_not_its_target(tmp_path, monke
     _scan(tmp_path, {"app.py": "import os\ndef run(x):\n    os.system(x)\n"})
     assert not (out / "graph.json").is_symlink() and not (out / "graph.json").exists()
     assert target.read_text() == '{"stale": true}'
+
+
+def test_constant_arguments_are_not_priority():
+    tag = triage_for(f"{ROOT}/app.py:3", "subprocess.run", ROOT, arg_taint=("literal",))
+    assert tag["constant_arguments"] is True and tag["priority"] is False
+
+
+@pytest.mark.parametrize("taint", [(), ("parameter",), ("literal", "unknown"), ("traced:parameter",)])
+def test_non_constant_or_unseen_arguments_stay_priority(taint):
+    assert triage_for(f"{ROOT}/app.py:3", "subprocess.run", ROOT, arg_taint=taint)["priority"] is True
+
+
+def test_traced_literal_is_not_constant():
+    # getenv("USER_CODE") has a constant input but an external result.
+    assert triage_for(f"{ROOT}/app.py:3", "builtins.eval", ROOT, arg_taint=("traced:literal",))["priority"] is True
+
+
+def test_keyword_arguments_count_for_constant_check(tmp_path):
+    ledger, _ = _scan(tmp_path, {"app.py": "import subprocess\ndef run(user_code):\n"
+                                           "    subprocess.run('python', input=user_code, text=True)\n"}, fmt="json")
+    tag = ledger["plans"][0]["triage"]
+    assert tag["constant_arguments"] is False and tag["priority"] is True
+
+
+def test_env_derived_eval_stays_priority(tmp_path):
+    ledger, _ = _scan(tmp_path, {"app.py": "from os import getenv\ndef run():\n    eval(getenv('USER_CODE'))\n"}, fmt="json")
+    assert ledger["plans"][0]["triage"]["priority"] is True

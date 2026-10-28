@@ -90,31 +90,53 @@ def sink_signal(sink_name: str) -> tuple[str, str]:
     return "high", "sink can execute code, read/write files, or construct objects"
 
 
-def triage_for(source_node: str, sink_name: str, repo_root: str) -> dict:
-    """The triage block attached to every plan."""
+def literal_only(arg_taint: list[str] | tuple[str, ...]) -> bool:
+    """Every argument is a constant (or built only from constants), so no
+    caller can influence what the sink receives. Only "literal" counts:
+    "traced:literal" is a call with constant inputs, such as
+    getenv("USER_CODE"), whose result can still be external. No arguments
+    is not literal-only: the sink's input is then not visible here."""
+    return bool(arg_taint) and all(t == "literal" for t in arg_taint)
+
+
+def triage_for(
+    source_node: str,
+    sink_name: str,
+    repo_root: str,
+    guard: str | None = None,
+    arg_taint: list[str] | tuple[str, ...] = (),
+) -> dict:
+    """The triage block attached to every plan. `guard` names a recognised
+    guard that reads the sink's data and dominates it; a guarded sink, or one
+    whose arguments are all constants, is not priority, since a reviewer
+    should look at reachable, unguarded sinks first."""
     source_path = source_node.rsplit(":", 1)[0]
     context, context_rule = code_context(source_path, repo_root)
     signal, signal_reason = sink_signal(sink_name)
+    constant_args = literal_only(arg_taint)
     return {
-        "priority": signal == "high" and context == "production",
+        "priority": signal == "high" and context == "production" and not guard and not constant_args,
+        "constant_arguments": constant_args,
         "signal": signal,
         "signal_reason": signal_reason,
         "code_context": context,
         "context_rule": context_rule,
-        "rules_version": 1,
+        "guarded_by": guard or None,
+        "rules_version": 3,
     }
 
 
 def summarize(plans: list[dict]) -> dict:
     """Counts for the ledger. Plans without a triage block are counted as
     untriaged rather than guessed."""
-    summary: dict = {"priority": 0, "by_signal": {}, "by_context": {}, "untriaged": 0}
+    summary: dict = {"priority": 0, "guarded": 0, "by_signal": {}, "by_context": {}, "untriaged": 0}
     for plan in plans:
         tag = plan.get("triage")
         if not tag:
             summary["untriaged"] += 1
             continue
         summary["priority"] += 1 if tag["priority"] else 0
+        summary["guarded"] += 1 if tag.get("guarded_by") else 0
         summary["by_signal"][tag["signal"]] = summary["by_signal"].get(tag["signal"], 0) + 1
         summary["by_context"][tag["code_context"]] = summary["by_context"].get(tag["code_context"], 0) + 1
     return summary

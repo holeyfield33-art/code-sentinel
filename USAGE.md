@@ -69,8 +69,17 @@ Triage orders the report; it never removes a plan or changes a disposition.
   tooling names (`scripts`, `tools`, `.github`, `benchmarks`, ...) only as
   the repository's top-level directory, because nested `tools/` is often
   product code. Anything unmatched is `production`.
-- `priority`: high signal in production code. The report lists these
-  first; everything else follows under "Lower-priority findings".
+- `guarded_by`: a recognised guard that runs before the sink on every path
+  and reads the sink's data (the same variable, directly or through an
+  earlier assignment). Two shapes: a project function that raises on bad
+  input, and `if not check(x): raise` (or `return`/`continue`/`break`)
+  where `check` is project code. Stdlib predicates such as
+  `os.path.exists` never count. Python only.
+- `constant_arguments`: every argument is a constant, so no caller can
+  influence what the sink receives.
+- `priority`: high signal, production code, not guarded, not constant
+  arguments. The report lists these first; everything else follows under
+  "Lower-priority findings". A guard never changes the disposition.
 - `context_rule` and `signal_reason` name the rule that produced each tag.
 
 ### Dispositions

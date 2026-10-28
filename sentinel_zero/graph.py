@@ -98,6 +98,18 @@ class CallSite:
     # dispatches subcommands via one big if/elif in a single function, and
     # without this, a guard call in the `show` branch was wrongly read as
     # "preceding" a sink in the unrelated `security-review` branch.
+    exit_guard: tuple = ()  # (If node id, exiting branch label) when this
+    # call sits in the test of an `if` whose body or else ends in
+    # raise/return/continue/break and its target is a project-defined
+    # function -- the caller-side `if not valid(x): raise` guard shape.
+    # Empty otherwise. Python resolver only; the JS resolver leaves it empty.
+    kwarg_taint: tuple = ()  # same classification as arg_taint, for keyword
+    # arguments (including **unpacked ones). Python resolver only.
+    arg_names: frozenset = frozenset()  # (variable name, assignment version)
+    # pairs this call's arguments
+    # read, expanded through earlier simple assignments in the same function
+    # (`path = base.joinpath(name)` makes `path` also read `name`). Lets a
+    # caller-side guard count only when it checks data the sink uses.
 
 
 @dataclass
