@@ -130,12 +130,36 @@ def pull_image(language: str) -> tuple[bool, str]:
     return True, image
 
 
+# Docker parses --mount as one CSV record of key=value fields
+# (docker/cli opts/mount.go: encoding/csv, then strings.Cut on the first "=").
+# "=" inside a path is therefore safe. These characters are not:
+#   ","        starts a new field, e.g. a path ending ",dst=/x" adds options
+#   '"'        is CSV quoting; a bare quote is a parse error
+#   "\n" "\r"  end the CSV record, silently dropping later fields such as
+#              dst= and readonly
+# Docker also rejects values with leading or trailing whitespace.
+_MOUNT_UNSAFE_CHARS = (",", '"', "\n", "\r")
+
+
+def _mount_path(path: Path, role: str) -> str:
+    """Return a path that Docker's --mount parser reads back unchanged."""
+    text = str(path)
+    bad = [repr(c) for c in _MOUNT_UNSAFE_CHARS if c in text]
+    if bad:
+        raise ValueError(f"{role} path contains {', '.join(bad)}, which Docker --mount cannot carry safely: {text!r}")
+    if text != text.strip():
+        raise ValueError(f"{role} path has leading or trailing whitespace, which Docker --mount rejects: {text!r}")
+    return text
+
+
 def build_container_args(language: str, repo_root: Path, harness_args: list[str], nonce: str | None = None) -> list[str]:
     if language not in IMAGES:
         raise ValueError(f"unsupported probe language {language!r}")
     root = repo_root.resolve()
-    if not root.is_dir() or "," in str(root):
-        raise ValueError("probe source must be a directory with a Docker-compatible mount path")
+    if not root.is_dir():
+        raise ValueError("probe source must be a directory")
+    source = _mount_path(root, "probe source")
+    harness_dir = _mount_path(_HARNESS_DIR.resolve(), "harness install")
     _validate_source_links(root)
     env = dict(CONTAINER_ENV)
     if nonce is not None:
@@ -149,8 +173,8 @@ def build_container_args(language: str, repo_root: Path, harness_args: list[str]
         "--tmpfs", "/tmp:rw,nosuid,nodev,noexec,size=16m,mode=1777",
         "--cpus", "1", "--memory", "512m", "--pids-limit", "64",
         "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
-        "--mount", f"type=bind,src={root},dst=/repo,readonly",
-        "--mount", f"type=bind,src={_HARNESS_DIR.resolve()},dst=/harness,readonly",
+        "--mount", f"type=bind,src={source},dst=/repo,readonly",
+        "--mount", f"type=bind,src={harness_dir},dst=/harness,readonly",
         "--workdir", "/scratch", *env_args, IMAGES[language], executable,
         *(["-I"] if language == "python" else []), harness, *harness_args,
     ]

@@ -24,6 +24,10 @@ and historical version tags are not inferred from development commits.
   digest-pinned runtime images. Scans still never pull (`--pull never`); a
   missing image now fails closed with the missing digest and this command
   instead of an opaque Docker exit 125.
+- Validate both bind-mount paths (target source and harness install) against
+  Docker's `--mount` CSV parser: reject `,`, `"`, CR/LF, and leading/trailing
+  whitespace with a named error before any `docker run`. `=` stays allowed:
+  Docker splits each field on its first `=`, so it is carried intact.
 
 ### Analysis
 
