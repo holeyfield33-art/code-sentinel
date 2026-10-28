@@ -33,9 +33,10 @@
   "guard-caller-loop-continue": "sha256:892ed47bae351d5bc4106ae50d00e5dcba02e55b65a004724df17bc055201508",
   "guard-caller-not-dominating": "sha256:c88c26d2538ab0c9fdecbe3ec66812e1b9b1690e346443ac25b98eefa0705c8e",
   "guard-caller-ok": "sha256:1669bbba2a639426333fe0327079c5bcfe791841d9a3a010a4ef04934db765ac",
+  "guard-caller-partial": "sha256:ed57e4478f10dae4e4392c74f5c635b03e35101f29b7b634de84ba6e9846cce1",
   "guard-caller-reassigned": "sha256:af75b437bb3cd8d1169c9ed0053d8dbaa8db8709578accfcba0acf831bb47bec",
   "guard-caller-short-circuit": "sha256:8c7f054e866f8a1a6699767ec3ca64edd6faa9049ce348efe6cc962853015d56",
-  "guard-caller-via-assignment": "sha256:ed57e4478f10dae4e4392c74f5c635b03e35101f29b7b634de84ba6e9846cce1",
+  "guard-caller-via-assignment": "sha256:4bbcf567278928ee03313f0311b6566b91a455e471acf6ceeeea4eb871859774",
   "guard-caller-wrong-var": "sha256:dcdf3925df05e9dd635d2e2f4014eef2dbc9ceb0db50c7594dadf4c79b2cd399",
   "guard-stdlib-predicate": "sha256:9ea14e8201d09670c4c2660f4137e0ac30c4809e6a2decf16a2f58bd547a141e",
   "signal-json": "sha256:6dd2d085e1f0d9bb2643b606c0bb41ce5301afe6e25a847b6cb66419196475d6"

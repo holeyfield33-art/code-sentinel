@@ -56,8 +56,13 @@ not gate on plan counts: finding more sinks while mis-tagging guards should fail
 
 ## Baseline (2026-10-28)
 
-32/40 correct; `youden` 0.9, `priority_precision` 0.958, guard evidence 1.0,
-constant accuracy 0.833. Misses:
+32/41 correct; `youden` 0.858, `priority_precision` 0.958, guard evidence
+0.917, constant accuracy 0.833. Misses:
+
+- `guard-caller-partial`: a guard is credited when it covers *any* variable the
+  sink reads, so `read(base, name)` with only `name` validated is hidden even
+  though the caller still chooses `base`. Guard relevance should require every
+  caller-influenced argument to be covered.
 
 - `const-module-constant`: `subprocess.run(COMMAND)` with a module-level
   constant is still ranked priority (constant propagation through a module

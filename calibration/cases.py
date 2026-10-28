@@ -82,9 +82,15 @@ CASES: list[Case] = [
              "    return open(path).read()\n", ""),
          pair="guard-caller-ok", expect_guard=None, note="checks one variable, opens another"),
     Case("guard-caller-via-assignment", "near_miss", "caller-guard", "builtins.open",
+         app(VALIDATOR + "BASE = '/srv/data'\n\n\ndef read(name):\n    if not is_safe_name(name):\n        raise ValueError(name)\n"
+             "    path = BASE + '/' + name\n    return open(path).read()\n", ""),
+         pair="guard-caller-partial", expect_guard="app.is_safe_name",
+         note="guard reaches the sink through one assignment; the base directory is fixed"),
+    Case("guard-caller-partial", "reachable", "caller-guard", "builtins.open",
          app(VALIDATOR + "def read(base, name):\n    if not is_safe_name(name):\n        raise ValueError(name)\n"
              "    path = base + '/' + name\n    return open(path).read()\n", ""),
-         expect_guard="app.is_safe_name", note="guard reaches the sink through one assignment"),
+         pair="guard-caller-via-assignment", expect_guard=None,
+         note="only name is checked; the caller still picks base, so read('/etc', 'passwd') passes"),
     Case("guard-caller-reassigned", "reachable", "caller-guard", "builtins.open",
          app(VALIDATOR + "def read(name, other):\n    if not is_safe_name(name):\n        raise ValueError(name)\n"
              "    name = other\n    return open(name).read()\n", ""),

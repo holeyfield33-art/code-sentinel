@@ -1,14 +1,14 @@
 {
   "summary": {
-    "cases": 40,
+    "cases": 41,
     "correct": 32,
-    "reachable_priority_rate": 1.0,
+    "reachable_priority_rate": 0.9583,
     "near_miss_priority_rate": 0.1,
     "near_miss_downgrade_rate": 0.9,
-    "youden": 0.9,
+    "youden": 0.8583,
     "priority_precision": 0.9583,
     "near_miss_not_detected": [],
-    "guard_evidence_accuracy": 1.0,
+    "guard_evidence_accuracy": 0.9167,
     "constant_accuracy": 0.8333,
     "coverage_gaps": {
       "detected": [],
@@ -29,7 +29,7 @@
       "alias": "5/5",
       "baseline": "6/6",
       "callee-guard": "2/2",
-      "caller-guard": "9/9",
+      "caller-guard": "9/10",
       "code-context": "4/4",
       "constant-args": "5/6",
       "dynamic-dispatch": "0/2",
@@ -193,6 +193,26 @@
         "guard": true
       },
       "correct": true
+    },
+    {
+      "id": "guard-caller-partial",
+      "family": "reachable",
+      "dimension": "caller-guard",
+      "sink": "builtins.open",
+      "plans": 1,
+      "priority": false,
+      "unresolved": 2,
+      "guarded_by": [
+        "app.is_safe_name"
+      ],
+      "constant": [
+        false
+      ],
+      "outcome": "under-ranked",
+      "checks": {
+        "guard": false
+      },
+      "correct": false
     },
     {
       "id": "guard-caller-reassigned",
