@@ -830,8 +830,9 @@ def run(
     )
     if graph_artifact["written"]:
         write_or_fail_cleanly(str(out_dir), "graph.json", graph_text, GRAPH_MAX_BYTES, what="the call graph")
-    elif graph_path.is_file() and not graph_path.is_symlink():
+    elif graph_path.is_symlink() or graph_path.is_file():
         # A graph.json left by an earlier run would not match this ledger.
+        # For a symlink, unlink removes the link itself, never its target.
         graph_path.unlink()
 
     graph_note = str(graph_path) if graph_artifact["written"] else "skipped, over size cap"

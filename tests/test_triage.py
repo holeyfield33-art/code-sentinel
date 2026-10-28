@@ -3,6 +3,7 @@ benchmark (stytch-node, django-DefectDojo, chia-blockchain; vercel/swr as
 control). Triage ranks findings; it never removes one or changes a
 disposition."""
 import json
+import os
 from pathlib import Path
 
 import pytest
@@ -132,3 +133,16 @@ def test_graph_within_cap_is_written_compact(tmp_path):
     assert ledger["artifacts"]["graph"]["written"] is True
     text = (out / "graph.json").read_text()
     assert "\n" not in text and json.loads(text)
+
+
+@pytest.mark.skipif(not hasattr(os, "symlink") or os.name == "nt", reason="symlinks need privileges on Windows")
+def test_oversize_graph_removes_stale_symlink_but_not_its_target(tmp_path, monkeypatch):
+    monkeypatch.setattr(dogfood_scan, "GRAPH_MAX_BYTES", 10)
+    out = tmp_path / "out"
+    out.mkdir()
+    target = out / "previous-graph.json"
+    target.write_text('{"stale": true}')
+    (out / "graph.json").symlink_to(target)
+    _scan(tmp_path, {"app.py": "import os\ndef run(x):\n    os.system(x)\n"})
+    assert not (out / "graph.json").is_symlink() and not (out / "graph.json").exists()
+    assert target.read_text() == '{"stale": true}'
