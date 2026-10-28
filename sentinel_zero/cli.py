@@ -124,7 +124,8 @@ def _render_markdown(ledger: dict) -> str:
     if summary:
         lines.extend([
             "## Triage", "",
-            f"- Priority (high-signal sink in production code): **{summary.get('priority', 0)}**",
+            f"- Priority (high-signal, unguarded sink in production code): **{summary.get('priority', 0)}**",
+            f"- Guarded (a recognised guard dominates the sink): {summary.get('guarded', 0)}",
             f"- By signal: {summary.get('by_signal', {})}",
             f"- By code context: {summary.get('by_context', {})}",
             "",
@@ -166,6 +167,7 @@ def _render_markdown(ledger: dict) -> str:
             lines.append(
                 f"- `{plan['plan_id']}` {plan['disposition']['status']} `{hyp['sink_node']}` at "
                 f"`{hyp['source_node']}` — {tag['code_context']} ({tag['context_rule']}), {tag['signal']} signal"
+                + (f", guarded by `{tag['guarded_by']}`" if tag.get("guarded_by") else "")
             )
         lines.append("")
 

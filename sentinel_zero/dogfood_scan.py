@@ -517,6 +517,14 @@ def find_finding_plans(
                 # sits at an outer, unconditional level and so can run
                 # without the guard ever executing).
                 guard_hit = None
+                caller_guard_hit = None
+                # Only a guard that reads the sink's own data takes a plan
+                # out of the priority list. The callee-raises rule alone
+                # credits any earlier project call that can raise (e.g.
+                # chia's calculate_iterations_quality before a json.loads),
+                # which is fine as disposition evidence but would hide
+                # findings if it drove triage.
+                relevant_guard = None
                 for earlier in calls:
                     if earlier.order >= call.order:
                         continue
@@ -526,6 +534,22 @@ def find_finding_plans(
                         continue  # guard is not on EVERY path that reaches this sink
                     if transitively_guard_shaped(earlier.target.qualified_name, graph, callee_index):
                         guard_hit = earlier.target.qualified_name
+                        if earlier.arg_names & call.arg_names:
+                            relevant_guard = guard_hit
+                    elif (
+                        earlier.exit_guard
+                        and earlier.exit_guard not in call.branch_path
+                        and earlier.arg_names & call.arg_names
+                    ):
+                        # Caller-side guard: `if not check(x): raise` (or
+                        # return/continue/break) with a project-defined
+                        # check, before the sink and on every path to it.
+                        # The sink must not sit inside the exiting branch,
+                        # and the check must read a variable the sink's
+                        # arguments read (directly or via an assignment),
+                        # so `if not self.synced(): return` guards nothing.
+                        caller_guard_hit = earlier.target.qualified_name
+                        relevant_guard = caller_guard_hit
 
                 reached_packages = sorted(external_packages_reached(caller, graph, callee_index, external_index)) if caller else []
 
@@ -563,7 +587,9 @@ def find_finding_plans(
                     },
                 )
                 plan.triage = triage_for(
-                    f"{module.file_path}:{call.lineno}", call.target.qualified_name, str(repo_root)
+                    f"{module.file_path}:{call.lineno}", call.target.qualified_name, str(repo_root),
+                    guard=relevant_guard,
+                    arg_taint=call.arg_taint,
                 )
                 if guard_hit:
                     set_disposition(
@@ -584,6 +610,18 @@ def find_finding_plans(
                         residual_uncertainty="Medium: a raise-shaped guard call is now CONFIRMED to dominate the "
                         "sink (every path to the sink passes through it), but the triggering condition's "
                         "relationship to attacker-controlled input is still not verified.",
+                    )
+                elif caller_guard_hit:
+                    set_disposition(
+                        plan,
+                        "UNRESOLVED_INCONCLUSIVE",
+                        reason=f"this function checks {caller_guard_hit} in an `if` whose branch exits "
+                               "(raise/return/continue/break) before this sink, on every path that reaches it. "
+                               f"{caller_guard_hit} is project code, so it is treated as a deliberate gate. "
+                               "Whether its condition actually covers the input that reaches this sink is not "
+                               "verified, so this is never promoted to VERIFIED_FALSE." + _taint_note(call.arg_taint),
+                        residual_uncertainty="Medium: a caller-side check gates an early exit before the sink, "
+                        "but what the check validates is not compared with the sink's arguments.",
                     )
                 else:
                     set_disposition(

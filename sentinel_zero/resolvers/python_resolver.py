@@ -150,6 +150,15 @@ def _is_guard_shaped(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
     return False
 
 
+def _ends_in_exit(stmts: list[ast.stmt]) -> bool:
+    """True when a branch unconditionally leaves the code that follows the
+    `if`: its last statement is raise/return (leaves the function) or
+    continue/break (leaves this loop iteration or the loop). Used for the
+    caller-side guard shape `if not valid(x): raise`, where the predicate
+    itself only returns a bool and so is not guard-shaped on its own."""
+    return bool(stmts) and isinstance(stmts[-1], (ast.Raise, ast.Return, ast.Continue, ast.Break))
+
+
 def _is_raise_guard_shaped(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
     """Stricter sibling of _is_guard_shaped, used only for the DELEGATION
     case -- another function calling `fn` and trusting its shape to
@@ -688,8 +697,30 @@ def _resolve_module(
         # "unknown", or the exact case this fix targets would silently
         # regress to the wrong (weaker) classification one call deeper.
         param_names = _param_names(fn_node) | enclosing_param_names
+        # name -> names its assigned value read, in source order. Flow-
+        # insensitive across branches on purpose: it only links a guard's
+        # arguments to a sink's, it never proves the data is the same.
+        derived: dict[str, set[str]] = {}
 
-        def record_calls_in_expr(expr: ast.AST, branch_path: tuple) -> None:
+        def names_read(nodes: list[ast.AST]) -> frozenset:
+            direct = {n.id for node in nodes for n in ast.walk(node) if isinstance(n, ast.Name)}
+            seen: set[str] = set()
+            pending = list(direct)
+            while pending:
+                name = pending.pop()
+                if name in seen:
+                    continue
+                seen.add(name)
+                pending.extend(derived.get(name, ()))
+            return frozenset(seen - {"self", "cls"})
+
+        def note_assignment(target: ast.AST, value: ast.AST | None) -> None:
+            if isinstance(target, ast.Name) and value is not None:
+                derived.setdefault(target.id, set()).update(
+                    n.id for n in ast.walk(value) if isinstance(n, ast.Name) and n.id != target.id
+                )
+
+        def record_calls_in_expr(expr: ast.AST, branch_path: tuple, exit_guard: tuple = ()) -> None:
             """Find every ast.Call nested in this expression (but not inside
             a nested def/lambda, which is a separate caller scope handled by
             its own walk_fn call), in source order, and record it."""
@@ -761,6 +792,14 @@ def _resolve_module(
                         args=arg_texts,
                         arg_taint=arg_taint,
                         branch_path=branch_path,
+                        # Only a project-defined check counts: stdlib/external
+                        # predicates (os.path.exists, isinstance) gate
+                        # behavior, not trust, and would credit almost
+                        # every `if ...: return` as a security guard.
+                        exit_guard=exit_guard if (
+                            isinstance(target, Symbol) and target.qualified_name in project_functions
+                        ) else (),
+                        arg_names=names_read([*node.args, *(k.value for k in node.keywords)]),
                     )
                 )
 
@@ -800,6 +839,9 @@ def _resolve_module(
                 if isinstance(stmt, (ast.Import, ast.ImportFrom)):
                     local_bindings.update(_import_bindings(ast.Module(body=[stmt], type_ignores=[]), module_qualname))
                     continue
+                if isinstance(stmt, (ast.Assign, ast.AnnAssign)):
+                    for assigned in (stmt.targets if isinstance(stmt, ast.Assign) else [stmt.target]):
+                        note_assignment(assigned, stmt.value)
                 if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1 and isinstance(stmt.targets[0], ast.Name):
                     record_calls_in_expr(stmt.value, branch_path)
                     resolved_rhs = _resolve_dotted(stmt.value, local_bindings)
@@ -815,8 +857,10 @@ def _resolve_module(
                         local_bindings[stmt.targets[0].id] = ""
                     continue
                 if isinstance(stmt, ast.If):
-                    record_calls_in_expr(stmt.test, branch_path)  # test always runs
                     tag = id(stmt)
+                    exiting = "body" if _ends_in_exit(stmt.body) else ("orelse" if _ends_in_exit(stmt.orelse) else "")
+                    # test always runs
+                    record_calls_in_expr(stmt.test, branch_path, (tag, exiting) if exiting else ())
                     walk_stmts(stmt.body, branch_path + ((tag, "body"),))
                     walk_stmts(stmt.orelse, branch_path + ((tag, "orelse"),))
                     continue
@@ -829,6 +873,8 @@ def _resolve_module(
                     walk_stmts(stmt.finalbody, branch_path)  # finally always runs
                     continue
                 if isinstance(stmt, (ast.For, ast.AsyncFor, ast.While)):
+                    if isinstance(stmt, (ast.For, ast.AsyncFor)):
+                        note_assignment(stmt.target, stmt.iter)
                     test_or_iter = getattr(stmt, "test", None) or getattr(stmt, "iter", None)
                     if test_or_iter is not None:
                         record_calls_in_expr(test_or_iter, branch_path)
@@ -842,6 +888,8 @@ def _resolve_module(
                 if isinstance(stmt, (ast.With, ast.AsyncWith)):
                     for item in stmt.items:
                         record_calls_in_expr(item.context_expr, branch_path)
+                        if item.optional_vars is not None:
+                            note_assignment(item.optional_vars, item.context_expr)
                     walk_stmts(stmt.body, branch_path)
                     continue
                 if isinstance(stmt, ast.Match):
