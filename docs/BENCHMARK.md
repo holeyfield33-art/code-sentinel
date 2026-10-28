@@ -1,5 +1,8 @@
 # Held-out benchmark
 
+See also [CALIBRATION.md](CALIBRATION.md): labeled synthetic fixtures for the
+triage rules. This page is the real-repository cross-check.
+
 Sentinel-Zero was built and calibrated against Vercel's OSS repositories.
 A clean result there shows only that the scanner remembers its training
 ground. This benchmark scans repositories it was **not** tuned on, with one

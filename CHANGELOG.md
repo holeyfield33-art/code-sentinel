@@ -31,6 +31,12 @@ and historical version tags are not inferred from development commits.
 
 ### Analysis
 
+- Add a triage calibration harness (`calibration/`, `docs/CALIBRATION.md`): 40
+  labeled fixtures across reachable, near-miss and coverage-gap families,
+  digest-pinned, scored on ranking (Youden, downgrade rate, guard and constant
+  tag accuracy), with a baseline gate in the test suite. Baseline: 32/40,
+  Youden 0.9.
+
 - Recognise caller-side guards (`if not check(x): raise`/`return`/`continue`/
   `break` with a project-defined check) that dominate a sink. A guard, of
   either shape, takes a plan out of the priority list only when its arguments
