@@ -97,6 +97,8 @@ while the overall analysis command still exits zero.
 | `2` | CLI argument parsing failed |
 | `3` | CLI-reported tool/catalog/setup failure, such as an invalid target or unavailable JS extractor |
 
+`pull-images` returns zero once the pinned images are present and reports
+a missing daemon or failed pull as code 3.
 `install-js-deps` returns zero on success, reports missing npm as code 3,
 and reports an npm installation failure as a nonzero result. Run `--help`
 for the current parser rather than assuming unsupported flags or subcommands.
@@ -153,6 +155,7 @@ the server host's Docker setup, not merely Docker on the MCP client.
 | Auto-detection chooses the wrong language | Pass `--language` and scan each language separately |
 | No finding plans | Review supported sinks, file extensions, parse errors, and unresolved calls; zero plans is not a safety verdict |
 | Docker diagnostic fails | Check daemon availability, pinned images, source readability, mount paths, and the observation's detail |
+| Observation says a pinned runtime image is not installed | Run `sentinel-zero pull-images` (or `--language python`/`javascript`) once; scans never pull images |
 | Viewer rejects an upload | Select `graph.json`, not `verification_ledger.json`; inspect the validation message |
 | Catalog rejected | Use a valid ASI export with an `attackClasses` array and usable IDs/aliases, or omit `--catalog` for the bundled snapshot |
 

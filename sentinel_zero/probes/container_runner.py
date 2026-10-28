@@ -88,6 +88,48 @@ def docker_available() -> tuple[bool, str]:
     return p.returncode == 0, (p.stdout if p.returncode == 0 else p.stderr).strip()
 
 
+def pull_command(language: str) -> str:
+    return f"sentinel-zero pull-images --language {language}"
+
+
+def image_available(language: str) -> tuple[bool, str]:
+    """Probes run with --pull never, so name the missing digest up front.
+
+    Without this check Docker reports only an opaque exit 125, which reads
+    like a scanner fault rather than a one-time setup step.
+    """
+    executable = _docker_executable()
+    if executable is None:
+        return False, "Docker executable not found in absolute PATH directories"
+    image = IMAGES[language]
+    try:
+        p = subprocess.run([executable, "image", "inspect", "--format", "{{.Id}}", image],
+                           capture_output=True, text=True, timeout=15, cwd=_HARNESS_DIR)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return False, f"could not check for pinned {language} image {image}: {exc}"
+    if p.returncode != 0:
+        return False, (f"pinned {language} runtime image is not installed: {image}. "
+                       f"Diagnostics never pull images automatically; run `{pull_command(language)}` "
+                       f"(or `docker pull {image}`) once, then re-run the scan.")
+    return True, p.stdout.strip()
+
+
+def pull_image(language: str) -> tuple[bool, str]:
+    """Explicit, user-invoked pull of one pinned digest. Never called by scans."""
+    executable = _docker_executable()
+    if executable is None:
+        return False, "Docker executable not found in absolute PATH directories"
+    image = IMAGES[language]
+    try:
+        # Output streams to the terminal so large pulls show progress.
+        p = subprocess.run([executable, "pull", image], timeout=1800, cwd=_HARNESS_DIR)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return False, f"docker pull {image} failed: {exc}"
+    if p.returncode != 0:
+        return False, f"docker pull {image} exited {p.returncode}"
+    return True, image
+
+
 def build_container_args(language: str, repo_root: Path, harness_args: list[str], nonce: str | None = None) -> list[str]:
     if language not in IMAGES:
         raise ValueError(f"unsupported probe language {language!r}")
@@ -216,6 +258,10 @@ def run_container_probe(language: str, repo_root: Path, harness_args: list[str],
     available, detail = docker_available()
     if not available:
         return {"status": "call_failed", "detail": f"Docker daemon required; no host fallback: {detail}"}
+    if language in IMAGES:
+        present, detail = image_available(language)
+        if not present:
+            return {"status": "call_failed", "detail": detail}
     try:
         args = build_container_args(language, repo_root, harness_args, nonce)
     except ValueError as exc:
