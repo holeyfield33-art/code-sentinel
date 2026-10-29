@@ -32,6 +32,11 @@ ROOT = "/work/repo"
     ("packages/a/__tests__/x.js", "test"),
     ("examples/optimistic-ui/pages/api/data.js", "example"),
     ("docs/conf.py", "docs"),
+    ("doc/source/conf.py", "docs"),
+    # A nested "doc" package is product code: docling-core's document model
+    # (PYSEC-2026-1313, a real yaml.load site) lives there.
+    ("docling_core/types/doc/document.py", "production"),
+    ("pkg/docs/build.py", "production"),
     (".github/workflows/check.py", "build_tooling"),
     ("scripts/release.py", "build_tooling"),
     ("benchmarks/run.py", "build_tooling"),
@@ -173,3 +178,55 @@ def test_keyword_arguments_count_for_constant_check(tmp_path):
 def test_env_derived_eval_stays_priority(tmp_path):
     ledger, _ = _scan(tmp_path, {"app.py": "from os import getenv\ndef run():\n    eval(getenv('USER_CODE'))\n"}, fmt="json")
     assert ledger["plans"][0]["triage"]["priority"] is True
+
+
+_BUILDER = ("import os\n"
+            "def build(name):\n"
+            "    if not name:\n"
+            "        raise ValueError(name)\n"
+            "    return f'echo {name}', 'log'\n")
+
+
+@pytest.mark.parametrize("assign", ["cmd, log = build(name)", "cmd = build(name)[0]"])
+def test_a_call_that_builds_the_sink_argument_is_not_its_guard(tmp_path, assign):
+    # ms-swift CVE-2025-41419: `run_command, ... = cls.eval(*args)` then
+    # os.system(run_command). eval can raise, but it produces the command;
+    # crediting it as the guard hid the injection.
+    ledger, _ = _scan(tmp_path, {"app.py": _BUILDER + f"def run(name):\n    {assign}\n    os.system(cmd)\n"}, fmt="json")
+    tag = ledger["plans"][0]["triage"]
+    assert tag["guarded_by"] is None and tag["priority"] is True
+
+
+def test_a_raising_check_called_for_effect_still_guards(tmp_path):
+    ledger, _ = _scan(tmp_path, {"app.py": _BUILDER + "def run(name):\n    build(name)\n    os.system(name)\n"}, fmt="json")
+    tag = ledger["plans"][0]["triage"]
+    assert tag["guarded_by"] == "app.build" and tag["priority"] is False
+
+
+def test_constant_through_a_local_variable_is_constant(tmp_path):
+    # Vulnerable-Flask-App: command = "cat restapi.log"; check_output(command, shell=True).
+    ledger, _ = _scan(tmp_path, {"app.py": "import subprocess\ndef logs():\n    command = 'cat restapi.log'\n"
+                                           "    return subprocess.check_output(command, shell=True)\n"}, fmt="json")
+    tag = ledger["plans"][0]["triage"]
+    assert tag["constant_arguments"] is True and tag["priority"] is False
+
+
+@pytest.mark.parametrize("body", [
+    "    cmd = 'ls'\n    if x:\n        cmd = x\n    subprocess.run(cmd, shell=True)\n",       # rebound in a branch
+    "    cmd = x\n    if x:\n        cmd = 'ls'\n    subprocess.run(cmd, shell=True)\n",       # constant only on one path
+    "    cmd = 'ls '\n    cmd += x\n    subprocess.run(cmd, shell=True)\n",                   # augmented
+    "    for cmd in x:\n        pass\n    cmd = 'ls'\n    subprocess.run(cmd, shell=True)\n",  # loop binding
+    "    global cmd\n    cmd = 'ls'\n    subprocess.run(cmd, shell=True)\n",                  # module-global
+    "    cmd = 'ls'\n    def f():\n        nonlocal cmd\n        cmd = x\n    f()\n    subprocess.run(cmd, shell=True)\n",
+    "    cmd = f'ls {x}'\n    subprocess.run(cmd, shell=True)\n",                              # not a constant
+    # Codex review on #26: a walrus in a comprehension binds the enclosing local.
+    "    cmd = 'ls'\n    [cmd := v for v in x]\n    subprocess.run(cmd, shell=True)\n",
+    # Codex review on #26: a literal container can be mutated without rebinding.
+    "    cmd = ['echo']\n    cmd[0] = x\n    subprocess.run(cmd)\n",
+    "    cmd = ['echo']\n    cmd.append(x)\n    subprocess.run(cmd)\n",
+    "    cmd = {'a': 'ls'}\n    cmd.update(x)\n    subprocess.run(cmd['a'], shell=True)\n",
+])
+def test_a_local_that_is_not_always_the_same_constant_stays_priority(tmp_path, body):
+    ledger, _ = _scan(tmp_path, {"app.py": f"import subprocess\ndef run(x):\n{body}"}, fmt="json")
+    tag = [p for p in ledger["plans"] if p["hypothesis"]["sink_node"] == "subprocess.run"][0]["triage"]
+    assert tag["constant_arguments"] is False and tag["priority"] is True

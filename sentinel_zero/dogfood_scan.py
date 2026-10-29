@@ -211,6 +211,10 @@ SINK_ATTACK_IDS = {
 _SINK_KIND_BY_NAME = {
     "builtins.open": "FILE_IO",
     "os.open": "FILE_IO",
+    # codecs.open and io.open open a path like builtins.open; Radicale's
+    # path-traversal CVE read through codecs.open and was otherwise invisible.
+    "codecs.open": "FILE_IO",
+    "io.open": "FILE_IO",
     "json.load": "DESERIALIZATION",
     "json.loads": "DESERIALIZATION",
     # Milestone 15: widened past the Milestone 2 starting set. pickle's
@@ -532,6 +536,11 @@ def find_finding_plans(
                         continue
                     if not dominates(earlier.branch_path, call.branch_path):
                         continue  # guard is not on EVERY path that reaches this sink
+                    if earlier.result_names & call.arg_names:
+                        # It built the sink's data (ms-swift's `cmd = cls.eval(*args)`
+                        # before os.system(cmd)); raising on bad input does not make
+                        # a producer a gate for what it returns.
+                        continue
                     if transitively_guard_shaped(earlier.target.qualified_name, graph, callee_index):
                         guard_hit = earlier.target.qualified_name
                         if earlier.arg_names & call.arg_names:

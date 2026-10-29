@@ -534,20 +534,21 @@ function classifyArgTaint(node, paramNames) {
 // named scope handled elsewhere (a top-level `const x = function/arrow`
 // or a class method/constructor -- passed in as `exclude`, a Set of the
 // actual AST node objects, checked by reference identity, which is exact
-// and needs no structural matching). It deliberately also stops at any
-// FunctionDeclaration/ClassDeclaration/ClassExpression boundary without
-// recursing into it at all -- those are each either a separate named
-// scope walked from its own body directly, or (a function/class nested
-// inside another function, or a named function expression passed as an
-// argument) a stated "don't guess" bound this resolver already applies
-// to shapes it doesn't model, same reasoning as the loop-body and
-// destructured-parameter bounds noted elsewhere in this file.
+// and needs no structural matching). A FunctionDeclaration nested inside
+// another scope is collected the same way (top-level ones are in
+// `exclude`): dvws-node declares `function expand()` inside its XML
+// parser and reads files from a callback inside it, and stopping here
+// left that sink silently unrecorded. It still stops at any
+// ClassDeclaration/ClassExpression boundary without recursing into it --
+// a class nested inside a function is a stated "don't guess" bound, same
+// reasoning as the loop-body and destructured-parameter bounds noted
+// elsewhere in this file.
 function collectInlineFunctionNodes(node, exclude, out) {
   if (!isNode(node)) return;
-  if (node.type === 'FunctionDeclaration' || node.type === 'ClassDeclaration' || node.type === 'ClassExpression') {
+  if (node.type === 'ClassDeclaration' || node.type === 'ClassExpression') {
     return;
   }
-  if (node.type === 'FunctionExpression' || node.type === 'ArrowFunctionExpression') {
+  if (node.type === 'FunctionExpression' || node.type === 'ArrowFunctionExpression' || node.type === 'FunctionDeclaration') {
     if (!exclude.has(node)) out.push(node);
     return; // its own body is discovered separately, once it has a qualname
   }
@@ -578,7 +579,11 @@ function discoverInlineFunctions(bodyNode, baseQualname, enclosingParamNames, ex
   const found = [];
   collectInlineFunctionNodes(bodyNode, exclude, found);
   for (const fnNode of found) {
-    const qualname = `${baseQualname}.<callback:L${fnNode.loc.start.line}C${fnNode.loc.start.column}>`;
+    // A nested declaration is named like Python's __qualname__
+    // (`outer.<locals>.inner`); an anonymous literal by its position.
+    const qualname = fnNode.type === 'FunctionDeclaration' && fnNode.id
+      ? `${baseQualname}.<locals>.${fnNode.id.name}`
+      : `${baseQualname}.<callback:L${fnNode.loc.start.line}C${fnNode.loc.start.column}>`;
     const effectiveParamNames = new Set([...enclosingParamNames, ...paramNamesFromFnNode(fnNode)]);
     onFound(qualname, fnNode, effectiveParamNames);
     discoverInlineFunctions(fnNode.body, qualname, effectiveParamNames, exclude, onFound);

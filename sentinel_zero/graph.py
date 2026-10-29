@@ -110,6 +110,11 @@ class CallSite:
     # read, expanded through earlier simple assignments in the same function
     # (`path = base.joinpath(name)` makes `path` also read `name`). Lets a
     # caller-side guard count only when it checks data the sink uses.
+    result_names: frozenset = frozenset()  # (variable name, assignment version)
+    # pairs this call's return value is assigned to (`cmd, log = build(x)`
+    # gives cmd and log). A call whose result reaches the sink's arguments
+    # produced that data, so it is never credited as the sink's guard.
+    # Python resolver only.
 
 
 @dataclass

@@ -124,11 +124,22 @@ CASES: list[Case] = [
     Case("guard-callee-unrelated", "reachable", "callee-guard", "subprocess.run",
          app(RAISING_VALIDATOR + "def run(name, cmd):\n    require_safe_name(name)\n    return subprocess.run(cmd, shell=True)\n"),
          pair="guard-callee-ok", expect_guard=None, note="validator runs, but on a different value"),
+    Case("guard-callee-producer", "reachable", "callee-guard", "subprocess.run",
+         app("def build_command(name):\n    if not name:\n        raise ValueError(name)\n    return f'echo {name}'\n\n\n"
+             "def run(name):\n    cmd = build_command(name)\n    return subprocess.run(cmd, shell=True)\n"),
+         pair="guard-callee-ok", expect_guard=None, note="the raising call builds the command it would 'guard'"),
 
     # --- constant arguments --------------------------------------------------------
     Case("const-literal", "near_miss", "constant-args", "subprocess.run",
          app("def status():\n    return subprocess.run(['git', 'status'])\n"),
          pair="const-param", expect_constant=True),
+    Case("const-local-variable", "near_miss", "constant-args", "subprocess.run",
+         app("def logs():\n    command = 'cat app.log'\n    return subprocess.run(command, shell=True)\n"),
+         pair="const-local-rebound", expect_constant=True),
+    Case("const-local-rebound", "reachable", "constant-args", "subprocess.run",
+         app("def logs(path):\n    command = 'cat app.log'\n    if path:\n        command = 'cat ' + path\n"
+             "    return subprocess.run(command, shell=True)\n"),
+         pair="const-local-variable", expect_constant=False, note="constant on only one path"),
     Case("const-param", "reachable", "constant-args", "subprocess.run",
          app("def run(args):\n    return subprocess.run(args)\n"),
          pair="const-literal", expect_constant=False),

@@ -46,6 +46,23 @@ def test_os_open_parameter_path_produces_file_io_plan(tmp_path, import_line, cal
     assert plan["disposition"]["status"] == "UNRESOLVED_INCONCLUSIVE"
 
 
+@pytest.mark.parametrize("import_line,call,identity", [
+    ("import codecs", "codecs.open(path, 'r', 'utf-8')", "codecs.open"),
+    ("from codecs import open as copen", "copen(path)", "codecs.open"),
+    ("import io", "io.open(path)", "io.open"),
+])
+def test_codecs_and_io_open_are_file_io_sinks(tmp_path, import_line, call, identity):
+    # Radicale's storage wrapper (CVE pair calibration) reads through
+    # codecs.open; it was invisible until this identity was a sink.
+    (tmp_path / "mod.py").write_text(f"{import_line}\ndef read_file(path):\n    {call}\n")
+    graph = build_python_graph(tmp_path)
+    assert _only_call(graph, "read_file").target == Symbol(identity)
+    catalog = load_catalog(str(bundled_snapshot_path()), is_bundled_snapshot=True)
+    plans = find_finding_plans(graph, tmp_path.name, catalog, [0], tmp_path, "python")
+    assert len(plans) == 1
+    assert "FILE_IO" in plans[0].as_dict()["hypothesis"]["description"]
+
+
 def _only_call(graph, caller_suffix: str):
     matches = [c for c in graph.all_calls() if c.caller.endswith(caller_suffix)]
     assert len(matches) == 1, f"expected exactly one call for {caller_suffix!r}, got {len(matches)}"

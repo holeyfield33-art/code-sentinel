@@ -84,6 +84,8 @@ _STDLIB_MODULE_NAMES.add("builtins")
 STDLIB_SINKS = {
     "builtins.open",
     "os.open",
+    "codecs.open",
+    "io.open",
     "builtins.eval",
     "builtins.exec",
     "json.load",
@@ -500,7 +502,75 @@ def _combine_taint(classifications: list[str]) -> str:
     return "literal"
 
 
-def _classify_arg_taint(node: ast.expr, param_names: frozenset[str], *, allow_call_unwrap: bool = True) -> str:
+def _is_immutable_constant(node: ast.expr) -> bool:
+    """A value built only from immutable constants (str, bytes, numbers,
+    None, f-strings and tuples of them). A literal list, set or dict can be
+    mutated in place without rebinding its name (`cmd.append(x)`), so it
+    never counts."""
+    if isinstance(node, ast.Constant):
+        return True
+    if isinstance(node, ast.JoinedStr):
+        return all(_is_immutable_constant(v) for v in node.values)
+    if isinstance(node, ast.FormattedValue):
+        return _is_immutable_constant(node.value)
+    if isinstance(node, ast.Tuple):
+        return all(_is_immutable_constant(e) for e in node.elts)
+    if isinstance(node, ast.BinOp):
+        return _is_immutable_constant(node.left) and _is_immutable_constant(node.right)
+    if isinstance(node, ast.UnaryOp):
+        return _is_immutable_constant(node.operand)
+    return False
+
+
+def _constant_locals(fn_node: ast.FunctionDef | ast.AsyncFunctionDef, param_names: frozenset[str]) -> frozenset[str]:
+    """Local names that hold the same constant wherever they are read: every
+    binding of the name in this scope is a plain `name = <constant>` (or an
+    annotated one) with an immutable value, it is not a parameter, and nothing declares it global or
+    nonlocal, here or in a nested scope. Any other binding (augmented, loop,
+    `with ... as`, walrus, import, def, except, match capture) disqualifies it,
+    so a constant on only some paths never counts. Module-level constants are
+    not covered (a separate, known gap)."""
+    nodes = list(_scope_nodes(fn_node.body))
+    literal_stores: dict[str, int] = {}
+    for node in nodes:
+        target = value = None
+        if isinstance(node, ast.Assign) and len(node.targets) == 1:
+            target, value = node.targets[0], node.value
+        elif isinstance(node, ast.AnnAssign):
+            target, value = node.target, node.value
+        if isinstance(target, ast.Name) and value is not None and _is_immutable_constant(value):
+            literal_stores[target.id] = literal_stores.get(target.id, 0) + 1
+    stores: dict[str, int] = {}
+    other: set[str] = set()
+    for node in nodes:
+        if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Store):
+            stores[node.id] = stores.get(node.id, 0) + 1
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) and node is not fn_node:
+            other.add(node.name)
+        elif isinstance(node, (ast.Import, ast.ImportFrom)):
+            other.update((a.asname or a.name).split(".")[0] for a in node.names)
+        elif isinstance(node, ast.ExceptHandler) and node.name:
+            other.add(node.name)
+        elif isinstance(node, (ast.MatchAs, ast.MatchStar)) and node.name:
+            other.add(node.name)
+        elif isinstance(node, ast.MatchMapping) and node.rest:
+            other.add(node.rest)
+    for node in ast.walk(fn_node):  # nested scopes too: `nonlocal x` rebinds ours
+        if isinstance(node, (ast.Global, ast.Nonlocal)):
+            other.update(node.names)
+        # A walrus inside a comprehension binds the enclosing function's name,
+        # and _scope_nodes skips comprehension bodies. Any walrus target,
+        # wherever it sits, disqualifies the name (conservative).
+        elif isinstance(node, ast.NamedExpr) and isinstance(node.target, ast.Name):
+            other.add(node.target.id)
+    return frozenset(name for name, count in literal_stores.items()
+                     if stores.get(name) == count and name not in other and name not in param_names)
+
+
+def _classify_arg_taint(
+    node: ast.expr, param_names: frozenset[str], *, allow_call_unwrap: bool = True,
+    constants: frozenset[str] = frozenset(),
+) -> str:
     """Classifies one call argument expression by real AST structure --
     never by re-parsing source text. See graph.py's CallSite.arg_taint for
     the full contract and its stated bound (this is not interprocedural
@@ -524,23 +594,25 @@ def _classify_arg_taint(node: ast.expr, param_names: frozenset[str], *, allow_ca
     if isinstance(node, ast.Constant):
         return "literal"
     if isinstance(node, ast.JoinedStr):  # f-string
-        return _combine_taint([_classify_arg_taint(v, param_names) for v in node.values])
+        return _combine_taint([_classify_arg_taint(v, param_names, constants=constants) for v in node.values])
     if isinstance(node, ast.FormattedValue):
-        return _classify_arg_taint(node.value, param_names)
+        return _classify_arg_taint(node.value, param_names, constants=constants)
     if isinstance(node, (ast.List, ast.Tuple, ast.Set)):
-        return _combine_taint([_classify_arg_taint(e, param_names) for e in node.elts])
+        return _combine_taint([_classify_arg_taint(e, param_names, constants=constants) for e in node.elts])
     if isinstance(node, ast.Dict):
         parts = [v for v in node.values if v is not None] + [k for k in node.keys if k is not None]
-        return _combine_taint([_classify_arg_taint(p, param_names) for p in parts])
+        return _combine_taint([_classify_arg_taint(p, param_names, constants=constants) for p in parts])
     if isinstance(node, ast.BinOp):  # e.g. string concatenation with `+`
         return _combine_taint([
-            _classify_arg_taint(node.left, param_names),
-            _classify_arg_taint(node.right, param_names),
+            _classify_arg_taint(node.left, param_names, constants=constants),
+            _classify_arg_taint(node.right, param_names, constants=constants),
         ])
     if isinstance(node, ast.UnaryOp):
-        return _classify_arg_taint(node.operand, param_names)
+        return _classify_arg_taint(node.operand, param_names, constants=constants)
     if isinstance(node, ast.Name):
-        return "parameter" if node.id in param_names else "unknown"
+        if node.id in param_names:
+            return "parameter"
+        return "literal" if node.id in constants else "unknown"
     if isinstance(node, (ast.Attribute, ast.Subscript)):
         base = node.value
         while isinstance(base, (ast.Attribute, ast.Subscript)):
@@ -549,11 +621,11 @@ def _classify_arg_taint(node: ast.expr, param_names: frozenset[str], *, allow_ca
             return "parameter" if base.id in param_names else "unknown"
         return "unknown"
     if isinstance(node, ast.Call) and allow_call_unwrap:
-        return _classify_call_result_taint(node, param_names)
+        return _classify_call_result_taint(node, param_names, constants)
     return "unknown"  # a call result (already unwrapped once, or unwrap disallowed), comprehension, lambda, walrus, ... -- not modeled
 
 
-def _classify_call_result_taint(node: ast.Call, param_names: frozenset[str]) -> str:
+def _classify_call_result_taint(node: ast.Call, param_names: frozenset[str], constants: frozenset[str] = frozenset()) -> str:
     """The one-hop widening itself: classifies the result of a call used
     directly AS an argument expression, by looking at what that inner
     call's own receiver AND arguments (`receiver.method(arg, ...)`) or,
@@ -586,7 +658,7 @@ def _classify_call_result_taint(node: ast.Call, param_names: frozenset[str]) -> 
         return "unknown"  # e.g. a call on another call's own result, (f())() -- not modeled
     if not constituents:
         return "unknown"  # a zero-arg plain function call, e.g. get_path() -- nothing to trace
-    classifications = [_classify_arg_taint(c, param_names, allow_call_unwrap=False) for c in constituents]
+    classifications = [_classify_arg_taint(c, param_names, allow_call_unwrap=False, constants=constants) for c in constituents]
     if "parameter" in classifications:
         return "traced:parameter"
     if "unknown" in classifications:
@@ -724,6 +796,7 @@ def _resolve_module(
         # "unknown", or the exact case this fix targets would silently
         # regress to the wrong (weaker) classification one call deeper.
         param_names = _param_names(fn_node) | enclosing_param_names
+        constant_locals = _constant_locals(fn_node, param_names) if fn_node is not None else frozenset()
         # name -> names its latest assigned value read, and how many times
         # the name has been assigned so far. Names are compared with their
         # version, so `if not ok(p): raise; p = q; open(p)` does not credit
@@ -750,6 +823,24 @@ def _resolve_module(
                 if isinstance(node, ast.Name):
                     versions[node.id] = versions.get(node.id, 0) + 1
                     derived[node.id] = read - {node.id}
+
+        def bound_names(target: ast.AST) -> list[str]:
+            """Plain names bound by an assignment target, through tuple/list
+            unpacking; `obj.attr` and `d[k]` targets bind no local name."""
+            if isinstance(target, ast.Name):
+                return [target.id]
+            if isinstance(target, ast.Starred):
+                return bound_names(target.value)
+            if isinstance(target, (ast.Tuple, ast.List)):
+                return [n for elt in target.elts for n in bound_names(elt)]
+            return []
+
+        def mark_results(first_call: int, targets: list[ast.expr]) -> None:
+            """Record, on the calls made since index `first_call`, the
+            just-assigned names their results flow into."""
+            names = frozenset((n, versions[n]) for t in targets for n in bound_names(t))
+            for site in calls[first_call:]:
+                site.result_names = names
 
         def note_walrus(expr: ast.AST) -> None:
             for node in ast.walk(expr):
@@ -819,8 +910,10 @@ def _resolve_module(
                     arg_texts = tuple(ast.unparse(a) for a in node.args)
                 except Exception:
                     arg_texts = ()
-                arg_taint = tuple(_classify_arg_taint(a, param_names) for a in node.args)
-                kwarg_taint = tuple(_classify_arg_taint(k.value, param_names) for k in node.keywords)
+                arg_taint = tuple(_classify_arg_taint(a, param_names, constants=constant_locals) for a in node.args)
+                kwarg_taint = tuple(
+                    _classify_arg_taint(k.value, param_names, constants=constant_locals) for k in node.keywords
+                )
                 order_counter[0] += 1
                 calls.append(
                     CallSite(
@@ -881,9 +974,11 @@ def _resolve_module(
                     local_bindings.update(_import_bindings(ast.Module(body=[stmt], type_ignores=[]), module_qualname))
                     continue
                 if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1 and isinstance(stmt.targets[0], ast.Name):
+                    first_call = len(calls)
                     record_calls_in_expr(stmt.value, branch_path)
                     note_walrus(stmt.value)
                     note_assignment(stmt.targets[0], stmt.value)  # after the RHS runs
+                    mark_results(first_call, stmt.targets)
                     resolved_rhs = _resolve_dotted(stmt.value, local_bindings)
                     # Only propagate the alias when it's actually trustworthy
                     # -- see _alias_rhs_is_trustworthy's docstring for the two
@@ -958,13 +1053,16 @@ def _resolve_module(
                     continue
                 # simple statement (Expr, Return, Raise, Assert, AugAssign, ...):
                 # record every call nested in it at the current branch_path.
+                first_call = len(calls)
                 record_calls_in_expr(stmt, branch_path)
                 note_walrus(stmt)
                 if isinstance(stmt, ast.Assign):
                     for assigned in stmt.targets:
                         note_assignment(assigned, stmt.value)
+                    mark_results(first_call, stmt.targets)
                 elif isinstance(stmt, (ast.AnnAssign, ast.AugAssign)):
                     note_assignment(stmt.target, stmt.value)
+                    mark_results(first_call, [stmt.target])
 
         walk_stmts(body, ())
         # Closures see the enclosing scope's completed lexical bindings,

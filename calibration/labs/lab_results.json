@@ -2,23 +2,23 @@
  "summary": {
   "direct": {
    "sites": 25,
-   "detected": 24,
+   "detected": 25,
    "under-ranked": 0,
-   "missed": 1,
-   "recall": 0.96
+   "missed": 0,
+   "recall": 1.0
   },
   "weak": {
    "sites": 5,
-   "detected": 1,
-   "under-ranked": 4,
+   "detected": 0,
+   "under-ranked": 5,
    "missed": 0,
-   "recall": 0.2
+   "recall": 0.0
   },
   "base_rate": {
-   "plans": 169,
-   "priority": 66,
-   "priority_share": 0.3905,
-   "same_sink_priority_share_mean_direct": 0.9023
+   "plans": 170,
+   "priority": 65,
+   "priority_share": 0.3824,
+   "same_sink_priority_share_mean_direct": 0.8785
   }
  },
  "labs": [
@@ -56,8 +56,16 @@
       "dvws-node-004"
      ],
      "weak": null,
-     "outcome": "missed",
-     "triage": [],
+     "outcome": "detected",
+     "triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ],
      "other_plans_on_line": []
     },
     {
@@ -161,11 +169,11 @@
      "other_plans_on_line": []
     }
    ],
-   "plans": 24,
-   "priority": 8,
+   "plans": 25,
+   "priority": 9,
    "same_sink_priority_share": {
     "child_process.exec": 1.0,
-    "fs.readFileSync": 0.7143,
+    "fs.readFileSync": 0.75,
     "JSON.parse": 0.0,
     "Function": 1.0
    }
@@ -556,14 +564,14 @@
       "vulnerable-flask-app-log"
      ],
      "weak": "constant command",
-     "outcome": "detected",
+     "outcome": "under-ranked",
      "triage": [
       {
-       "priority": true,
+       "priority": false,
        "signal": "high",
        "code_context": "production",
        "guarded_by": null,
-       "constant_arguments": false
+       "constant_arguments": true
       }
      ],
      "other_plans_on_line": []
@@ -650,9 +658,9 @@
     }
    ],
    "plans": 12,
-   "priority": 12,
+   "priority": 10,
    "same_sink_priority_share": {
-    "subprocess.check_output": 1.0,
+    "subprocess.check_output": 0.6667,
     "builtins.open": 1.0,
     "pickle.loads": 1.0
    }
@@ -712,12 +720,5 @@
     "vm.runInContext": 1.0
    }
   }
- ],
- "run": {
-  "date": "2026-10-29",
-  "manifest_sha256": "e55fab66b4d50092a822e880fd4e6973f15fd5e87310bb2d971071874ec2b960",
-  "report_sha256": "f09b220ca64e2c33a1313f2318966b5582501f005562ac7390acaea48ca24895",
-  "python": "3.13.18",
-  "quotes_verified": "306/306 located quotes match the pinned sources"
- }
+ ]
 }

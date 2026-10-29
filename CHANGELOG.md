@@ -31,6 +31,15 @@ and historical version tags are not inferred from development commits.
 
 ### Analysis
 
+- Fix the five triage and coverage defects the calibration layers found, each
+  with a regression test: nested `doc/` packages are product code;
+  `codecs.open` and `io.open` are file sinks; a call that builds the sink's
+  argument is not its guard; JS functions declared inside functions are
+  walked; a local that always holds one constant is constant. CVE recall
+  0.92 to 0.96, lab direct sites 24/25 to 25/25, held-out benchmark
+  unchanged. Same-sink priority share rose slightly (0.72 to 0.74), so
+  ranking sharpness is still open; see docs/CALIBRATION.md.
+
 - Add a vulnerable-lab calibration layer (`calibration/lab_truth.py`) scored
   against an independently built answer key for six labs (pygoat, DSVW,
   Vulnerable-Flask-App, dvws-node, NovaTrust bank, Juice Shop). 24 of 25
