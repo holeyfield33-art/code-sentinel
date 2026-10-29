@@ -1,0 +1,1546 @@
+{
+ "schema": "sentinel-cve-pairs-v1",
+ "source": {
+  "database": "https://github.com/pypa/advisory-database",
+  "commit": "30d5858d4f168738a41c83bf5be1fe47726c0e47",
+  "selection": "calibration/cve_tools/ (scan_advisories.py -> fetch_diffs.py -> select_pairs.py); no hand-picking",
+  "rule": "fix commit removes or rewrites a call to a modeled Python sink in non-test source; site = enclosing function at the parent commit; sink family must match the advisory text; one pair per repository; repos up to 3000 .py files"
+ },
+ "inventory": {
+  "advisories_matched_by_text": 528,
+  "fix_commits": 512,
+  "pairs": 51,
+  "guard_only_fixes_not_scored": 380
+ },
+ "pairs": [
+  {
+   "id": "PYSEC-2023-262",
+   "aliases": [
+    "CVE-2023-43364",
+    "GHSA-66m2-493m-crh2"
+   ],
+   "package": "searchor",
+   "repo": "https://github.com/ArjunSharda/Searchor",
+   "vulnerable": "ddbe198467ef2bd37096c5bd7b3fe313eabed39d",
+   "fixed": "16016506f7bf92b0f21f51841d599126d6fcd15b",
+   "language": "python",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "src/searchor/main.py",
+     "function": "search",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 32,
+     "line": "url = eval("
+    }
+   ],
+   "fix_message": "Merge pull request #130 from dan-pavlov/remove-eval-from-cli"
+  },
+  {
+   "id": "PYSEC-2026-389",
+   "aliases": [
+    "CVE-2024-5751",
+    "GHSA-gppg-gqw8-wh9g"
+   ],
+   "package": "litellm",
+   "repo": "https://github.com/BerriAI/litellm",
+   "vulnerable": "2b9e9533b81eb0ec36964badfd3a77f62c50270d",
+   "fixed": "fcea4c22ad96b24436f196ae709f71932e84b0b8",
+   "language": "python",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "litellm/utils.py",
+     "function": "get_secret",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 7187,
+     "line": "ciphertext = eval("
+    }
+   ],
+   "fix_message": "Merge pull request #4228 from CodeVigilanteOfficial/fix_rce_eval"
+  },
+  {
+   "id": "PYSEC-2026-1264",
+   "aliases": [
+    "CVE-2024-8953",
+    "GHSA-5xg7-5662-8x7j"
+   ],
+   "package": "composio-core",
+   "repo": "https://github.com/ComposioHQ/composio",
+   "vulnerable": "20d44d3588454d90bf7c3ad290e014db4903b672",
+   "fixed": "ed82fb45dc9fbd7f07c535c72bada871c158ae5f",
+   "language": "python",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "python/composio/tools/local/mathematical/actions/calculator.py",
+     "function": "Calculator.execute",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 29,
+     "line": "result=str(eval(request.operation))  # pylint: disable=eval-used"
+    }
+   ],
+   "fix_message": "Fix/mathematical calculator (#868)"
+  },
+  {
+   "id": "PYSEC-2026-3862",
+   "aliases": [
+    "CVE-2026-53710",
+    "GHSA-xm98-3vcf-fph7"
+   ],
+   "package": "mcp-contextforge-gateway",
+   "repo": "https://github.com/IBM/mcp-context-forge",
+   "vulnerable": "968a3ae05ac2df0856a13de7b99608e928a8f9ac",
+   "fixed": "63a2900e6301b9c8a483a38d3737a1beb3a7ce89",
+   "language": "python",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "mcp-servers/python/python_sandbox_server/src/python_sandbox_server/server_fastmcp.py",
+     "function": "PythonSandbox.execute",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 576,
+     "line": "expression_result = eval(code, safe_globals, local_vars)"
+    },
+    {
+     "file": "mcp-servers/python/python_sandbox_server/src/python_sandbox_server/server_fastmcp.py",
+     "function": "PythonSandbox.execute",
+     "sink": "builtins.exec",
+     "line_at_vulnerable": 578,
+     "line": "exec(code, safe_globals, local_vars)"
+    }
+   ],
+   "fix_message": "Merge commit from fork"
+  },
+  {
+   "id": "PYSEC-2026-512",
+   "aliases": [
+    "CVE-2016-1505",
+    "GHSA-84cw-mxhv-qvv4"
+   ],
+   "package": "radicale",
+   "repo": "https://github.com/Kozea/Radicale",
+   "vulnerable": "6b7e79a368be86d266c51cf50915324490a1b728",
+   "fixed": "b4b3d51f33c7623d312f289252dd7bbb8f58bbe6",
+   "language": "python",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "radicale/storage/filesystem.py",
+     "function": "Collection.save",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 82,
+     "line": "with open(self._path, \"w\") as fd:"
+    },
+    {
+     "file": "radicale/storage/filesystem.py",
+     "function": "Collection.text",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 92,
+     "line": "with open(self._path) as fd:"
+    }
+   ],
+   "fix_message": "Convert paths safely to file system paths With the old implementation on Windows a path like \"/c:/file/ignore\" got converted to \"c:\\file\" and allowed access to files outside of FOLDER"
+  },
+  {
+   "id": "PYSEC-2019-102",
+   "aliases": [
+    "CVE-2019-19010",
+    "GHSA-6g88-vr3v-76mf"
+   ],
+   "package": "limnoria",
+   "repo": "https://github.com/ProgVal/Limnoria",
+   "vulnerable": "5e2343f717d9f78bd57930ccd73491d79a0b39d7",
+   "fixed": "3848ae78de45b35c029cc333963d436b9d2f0a35",
+   "language": "python",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "plugins/Math/plugin.py",
+     "function": "Math.calc",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 223,
+     "line": "x = complex(eval(text, self._mathSafeEnv, self._mathSafeEnv))"
+    },
+    {
+     "file": "plugins/Math/plugin.py",
+     "function": "Math.icalc",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 260,
+     "line": "irc.reply(str(eval(text, self._mathEnv, self._mathEnv)))"
+    },
+    {
+     "file": "plugins/Math/plugin.py",
+     "function": "Math.rpn",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 313,
+     "line": "stack.append(eval(s, self._mathSafeEnv, self._mathSafeEnv))"
+    }
+   ],
+   "fix_message": "Math: Rewrite calc functions with a proper evaluator."
+  },
+  {
+   "id": "PYSEC-2021-17",
+   "aliases": [
+    "CVE-2021-31800",
+    "GHSA-mj63-64x7-57xf"
+   ],
+   "package": "impacket",
+   "repo": "https://github.com/SecureAuthCorp/impacket",
+   "vulnerable": "91902eafb68fea932cf2350cab329f15afa554e5",
+   "fixed": "49c643bf66620646884ed141c94e5fdd85bcdd2f",
+   "language": "python",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "impacket/smbserver.py",
+     "function": "writeJohnOutputToFile",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 176,
+     "line": "with open(output_filename,\"a\") as f:"
+    }
+   ],
+   "fix_message": "Merge pull request #1066 from omriinbar/master"
+  },
+  {
+   "id": "PYSEC-2026-2053",
+   "aliases": [
+    "CVE-2026-23535",
+    "GHSA-mmwx-79f6-67jg"
+   ],
+   "package": "wlc",
+   "repo": "https://github.com/WeblateOrg/wlc",
+   "vulnerable": "3ee9d14bcf07281f83c8ed3cdc04ec971b5cac5d",
+   "fixed": "216e691c6e50abae97fe2e4e4f21501bf49a585f",
+   "language": "python",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "wlc/main.py",
+     "function": "Download.download_component",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 663,
+     "line": "with open(file_path, \"wb\") as file:"
+    }
+   ],
+   "fix_message": "fix: sanitize server-provided paths"
+  },
+  {
+   "id": "PYSEC-2026-1771",
+   "aliases": [
+    "CVE-2023-0241",
+    "GHSA-9crj-hpxh-f6qg"
+   ],
+   "package": "pgadmin4",
+   "repo": "https://github.com/akshay-joshi/pgadmin4",
+   "vulnerable": "188bcbd5bb94cd0592d842b4c843be2196e300cf",
+   "fixed": "64d7289c5b3831137b17bb4c5022ef4f63d2ef42",
+   "language": "python",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "web/pgadmin/tools/backup/__init__.py",
+     "function": "filename_with_file_manager_path",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 220,
+     "line": "with open(_file, 'a'):"
+    },
+    {
+     "file": "web/pgadmin/tools/import_export/__init__.py",
+     "function": "filename_with_file_manager_path",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 166,
+     "line": "with open(_file, 'a'):"
+    }
+   ],
+   "fix_message": "Ensure that the authenticated users can't access each other's directories and files by providing relative paths. #5734"
+  },
+  {
+   "id": "PYSEC-2026-1127",
+   "aliases": [
+    "CVE-2024-29189",
+    "GHSA-38jr-29fh-w9vm"
+   ],
+   "package": "ansys-geometry-core",
+   "repo": "https://github.com/ansys/pyansys-geometry",
+   "vulnerable": "f82346b9432b06532e84f3278125f5879b4e9f3f",
+   "fixed": "902071701c4f3a8258cbaa46c28dc0a65442d1bc",
+   "language": "python",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "src/ansys/geometry/core/connection/product_instance.py",
+     "function": "_start_program",
+     "sink": "subprocess.Popen",
+     "line_at_vulnerable": 423,
+     "line": "return subprocess.Popen("
+    }
+   ],
+   "fix_message": "feat: accept bandit advisories in-line for subprocess (#1077)"
+  },
+  {
+   "id": "PYSEC-2026-491",
+   "aliases": [
+    "CVE-2025-61622",
+    "GHSA-538v-3wq9-4h3r"
+   ],
+   "package": "pyfury",
+   "repo": "https://github.com/apache/fory",
+   "vulnerable": "3ee85f4c54a7f48330edf2d78b64daa5b3ce22b3",
+   "fixed": "379b948ecae5c3b849e5bdb3997978c9a163e40b",
+   "language": "python",
+   "kind": "DESERIALIZATION",
+   "sites": [
+    {
+     "file": "python/pyfory/serializer.py",
+     "function": "PickleStrongCacheSerializer.read",
+     "sink": "pickle.loads",
+     "line_at_vulnerable": 175,
+     "line": "return pickle.loads(buffer.read_bytes_and_size())"
+    },
+    {
+     "file": "python/pyfory/serializer.py",
+     "function": "PickleCacheSerializer.read",
+     "sink": "pickle.loads",
+     "line_at_vulnerable": 206,
+     "line": "value = pickle.loads(buffer.read_bytes_and_size())"
+    }
+   ],
+   "fix_message": "feat(python): drop-in replacement for pickle serialization (#2629)"
+  },
+  {
+   "id": "PYSEC-2026-521",
+   "aliases": [
+    "CVE-2026-8838",
+    "GHSA-29h4-r29x-hchv"
+   ],
+   "package": "redshift-connector",
+   "repo": "https://github.com/aws/amazon-redshift-python-driver",
+   "vulnerable": "2c1dd5b9aca1945a1b8e01b2359075d9e8b0e77c",
+   "fixed": "69a69dfdead75918e20384da52bcd760ded8dbca",
+   "language": "python",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "redshift_connector/utils/type_utils.py",
+     "function": "vector_in",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 86,
+     "line": "return eval(\"[\" + data[idx : idx + length].decode(_client_encoding).replace(\" \", \",\") + \"]\")"
+    }
+   ],
+   "fix_message": "Replaced eval() usage in vector_in() type handler with integer parsing"
+  },
+  {
+   "id": "PYSEC-2026-1887",
+   "aliases": [
+    "CVE-2024-34073",
+    "GHSA-7pc3-pr3q-58vg"
+   ],
+   "package": "sagemaker",
+   "repo": "https://github.com/aws/sagemaker-python-sdk",
+   "vulnerable": "d27836eab1575d90db676ab2667b4816eaf45af0",
+   "fixed": "2d873d53f708ea570fc2e2a6974f8c3097fe9df5",
+   "language": "python",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "src/sagemaker/serve/save_retrive/version_1_0_0/save/utils.py",
+     "function": "capture_dependencies",
+     "sink": "os.system",
+     "line_at_vulnerable": 104,
+     "line": "os.system(command)"
+    }
+   ],
+   "fix_message": "[Fix] Switch to subprocess in ModelBuilder when capturing dependencies (#4556)"
+  },
+  {
+   "id": "PYSEC-2017-78",
+   "aliases": [
+    "CVE-2017-16763",
+    "GHSA-m85c-9mf8-m2m6"
+   ],
+   "package": "confire",
+   "repo": "https://github.com/bbengfort/confire",
+   "vulnerable": "aac6d50d996ada6fb3199a081313e96f385c0418",
+   "fixed": "8cc86a5ec2327e070f1d576d61bbaadf861597ea",
+   "language": "python",
+   "kind": "DESERIALIZATION",
+   "sites": [
+    {
+     "file": "confire/config.py",
+     "function": "Configuration.load",
+     "sink": "yaml.load",
+     "line_at_vulnerable": 146,
+     "line": "config.configure(yaml.load(conf))"
+    }
+   ],
+   "fix_message": "use safe load instead of load"
+  },
+  {
+   "id": "PYSEC-2026-316",
+   "aliases": [
+    "CVE-2024-47533",
+    "GHSA-m26c-fcgh-cp6h"
+   ],
+   "package": "cobbler",
+   "repo": "https://github.com/cobbler/cobbler",
+   "vulnerable": "a4d2419de4697d0b6820eeac31f1d8bba64f4f48",
+   "fixed": "32c5cada013dc8daa7320a8eda9932c2814742b0",
+   "language": "python",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "cobbler/modules/authn_configfile.py",
+     "function": "__parse_storage",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 40,
+     "line": "fd = open(\"/etc/cobbler/users.digest\")"
+    },
+    {
+     "file": "cobbler/utils.py",
+     "function": "get_shared_secret",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 1839,
+     "line": "fd = open(\"/var/lib/cobbler/web.ss\", 'rb')"
+    }
+   ],
+   "fix_message": "Use utf-8 encoding for md5 handling and web.ss data."
+  },
+  {
+   "id": "PYSEC-2026-4009",
+   "aliases": [
+    "GHSA-22mg-8gw7-636x"
+   ],
+   "package": "local-operator",
+   "repo": "https://github.com/damianvtran/local-operator",
+   "vulnerable": "17b6b673f9fe6ff7de58d8c886df0e5eae8cb16c",
+   "fixed": "29fc4c68a3ed1d238b8abf6b6a6136a3361416a5",
+   "language": "python",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "local_operator/server/routes/chat.py",
+     "function": "edit_file_with_agent",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 648,
+     "line": "with open(resolved_file_path, \"r\", encoding=\"utf-8\") as f:"
+    }
+   ],
+   "fix_message": "fix(security): isolate agent imports and confine edit file reads (#643)"
+  },
+  {
+   "id": "PYSEC-2026-1313",
+   "aliases": [
+    "CVE-2026-24009",
+    "GHSA-vqxf-v2gg-x3hc"
+   ],
+   "package": "docling-core",
+   "repo": "https://github.com/docling-project/docling-core",
+   "vulnerable": "ec0978652ff0f19356d8661f7e59a0f98a5b248d",
+   "fixed": "3e8d628eeeae50f0f8f239c8c7fea773d065d80c",
+   "language": "python",
+   "kind": "DESERIALIZATION",
+   "sites": [
+    {
+     "file": "docling_core/types/doc/document.py",
+     "function": "DoclingDocument.load_from_yaml",
+     "sink": "yaml.load",
+     "line_at_vulnerable": 4357,
+     "line": "data = yaml.load(f, Loader=yaml.FullLoader)"
+    }
+   ],
+   "fix_message": "fix: switch to safe YAML loader (#396)"
+  },
+  {
+   "id": "PYSEC-2026-281",
+   "aliases": [
+    "CVE-2021-21386",
+    "GHSA-8434-v7xw-8m9x"
+   ],
+   "package": "apkleaks",
+   "repo": "https://github.com/dwisiswant0/apkleaks",
+   "vulnerable": "8577b7af6224bf0a5455b552963c46721308d2ff",
+   "fixed": "a966e781499ff6fd4eea66876d7532301b13a382",
+   "language": "python",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "apkleaks/apkleaks.py",
+     "function": "APKLeaks.decompile",
+     "sink": "os.system",
+     "line_at_vulnerable": 88,
+     "line": "os.system(dec)"
+    }
+   ],
+   "fix_message": "Escapes decompiling arguments"
+  },
+  {
+   "id": "PYSEC-2026-1432",
+   "aliases": [
+    "CVE-2024-45858",
+    "GHSA-w392-75q8-vr67"
+   ],
+   "package": "guardrails-ai",
+   "repo": "https://github.com/guardrails-ai/guardrails",
+   "vulnerable": "9ffd452a0ee46b5d7c0eda78b739b570bd880e93",
+   "fixed": "ab12701e8c3ef41273ff9b3912f2e4e28ae8306f",
+   "language": "python",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "guardrails/utils/validator_utils.py",
+     "function": "parse_rail_arguments",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 36,
+     "line": "t = eval(t)"
+    }
+   ],
+   "fix_message": "Merge pull request #1073 from guardrails-ai/eval-fix"
+  },
+  {
+   "id": "PYSEC-2026-1978",
+   "aliases": [
+    "CVE-2024-3568",
+    "GHSA-37q5-v5qm-c9v8"
+   ],
+   "package": "transformers",
+   "repo": "https://github.com/huggingface/transformers",
+   "vulnerable": "115ac94d062b1950467ac3dd521e2cd504f626db",
+   "fixed": "693667b8ac8138b83f8adb6522ddaf42fa07c125",
+   "language": "python",
+   "kind": "DESERIALIZATION",
+   "sites": [
+    {
+     "file": "src/transformers/modeling_tf_utils.py",
+     "function": "TFPreTrainedModel.load_repo_checkpoint",
+     "sink": "pickle.load",
+     "line_at_vulnerable": 1401,
+     "line": "extra_data = pickle.load(f)"
+    }
+   ],
+   "fix_message": "Remove dead TF loading code (#28926)"
+  },
+  {
+   "id": "PYSEC-2026-2892",
+   "aliases": [
+    "CVE-2026-42079",
+    "GHSA-89g2-xw5c-v95p"
+   ],
+   "package": "pptagent",
+   "repo": "https://github.com/icip-cas/PPTAgent",
+   "vulnerable": "858da237342f4fdf9e6c3e47baaef6f44647c8f0",
+   "fixed": "418491a9a1c02d9d93194b5973bb58df35cf9d00",
+   "language": "python",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "pptagent/apis.py",
+     "function": "CodeExecutor.execute_actions",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 185,
+     "line": "eval(line, {}, {func: partial_func})"
+    }
+   ],
+   "fix_message": "fix: pptagent"
+  },
+  {
+   "id": "PYSEC-2022-288",
+   "aliases": [
+    "CVE-2022-21797",
+    "GHSA-6hrg-qmvc-2xh8"
+   ],
+   "package": "joblib",
+   "repo": "https://github.com/joblib/joblib",
+   "vulnerable": "1fdf3086674d7b1be27688e8c7aebd3159d89997",
+   "fixed": "b90f10efeb670a2cc877fb88ebb3f2019189e059",
+   "language": "python",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "joblib/parallel.py",
+     "function": "Parallel.__call__",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 1052,
+     "line": "pre_dispatch = eval(pre_dispatch)"
+    }
+   ],
+   "fix_message": "FIX make sure pre_dispatch cannot do arbitrary code execution (#1321)"
+  },
+  {
+   "id": "PYSEC-2024-62",
+   "aliases": [
+    "CVE-2024-21513",
+    "GHSA-cgcg-p68q-3w7v"
+   ],
+   "package": "langchain-experimental",
+   "repo": "https://github.com/langchain-ai/langchain",
+   "vulnerable": "b809c243afb182efc5868ca495074a41e2f7c40c",
+   "fixed": "7b13292e3544b2f5f2bfb8a27a062ea2b0c34561",
+   "language": "python",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "libs/experimental/langchain_experimental/sql/vector_sql.py",
+     "function": "_try_eval",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 81,
+     "line": "return eval(x)"
+    }
+   ],
+   "fix_message": "Remove python eval from vector sql db chain (#10937)"
+  },
+  {
+   "id": "PYSEC-2026-381",
+   "aliases": [
+    "CVE-2025-46724",
+    "GHSA-jqq5-wc57-f8hj"
+   ],
+   "package": "langroid",
+   "repo": "https://github.com/langroid/langroid",
+   "vulnerable": "e63280330459e447f3a3e04f7229019b53a93d03",
+   "fixed": "0d9e4a7bb3ae2eef8d38f2e970ff916599a2b2a6",
+   "language": "python",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "langroid/agent/special/table_chat_agent.py",
+     "function": "TableChatAgent.pandas_eval",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 218,
+     "line": "eval_result = eval(exprn, {}, local_vars)"
+    },
+    {
+     "file": "langroid/vector_store/base.py",
+     "function": "VectorStore.compute_from_docs",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 166,
+     "line": "result = eval(calc, {}, {\"df\": df})  # type: ignore"
+    }
+   ],
+   "fix_message": "fixes to code-injection mitigation PR #841 (#850)"
+  },
+  {
+   "id": "PYSEC-2026-3970",
+   "aliases": [
+    "CVE-2024-8019",
+    "GHSA-4cv3-v7pv-rfhf"
+   ],
+   "package": "lightning",
+   "repo": "https://github.com/lightning-ai/pytorch-lightning",
+   "vulnerable": "90f23b34e956ac19eda4f5b41b9d1339595fd207",
+   "fixed": "330af381de88cff17515418a341cbc1f9f127f9a",
+   "language": "python",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "src/lightning/__setup__.py",
+     "function": "_setup_args",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 80,
+     "line": "with open(ui_ver_file, encoding=\"utf-8\") as fo:"
+    }
+   ],
+   "fix_message": "Remove the lightning app code (#20039)"
+  },
+  {
+   "id": "PYSEC-2024-226",
+   "aliases": [
+    "CVE-2024-23346",
+    "GHSA-vgv8-5cpj-qj2f"
+   ],
+   "package": "pymatgen",
+   "repo": "https://github.com/materialsproject/pymatgen",
+   "vulnerable": "12ab947261cda104ac87548429c69ce5014bbf02",
+   "fixed": "c231cbd3d5147ee920a37b6ee9dd236b376bcf5a",
+   "language": "python",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "pymatgen/symmetry/settings.py",
+     "function": "JonesFaithfulTransformation.parse_transformation_string",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 111,
+     "line": "P = np.array([eval(x, {\"__builtins__\": None}, {\"a\": a, \"b\": b, \"c\": c}) for x in basis_change])"
+    }
+   ],
+   "fix_message": "Update `JonesFaithfulTransformation` to use sympy"
+  },
+  {
+   "id": "PYSEC-2026-2636",
+   "aliases": [
+    "CVE-2026-7597",
+    "GHSA-xqxw-r767-67m7"
+   ],
+   "package": "mem0ai",
+   "repo": "https://github.com/mem0ai/mem0",
+   "vulnerable": "5d40592e4226a4e5f985fbf2272121312d932574",
+   "fixed": "62dca096f9236010ca15fea9ba369ba740b86b7a",
+   "language": "python",
+   "kind": "DESERIALIZATION",
+   "sites": [
+    {
+     "file": "mem0/vector_stores/faiss.py",
+     "function": "FAISS._load",
+     "sink": "pickle.load",
+     "line_at_vulnerable": 93,
+     "line": "self.docstore, self.index_to_id = pickle.load(f)"
+    }
+   ],
+   "fix_message": "fix: prevent arbitrary code execution via pickle in FAISS vector store"
+  },
+  {
+   "id": "PYSEC-2026-1854",
+   "aliases": [
+    "CVE-2025-61765",
+    "GHSA-g8c6-8fjj-2r4m"
+   ],
+   "package": "python-socketio",
+   "repo": "https://github.com/miguelgrinberg/python-socketio",
+   "vulnerable": "a59c6f520059eb095ab4472e5192ce3e486875d9",
+   "fixed": "53f6be094257ed81476b0e212c8cddd6d06ca39a",
+   "language": "python",
+   "kind": "DESERIALIZATION",
+   "sites": [
+    {
+     "file": "src/socketio/async_aiopika_manager.py",
+     "function": "AsyncAioPikaManager._listen",
+     "sink": "pickle.loads",
+     "line_at_vulnerable": 116,
+     "line": "yield pickle.loads(message.body)"
+    },
+    {
+     "file": "src/socketio/async_pubsub_manager.py",
+     "function": "AsyncPubSubManager._thread",
+     "sink": "pickle.loads",
+     "line_at_vulnerable": 207,
+     "line": "data = pickle.loads(message)"
+    },
+    {
+     "file": "src/socketio/kafka_manager.py",
+     "function": "KafkaManager._listen",
+     "sink": "pickle.loads",
+     "line_at_vulnerable": 65,
+     "line": "yield pickle.loads(message.value)"
+    },
+    {
+     "file": "src/socketio/pubsub_manager.py",
+     "function": "PubSubManager._thread",
+     "sink": "pickle.loads",
+     "line_at_vulnerable": 201,
+     "line": "data = pickle.loads(message)"
+    },
+    {
+     "file": "src/socketio/zmq_manager.py",
+     "function": "ZmqManager._listen",
+     "sink": "pickle.loads",
+     "line_at_vulnerable": 97,
+     "line": "message = pickle.loads(message)"
+    }
+   ],
+   "fix_message": "Replace pickle with json (#1502)"
+  },
+  {
+   "id": "PYSEC-2026-1629",
+   "aliases": [
+    "CVE-2024-45847",
+    "GHSA-crmg-rp64-5cm3"
+   ],
+   "package": "mindsdb",
+   "repo": "https://github.com/mindsdb/mindsdb",
+   "vulnerable": "ff120b08f45a4b15a313f7723ea0f2d8aa4be87c",
+   "fixed": "11a4db792ad36cf704f7307c7602128b17752c80",
+   "language": "python",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "mindsdb/integrations/handlers/chromadb_handler/chromadb_handler.py",
+     "function": "ChromaDBHandler.insert",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 332,
+     "line": "lambda x: x if isinstance(x, dict) else eval(x)"
+    },
+    {
+     "file": "mindsdb/integrations/handlers/sharepoint_handler/sharepoint_api.py",
+     "function": "SharepointAPI.create_a_list",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 252,
+     "line": "column = eval(column)"
+    },
+    {
+     "file": "mindsdb/integrations/handlers/sharepoint_handler/sharepoint_api.py",
+     "function": "SharepointAPI.create_a_list",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 255,
+     "line": "payload[\"list\"] = eval(list_template)"
+    },
+    {
+     "file": "mindsdb/integrations/handlers/sharepoint_handler/sharepoint_api.py",
+     "function": "SharepointAPI.create_a_site_column",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 413,
+     "line": "text = eval(text)"
+    },
+    {
+     "file": "mindsdb/integrations/handlers/sharepoint_handler/sharepoint_api.py",
+     "function": "SharepointAPI.create_an_item",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 577,
+     "line": "payload[\"fields\"] = eval(fields)"
+    },
+    {
+     "file": "mindsdb/integrations/handlers/weaviate_handler/weaviate_handler.py",
+     "function": "WeaviateDBHandler.select",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 338,
+     "line": "\"vector\": eval(vector_filter.value)"
+    },
+    {
+     "file": "mindsdb/integrations/libs/vectordatabase_handler.py",
+     "function": "VectorStoreHandler._dispatch_update",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 245,
+     "line": "v = eval(v)"
+    }
+   ],
+   "fix_message": "Replace eval with literal_eval (#9533)"
+  },
+  {
+   "id": "PYSEC-2022-42998",
+   "aliases": [
+    "CVE-2022-44900",
+    "GHSA-m8xw-9x5x-6vh3"
+   ],
+   "package": "py7zr",
+   "repo": "https://github.com/miurahr/py7zr",
+   "vulnerable": "04e3af5ae5092137ee7b015b85efac1c7fd8974e",
+   "fixed": "1bb43f17515c7f69673a1c88ab9cc72a7bbef406",
+   "language": "python",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "py7zr/py7zr.py",
+     "function": "Worker.extract",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 1239,
+     "line": "self.extract_single(open(filename, \"rb\"), empty_files, 0, 0, q)"
+    }
+   ],
+   "fix_message": "Fix sanity check for path traversal attack"
+  },
+  {
+   "id": "PYSEC-2026-2661",
+   "aliases": [
+    "CVE-2025-14287",
+    "GHSA-xch3-2f9x-wh9f"
+   ],
+   "package": "mlflow",
+   "repo": "https://github.com/mlflow/mlflow",
+   "vulnerable": "c0a2f87e7a6264f6fb356c1e40ff4e4e8b41d6a5",
+   "fixed": "8b8792a7034fb33a14b0b31cabcaa9b912d3485f",
+   "language": "python",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "mlflow/sagemaker/__init__.py",
+     "function": "push_image_to_ecr",
+     "sink": "os.system",
+     "line_at_vulnerable": 167,
+     "line": "os.system(cmd)"
+    }
+   ],
+   "fix_message": "Switch container build to subprocess for Sagemaker (#19277)"
+  },
+  {
+   "id": "PYSEC-2026-1682",
+   "aliases": [
+    "CVE-2025-41419",
+    "GHSA-7c78-rm87-5673"
+   ],
+   "package": "ms-swift",
+   "repo": "https://github.com/modelscope/ms-swift",
+   "vulnerable": "975b86b6cf7883fc23184f2cf8dfc9039507c65a",
+   "fixed": "32f09e9b0a44f19d44210e2b5b47c58ab01740e1",
+   "language": "python",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "swift/ui/llm_eval/llm_eval.py",
+     "function": "LLMEval.eval_model",
+     "sink": "os.system",
+     "line_at_vulnerable": 187,
+     "line": "os.system(run_command)"
+    },
+    {
+     "file": "swift/ui/llm_export/llm_export.py",
+     "function": "LLMExport.export_model",
+     "sink": "os.system",
+     "line_at_vulnerable": 189,
+     "line": "os.system(run_command)"
+    },
+    {
+     "file": "swift/ui/llm_grpo/external_rollout.py",
+     "function": "LLMRollout.rollout_model",
+     "sink": "os.system",
+     "line_at_vulnerable": 235,
+     "line": "os.system(run_command)"
+    },
+    {
+     "file": "swift/ui/llm_grpo/external_runtime.py",
+     "function": "RolloutRuntime.kill_task",
+     "sink": "os.system",
+     "line_at_vulnerable": 125,
+     "line": "os.system(f'taskkill /f /t /pid \"{pid}\"')"
+    },
+    {
+     "file": "swift/ui/llm_grpo/external_runtime.py",
+     "function": "RolloutRuntime.kill_task",
+     "sink": "os.system",
+     "line_at_vulnerable": 127,
+     "line": "os.system(f'taskkill /f /t /pid \"{child.pid}\"')"
+    },
+    {
+     "file": "swift/ui/llm_grpo/external_runtime.py",
+     "function": "RolloutRuntime.kill_task",
+     "sink": "os.system",
+     "line_at_vulnerable": 129,
+     "line": "os.system(f'pkill -9 -f {log_file}')"
+    },
+    {
+     "file": "swift/ui/llm_grpo/external_runtime.py",
+     "function": "RolloutRuntime.kill_task",
+     "sink": "os.system",
+     "line_at_vulnerable": 131,
+     "line": "os.system(f'kill -9 {child.pid}')"
+    },
+    {
+     "file": "swift/ui/llm_infer/llm_infer.py",
+     "function": "LLMInfer.deploy_model",
+     "sink": "os.system",
+     "line_at_vulnerable": 280,
+     "line": "os.system(run_command)"
+    },
+    {
+     "file": "swift/ui/llm_infer/runtime.py",
+     "function": "Runtime.kill_task",
+     "sink": "os.system",
+     "line_at_vulnerable": 253,
+     "line": "os.system(f'taskkill /f /t /pid \"{pid}\"')"
+    },
+    {
+     "file": "swift/ui/llm_infer/runtime.py",
+     "function": "Runtime.kill_task",
+     "sink": "os.system",
+     "line_at_vulnerable": 255,
+     "line": "os.system(f'pkill -9 -f {log_file}')"
+    },
+    {
+     "file": "swift/ui/llm_sample/llm_sample.py",
+     "function": "LLMSample.sample_model",
+     "sink": "os.system",
+     "line_at_vulnerable": 255,
+     "line": "os.system(run_command)"
+    },
+    {
+     "file": "swift/ui/llm_train/llm_train.py",
+     "function": "LLMTrain.train_local",
+     "sink": "os.system",
+     "line_at_vulnerable": 508,
+     "line": "os.system(run_command)"
+    },
+    {
+     "file": "swift/ui/llm_train/runtime.py",
+     "function": "Runtime.kill_task",
+     "sink": "os.system",
+     "line_at_vulnerable": 584,
+     "line": "os.system(f'taskkill /f /t /pid \"{pid}\"')"
+    },
+    {
+     "file": "swift/ui/llm_train/runtime.py",
+     "function": "Runtime.kill_task",
+     "sink": "os.system",
+     "line_at_vulnerable": 586,
+     "line": "os.system(f'pkill -9 -f {output_dir}')"
+    }
+   ],
+   "fix_message": "Fix run cmd with os.system (#5182)"
+  },
+  {
+   "id": "PYSEC-2026-3790",
+   "aliases": [
+    "CVE-2026-71514",
+    "GHSA-cv22-g7mw-8v73"
+   ],
+   "package": "nltk",
+   "repo": "https://github.com/nltk/nltk",
+   "vulnerable": "006000117a9e3132a8074d16f2587e837f41b9b0",
+   "fixed": "10d34b3f4fe3fec74b76527a409eb0acbac2e8ab",
+   "language": "python",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "nltk/chunk/named_entity.py",
+     "function": "load_ace_file",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 235,
+     "line": "with open(annfile) as infile:"
+    },
+    {
+     "file": "nltk/chunk/named_entity.py",
+     "function": "load_ace_file",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 247,
+     "line": "with open(textfile) as infile:"
+    },
+    {
+     "file": "nltk/corpus/reader/crubadan.py",
+     "function": "CrubadanCorpusReader._load_lang_mapping_data",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 78,
+     "line": "with open(mapper_file, encoding=\"utf-8\") as raw:"
+    },
+    {
+     "file": "nltk/corpus/reader/crubadan.py",
+     "function": "CrubadanCorpusReader._load_lang_ngrams",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 97,
+     "line": "with open(ngram_file, encoding=\"utf-8\") as f:"
+    },
+    {
+     "file": "nltk/corpus/reader/ipipan.py",
+     "function": "IPIPANCorpusReader._get_tag",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 209,
+     "line": "with open(f) as infile:"
+    },
+    {
+     "file": "nltk/corpus/reader/lin.py",
+     "function": "LinThesaurusCorpusReader.__init__",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 43,
+     "line": "with open(path) as lin_file:"
+    },
+    {
+     "file": "nltk/corpus/reader/nkjp.py",
+     "function": "XML_Tool.build_preprocessed_file",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 283,
+     "line": "fr = open(self.read_file)"
+    },
+    {
+     "file": "nltk/corpus/reader/pl196x.py",
+     "function": "Pl196xCorpusReader._init_textids",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 110,
+     "line": "with open(self._textids) as fp:"
+    },
+    {
+     "file": "nltk/corpus/reader/xmldocs.py",
+     "function": "XMLCorpusView._detect_encoding",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 168,
+     "line": "with open(fileid, \"rb\") as infile:"
+    }
+   ],
+   "fix_message": "fix(security): route corpus-reader reads through a hardened pathsec sandbox (CWE-59)"
+  },
+  {
+   "id": "PYSEC-2022-209",
+   "aliases": [
+    "CVE-2022-2054",
+    "GHSA-4v3r-hqr9-69jf"
+   ],
+   "package": "nuitka",
+   "repo": "https://github.com/nuitka/nuitka",
+   "vulnerable": "e18a19e3d062b3b616980fb12cf6a9587c727209",
+   "fixed": "09647745d7cbb6ff32f9fa948f19d5558b32bcad",
+   "language": "python",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "nuitka/__main__.py",
+     "function": "main",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 45,
+     "line": "sys.path = eval(os.environ[\"NUITKA_PYTHONPATH\"])"
+    },
+    {
+     "file": "nuitka/__main__.py",
+     "function": "main",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 108,
+     "line": "setPreloadedPackagePaths(eval(os.environ[\"NUITKA_NAMESPACES\"]))"
+    },
+    {
+     "file": "nuitka/__main__.py",
+     "function": "main",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 117,
+     "line": "setPthImportedPackages(eval(os.environ[\"NUITKA_PTH_IMPORTED\"]))"
+    },
+    {
+     "file": "nuitka/build/SconsCaching.py",
+     "function": "checkCachingSuccess",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 385,
+     "line": "stats = eval(  # lazy, pylint: disable=eval-used"
+    },
+    {
+     "file": "nuitka/nodes/NodeBases.py",
+     "function": "fromXML",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 1180,
+     "line": "args[\"constant\"] = eval(args[\"constant\"])"
+    },
+    {
+     "file": "nuitka/plugins/PluginBase.py",
+     "function": "NuitkaPluginBase.queryRuntimeInformationMultiple",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 850,
+     "line": "*(eval(value) for value in feedback)"
+    }
+   ],
+   "fix_message": "Cleanup, avoid using \"eval\" where \"ast.literal_eval\" can be used."
+  },
+  {
+   "id": "PYSEC-2026-2239",
+   "aliases": [
+    "CVE-2026-27489",
+    "GHSA-3r9x-f23j-gc73"
+   ],
+   "package": "onnx",
+   "repo": "https://github.com/onnx/onnx",
+   "vulnerable": "c4b51c06863d1333c4d5af26d9a7ca6b46776346",
+   "fixed": "4755f8053928dce18a61db8fec71b69c74f786cb",
+   "language": "python",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "onnx/external_data_helper.py",
+     "function": "load_external_data_for_tensor",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 58,
+     "line": "with open(external_data_file_path, \"rb\") as data_file:"
+    },
+    {
+     "file": "onnx/model_container.py",
+     "function": "ModelContainer._load_large_initializers",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 299,
+     "line": "with open(external_data_file_path, \"rb\") as data_file:"
+    }
+   ],
+   "fix_message": "Improve external data file handling - onnx.load (#7717)"
+  },
+  {
+   "id": "PYSEC-2026-564",
+   "aliases": [
+    "CVE-2026-28370",
+    "GHSA-8xwf-cr4r-856r"
+   ],
+   "package": "vitrage",
+   "repo": "https://github.com/openstack/vitrage",
+   "vulnerable": "a0ca4f8a553e4f0200aac410feb982b0811714a1",
+   "fixed": "89df4bd2ffda1a5ddea66cd828438a6a171a3b11",
+   "language": "python",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "vitrage/graph/query.py",
+     "function": "create_predicate",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 70,
+     "line": "return eval(expression)"
+    }
+   ],
+   "fix_message": "Replace eval with function matching"
+  },
+  {
+   "id": "PYSEC-2026-451",
+   "aliases": [
+    "CVE-2025-2945",
+    "GHSA-g73c-fw68-pwx3"
+   ],
+   "package": "pgadmin4",
+   "repo": "https://github.com/pgadmin-org/pgadmin4",
+   "vulnerable": "1305d9910beefd0d6b4c7eb4f111f86edb1d356b",
+   "fixed": "75be0bc22d3d8d7620711835db817bd7c021007c",
+   "language": "python",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "web/pgacloud/providers/google.py",
+     "function": "GoogleProvider._create_google_postgresql_instance",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 140,
+     "line": "'REGIONAL' if eval(args.high_availability) else 'ZONAL'"
+    },
+    {
+     "file": "web/pgadmin/tools/sqleditor/__init__.py",
+     "function": "start_query_download_tool",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 2159,
+     "line": "eval(value) if isinstance(value, str) else value"
+    }
+   ],
+   "fix_message": "Fixed a remote code execution issue in the Query Tool and Cloud Deployment (CVE-2025-2945). #8603"
+  },
+  {
+   "id": "PYSEC-2026-3916",
+   "aliases": [
+    "CVE-2026-55419",
+    "GHSA-m2pc-3q4q-w6jr"
+   ],
+   "package": "reachy-mini",
+   "repo": "https://github.com/pollen-robotics/reachy_mini",
+   "vulnerable": "376024b886566a8c997228fe94af82481cd70a9f",
+   "fixed": "984c7723b3ec5da63f4e0a2bcf9f120ceb563e04",
+   "language": "python",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "src/reachy_mini/daemon/app/routers/media.py",
+     "function": "upload_sound",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 172,
+     "line": "with open(dest, \"wb\") as f:"
+    }
+   ],
+   "fix_message": "Fix media sounds upload validation (#1209)"
+  },
+  {
+   "id": "PYSEC-2026-1918",
+   "aliases": [
+    "CVE-2024-6345",
+    "GHSA-cx63-2mw6-8hw5"
+   ],
+   "package": "setuptools",
+   "repo": "https://github.com/pypa/setuptools",
+   "vulnerable": "4a0a9ce587515edce83ab97aa5c7943c045ac180",
+   "fixed": "88807c7062788254f654ea8c03427adc859321f0",
+   "language": "python",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "setuptools/package_index.py",
+     "function": "PackageIndex._download_git",
+     "sink": "os.system",
+     "line_at_vulnerable": 888,
+     "line": "os.system(\"git clone --quiet %s %s\" % (url, filename))"
+    },
+    {
+     "file": "setuptools/package_index.py",
+     "function": "PackageIndex._download_git",
+     "sink": "os.system",
+     "line_at_vulnerable": 892,
+     "line": "os.system("
+    },
+    {
+     "file": "setuptools/package_index.py",
+     "function": "PackageIndex._download_hg",
+     "sink": "os.system",
+     "line_at_vulnerable": 907,
+     "line": "os.system(\"hg clone --quiet %s %s\" % (url, filename))"
+    }
+   ],
+   "fix_message": "Merge pull request #4332 from pypa/debt/package-index-vcs"
+  },
+  {
+   "id": "PYSEC-2026-3919",
+   "aliases": [
+    "CVE-2026-54569",
+    "GHSA-jrw6-7x4q-w25j"
+   ],
+   "package": "senaite-core",
+   "repo": "https://github.com/senaite/senaite.core",
+   "vulnerable": "3195f890fe591c0e962294edc013f77826209c5c",
+   "fixed": "a24d65e99a17ac43c5374ed9f0a60d0fe60d2f74",
+   "language": "python",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "src/bika/lims/jsonapi/__init__.py",
+     "function": "set_fields_from_request",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 240,
+     "line": "value = eval(value)"
+    },
+    {
+     "file": "src/senaite/core/browser/fields/records.py",
+     "function": "RecordsField._to_dict",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 140,
+     "line": "value = eval(value.replace('}\\n', '},'))"
+    }
+   ],
+   "fix_message": "Replace unsafe eval with literal record parsing (#2903)"
+  },
+  {
+   "id": "PYSEC-2026-4095",
+   "aliases": [
+    "CVE-2026-77269",
+    "GHSA-h7wj-5v37-59r2"
+   ],
+   "package": "mcp-atlassian",
+   "repo": "https://github.com/sooperset/mcp-atlassian",
+   "vulnerable": "4067d1db4097755cc6add87f95fe3f0746c98c0b",
+   "fixed": "b041733473f95119dd539542a43c280737a8e460",
+   "language": "python",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "src/mcp_atlassian/utils/oauth.py",
+     "function": "OAuthConfig._save_tokens_to_file",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 417,
+     "line": "with open(token_path, \"w\") as f:"
+    }
+   ],
+   "fix_message": "Security hardening across attachment, transport, SSRF, authorization, filter, and OAuth layers (#1448)"
+  },
+  {
+   "id": "PYSEC-2021-60",
+   "aliases": [
+    "CVE-2021-21371",
+    "GHSA-8278-88vv-x98r"
+   ],
+   "package": "tenable-jira-cloud",
+   "repo": "https://github.com/tenable/integration-jira-cloud",
+   "vulnerable": "fa838db45f1ae5581a47e1965f74919c12488cf5",
+   "fixed": "f8c2095fd529e664e7fa25403a0a4a85bb3907d0",
+   "language": "python",
+   "kind": "DESERIALIZATION",
+   "sites": [
+    {
+     "file": "tenable_jira/cli.py",
+     "function": "cli",
+     "sink": "yaml.load",
+     "line_at_vulnerable": 65,
+     "line": "config_from_file = yaml.load(configfile, Loader=yaml.Loader)"
+    }
+   ],
+   "fix_message": "switched yaml.load() to yaml.safe_load() to not load serialized python objects."
+  },
+  {
+   "id": "PYSEC-2026-1950",
+   "aliases": [
+    "CVE-2026-23946",
+    "GHSA-339m-4qw5-j2g3"
+   ],
+   "package": "tendenci",
+   "repo": "https://github.com/tendenci/tendenci",
+   "vulnerable": "23d9fd85ab7654e9c83cfc86cb4175c0bd7a77f1",
+   "fixed": "2ff0a457614944a1b417081c543ea4c5bb95d636",
+   "language": "python",
+   "kind": "DESERIALIZATION",
+   "sites": [
+    {
+     "file": "tendenci/apps/imports/views.py",
+     "function": "user_upload_subprocess",
+     "sink": "pickle.loads",
+     "line_at_vulnerable": 134,
+     "line": "recap_dict = pickle.loads(content)"
+    }
+   ],
+   "fix_message": "replace pickle with json"
+  },
+  {
+   "id": "PYSEC-2026-963",
+   "aliases": [
+    "CVE-2022-29216",
+    "GHSA-75c9-jrh4-79mc"
+   ],
+   "package": "tensorflow-gpu",
+   "repo": "https://github.com/tensorflow/tensorflow",
+   "vulnerable": "349172cf0ac29ba1346d244a40dc4761b4600f2e",
+   "fixed": "8b202f08d52e8206af2bdb2112a62fafbc546ec7",
+   "language": "python",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "tensorflow/python/tools/saved_model_cli.py",
+     "function": "preprocess_input_exprs_arg_string",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 549,
+     "line": "input_dict[input_key] = eval(expr)  # pylint: disable=eval-used"
+    }
+   ],
+   "fix_message": "Remove use of `eval` when evaluating the input example."
+  },
+  {
+   "id": "PYSEC-2021-376",
+   "aliases": [
+    "CVE-2021-41131",
+    "GHSA-wjw6-2cqr-j4qr"
+   ],
+   "package": "tuf",
+   "repo": "https://github.com/theupdateframework/python-tuf",
+   "vulnerable": "4d8cbc70109c131b74b4a64f83eacf54f131b5d5",
+   "fixed": "4ad7ae48fda594b640139c3b7eae21ed5155a102",
+   "language": "python",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "tuf/ngclient/updater.py",
+     "function": "Updater._load_local_metadata",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 288,
+     "line": "with open(os.path.join(self._dir, f\"{rolename}.json\"), \"rb\") as f:"
+    }
+   ],
+   "fix_message": "Merge pull request from GHSA-wjw6-2cqr-j4qr"
+  },
+  {
+   "id": "PYSEC-2014-25",
+   "aliases": [
+    "CVE-2011-4104",
+    "GHSA-qgvw-qc2q-gv5q"
+   ],
+   "package": "django-tastypie",
+   "repo": "https://github.com/toastdriven/django-tastypie",
+   "vulnerable": "bc39633ebdc99cb78f3657b2c94112efff05698b",
+   "fixed": "e8af315211b07c8f48f32a063233cc3f76dd5bc2",
+   "language": "python",
+   "kind": "DESERIALIZATION",
+   "sites": [
+    {
+     "file": "tastypie/serializers.py",
+     "function": "Serializer.from_yaml",
+     "sink": "yaml.load",
+     "line_at_vulnerable": 357,
+     "line": "return yaml.load(content)"
+    }
+   ],
+   "fix_message": "Safer loading of YAML. Thanks to daveyss for the report!"
+  },
+  {
+   "id": "PYSEC-2026-1976",
+   "aliases": [
+    "CVE-2024-34062",
+    "GHSA-g7vv-2v7x-gj9p"
+   ],
+   "package": "tqdm",
+   "repo": "https://github.com/tqdm/tqdm",
+   "vulnerable": "cc372d09dcd5a5eabdc6ed4cf365bdb0be004d44",
+   "fixed": "4e613f84ed2ae029559f539464df83fa91feb316",
+   "language": "python",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "tqdm/cli.py",
+     "function": "cast",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 35,
+     "line": "return eval(typ + '(\"' + val + '\")')"
+    },
+    {
+     "file": "tqdm/cli.py",
+     "function": "cast",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 38,
+     "line": "return chr(ord(eval('\"' + val + '\"'))).encode()"
+    }
+   ],
+   "fix_message": "Merge pull request from GHSA-g7vv-2v7x-gj9p"
+  },
+  {
+   "id": "PYSEC-2026-2138",
+   "aliases": [
+    "CVE-2026-57571",
+    "GHSA-2jq4-q6vv-4cp3"
+   ],
+   "package": "crawl4ai",
+   "repo": "https://github.com/unclecode/crawl4ai",
+   "vulnerable": "dc5e2a84c9cbdb234f75734135bfb625cc5a3d62",
+   "fixed": "60886d1a0c52682e4c83a7cef9dfac417fff6bd2",
+   "language": "python",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "deploy/docker/utils.py",
+     "function": "write_output_file",
+     "sink": "os.open",
+     "line_at_vulnerable": 355,
+     "line": "fd = os.open(abs_path, flags, 0o600)"
+    }
+   ],
+   "fix_message": "release: merge 0.9.0 secure-by-default Docker server hardening into develop"
+  },
+  {
+   "id": "PYSEC-2026-3047",
+   "aliases": [
+    "CVE-2025-45691",
+    "GHSA-v2xr-wvrv-p969"
+   ],
+   "package": "ragas",
+   "repo": "https://github.com/vibrantlabsai/ragas",
+   "vulnerable": "c35021085c47843b659537460468bfbe8b63612c",
+   "fixed": "b28433709cbedbb531db79dadcfbdbd3aa6adcb0",
+   "language": "python",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "src/ragas/prompt/multi_modal_prompt.py",
+     "function": "ImageTextPromptValue.encode_image_to_base64",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 198,
+     "line": "with open(file_path, \"rb\") as image_file:"
+    }
+   ],
+   "fix_message": "Fix: Arbitrary File Read Vulnerability + Feat: Security settings (#1991)"
+  },
+  {
+   "id": "PYSEC-2026-3946",
+   "aliases": [
+    "CVE-2026-61539",
+    "GHSA-x2rj-828p-hx9m"
+   ],
+   "package": "xinference",
+   "repo": "https://github.com/xorbitsai/inference",
+   "vulnerable": "4cefcaa1e63d7e29d26bcd4be96cb267da113871",
+   "fixed": "1b3d220f342ce68d34cec4586d9409d457dadc42",
+   "language": "python",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "xinference/model/llm/tool_parsers/llama3_tool_parser.py",
+     "function": "Llama3ToolParser.extract_tool_calls",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 46,
+     "line": "data = eval(model_output, {}, {})"
+    },
+    {
+     "file": "xinference/model/llm/utils.py",
+     "function": "ChatModelMixin._eval_llama3_chat_arguments",
+     "sink": "builtins.eval",
+     "line_at_vulnerable": 753,
+     "line": "data = eval(text, {}, {})"
+    }
+   ],
+   "fix_message": "fix: replace eval() with safe alternatives to prevent RCE in tool parsers (#4786)"
+  },
+  {
+   "id": "PYSEC-2026-2064",
+   "aliases": [
+    "CVE-2023-40581",
+    "GHSA-42h4-v29r-42qg"
+   ],
+   "package": "yt-dlp",
+   "repo": "https://github.com/yt-dlp/yt-dlp",
+   "vulnerable": "61bdf15fc7400601c3da1aa7a43917310a5bf391",
+   "fixed": "de015e930747165dbb8fcd360f8775fd973b7d6e",
+   "language": "python",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "yt_dlp/postprocessor/exec.py",
+     "function": "ExecPP.run",
+     "sink": "subprocess.call",
+     "line_at_vulnerable": 31,
+     "line": "retCode = subprocess.call(encodeArgument(cmd), shell=True)"
+    }
+   ],
+   "fix_message": "[core] Prevent RCE when using `--exec` with `%q` (CVE-2023-40581)"
+  }
+ ]
+}
