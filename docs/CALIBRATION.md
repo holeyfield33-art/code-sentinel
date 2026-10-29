@@ -138,6 +138,64 @@ expected from the static model and is reported, not tuned away.
 and only Python. Guard-only fixes are a separate, harder population. A
 vulnerable-lab ground truth, in progress, will add JS/TS and documented intent.
 
+## Vulnerable labs (independent answer key)
+
+`calibration/labs/vuln_labs_manifest.json` is an answer key for six deliberately
+vulnerable applications, built by a separate research agent that never ran
+Sentinel-Zero:
+
+- Python: pygoat, DSVW and Vulnerable-Flask-App
+- JavaScript and TypeScript: dvws-node, NovaTrust bank and OWASP Juice Shop
+
+Each lab is pinned to a commit. Every entry quotes its sink line and cites the
+lab's own documentation of the vulnerability. The key's status is PARTIAL: some
+catalog entries could not be located in source (see
+`calibration/labs/vuln_labs_report.md`).
+
+```sh
+python calibration/lab_truth.py calibration/labs/vuln_labs_manifest.json
+```
+
+The scorer follows the key's handoff rules:
+
+- Score only entries that are located, documented, vulnerable and in scope.
+- Count a sink line shared by several challenges once.
+- Keep weak entries (low-signal JSON parsers, a constant command) apart.
+- Never score unlocated entries as misses.
+
+Before scoring, it re-checks every quoted line against the pinned source. All
+306 located quotes matched. The bundled key and report are the research agent's
+frozen bytes (`calibration/labs/SHA256SUMS`).
+
+**Result (2026-10-28):**
+
+| Set | Sites | Detected (priority) | Under-ranked | Missed |
+|---|---|---|---|---|
+| Direct cases | 25 | **24 (0.96)** | 0 | 1 |
+| Weak cases | 5 | 1 | 4 | 0 |
+
+The weak cases behave as designed: the four JSON parsers are low signal, so
+they are not priority. The fifth, Vulnerable-Flask-App's
+`check_output("cat restapi.log")`, *should* be down-ranked but is priority.
+
+**Read this beside the base rate.** In these labs, 39% of all plans and 90% of
+plans on the same sinks are priority. NovaTrust is scored within its declared
+`vuln-bank/` folder; the rest of that monorepo is other applications. Small
+training apps put a vulnerability behind almost every dangerous call. So the labs show that Sentinel-Zero does
+not hide these bugs; they cannot show that it ranks well.
+
+**Defects found:**
+
+| Cause | Site | Fix |
+|---|---|---|
+| Calls inside a function declared inside a callback are not recorded at all. This is a *silent* gap: no edge, no unresolved marker. | dvws-node `src/utils/vulnerable-xml.js:64`, `fs.readFileSync` | Make the JS resolver walk nested function declarations inside callbacks |
+| A constant reached through a local variable is not recognized as constant (`command = "cat restapi.log"`, then `check_output(command, shell=True)`) | Vulnerable-Flask-App line 68 | Propagate constants through simple local assignments. This is the same family as the module-constant miss in the synthetic set. |
+
+**Limits of this layer:** it has 25 direct sites, and only one negative
+control sits on a supported sink. That control (`juice-shop-rceChallenge`)
+shares its line with a vulnerable entry, so it cannot act as a negative at site
+level. False positives are therefore not measured here.
+
 ## Limits
 
 The fixtures are synthetic. They test the rules, not real-world prevalence;

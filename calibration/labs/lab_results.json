@@ -1,0 +1,723 @@
+{
+ "summary": {
+  "direct": {
+   "sites": 25,
+   "detected": 24,
+   "under-ranked": 0,
+   "missed": 1,
+   "recall": 0.96
+  },
+  "weak": {
+   "sites": 5,
+   "detected": 1,
+   "under-ranked": 4,
+   "missed": 0,
+   "recall": 0.2
+  },
+  "base_rate": {
+   "plans": 169,
+   "priority": 66,
+   "priority_share": 0.3905,
+   "same_sink_priority_share_mean_direct": 0.9023
+  }
+ },
+ "labs": [
+  {
+   "id": "dvws-node",
+   "language": "javascript",
+   "commit": "35f999505028f580dd6acc8bb7ddecfb87fe4bf6",
+   "subdirectory": null,
+   "sites": [
+    {
+     "file": "src/controllers/notes.js",
+     "line": 69,
+     "sink": "child_process.exec",
+     "vids": [
+      "dvws-node-003"
+     ],
+     "weak": null,
+     "outcome": "detected",
+     "triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ],
+     "other_plans_on_line": []
+    },
+    {
+     "file": "src/utils/vulnerable-xml.js",
+     "line": 64,
+     "sink": "fs.readFileSync",
+     "vids": [
+      "dvws-node-004"
+     ],
+     "weak": null,
+     "outcome": "missed",
+     "triage": [],
+     "other_plans_on_line": []
+    },
+    {
+     "file": "src/controllers/files.js",
+     "line": 50,
+     "sink": "JSON.parse",
+     "vids": [
+      "dvws-node-028"
+     ],
+     "weak": "low-signal parser",
+     "outcome": "under-ranked",
+     "triage": [
+      {
+       "priority": false,
+       "signal": "low",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ],
+     "other_plans_on_line": []
+    },
+    {
+     "file": "src/routes/notes.js",
+     "line": 25,
+     "sink": "Function",
+     "vids": [
+      "dvws-node-044"
+     ],
+     "weak": null,
+     "outcome": "detected",
+     "triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ],
+     "other_plans_on_line": []
+    },
+    {
+     "file": "src/controllers/integrations.js",
+     "line": 14,
+     "sink": "Function",
+     "vids": [
+      "dvws-node-045"
+     ],
+     "weak": null,
+     "outcome": "detected",
+     "triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ],
+     "other_plans_on_line": []
+    },
+    {
+     "file": "src/middleware/auth.js",
+     "line": 28,
+     "sink": "fs.readFileSync",
+     "vids": [
+      "dvws-node-057"
+     ],
+     "weak": null,
+     "outcome": "detected",
+     "triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ],
+     "other_plans_on_line": []
+    },
+    {
+     "file": "src/controllers/users.js",
+     "line": 624,
+     "sink": "JSON.parse",
+     "vids": [
+      "dvws-node-format"
+     ],
+     "weak": "low-signal parser",
+     "outcome": "under-ranked",
+     "triage": [
+      {
+       "priority": false,
+       "signal": "low",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ],
+     "other_plans_on_line": []
+    }
+   ],
+   "plans": 24,
+   "priority": 8,
+   "same_sink_priority_share": {
+    "child_process.exec": 1.0,
+    "fs.readFileSync": 0.7143,
+    "JSON.parse": 0.0,
+    "Function": 1.0
+   }
+  },
+  {
+   "id": "pygoat",
+   "language": "python",
+   "commit": "46fef968f3f44d1191363baf936aaa3335dc5c6d",
+   "subdirectory": null,
+   "sites": [
+    {
+     "file": "dockerized_labs/command_injection_lab/app.py",
+     "line": 29,
+     "sink": "subprocess.Popen",
+     "vids": [
+      "pygoat-cmd"
+     ],
+     "weak": null,
+     "outcome": "detected",
+     "triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ],
+     "other_plans_on_line": []
+    },
+    {
+     "file": "dockerized_labs/command_injection_lab/app.py",
+     "line": 49,
+     "sink": "builtins.eval",
+     "vids": [
+      "pygoat-eval"
+     ],
+     "weak": null,
+     "outcome": "detected",
+     "triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ],
+     "other_plans_on_line": []
+    },
+    {
+     "file": "dockerized_labs/insec_des_lab/main.py",
+     "line": 40,
+     "sink": "pickle.loads",
+     "vids": [
+      "pygoat-pickle"
+     ],
+     "weak": null,
+     "outcome": "detected",
+     "triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ],
+     "other_plans_on_line": []
+    },
+    {
+     "file": "dockerized_labs/software_integrity_lab/app.py",
+     "line": 44,
+     "sink": "pickle.loads",
+     "vids": [
+      "pygoat-cookie-pickle"
+     ],
+     "weak": null,
+     "outcome": "detected",
+     "triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ],
+     "other_plans_on_line": []
+    },
+    {
+     "file": "dockerized_labs/a9_uckv_lab/app.py",
+     "line": 62,
+     "sink": "yaml.load",
+     "vids": [
+      "pygoat-yaml"
+     ],
+     "weak": null,
+     "outcome": "detected",
+     "triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ],
+     "other_plans_on_line": []
+    },
+    {
+     "file": "dockerized_labs/ssrf_lab/app.py",
+     "line": 22,
+     "sink": "builtins.open",
+     "vids": [
+      "pygoat-file-read"
+     ],
+     "weak": null,
+     "outcome": "detected",
+     "triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ],
+     "other_plans_on_line": []
+    },
+    {
+     "file": "dockerized_labs/auth_failure_lab/app.py",
+     "line": 189,
+     "sink": "json.loads",
+     "vids": [
+      "pygoat-session-fix"
+     ],
+     "weak": "low-signal parser",
+     "outcome": "under-ranked",
+     "triage": [
+      {
+       "priority": false,
+       "signal": "low",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ],
+     "other_plans_on_line": []
+    }
+   ],
+   "plans": 23,
+   "priority": 15,
+   "same_sink_priority_share": {
+    "subprocess.Popen": 1.0,
+    "builtins.eval": 1.0,
+    "pickle.loads": 1.0,
+    "yaml.load": 1.0,
+    "builtins.open": 0.7,
+    "json.loads": 0.0
+   }
+  },
+  {
+   "id": "novatrust-bank",
+   "language": "javascript",
+   "commit": "5947d09a16afdc2753839fa7360b1bceae7ecaab",
+   "subdirectory": "vuln-bank",
+   "sites": [
+    {
+     "file": "vuln-bank/routes/profile.js",
+     "line": 40,
+     "sink": "JSON.parse",
+     "vids": [
+      "novatrust-bank-12"
+     ],
+     "weak": "low-signal parser",
+     "outcome": "under-ranked",
+     "triage": [
+      {
+       "priority": false,
+       "signal": "low",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ],
+     "other_plans_on_line": []
+    },
+    {
+     "file": "vuln-bank/routes/statements.js",
+     "line": 100,
+     "sink": "fs.readFileSync",
+     "vids": [
+      "novatrust-bank-25"
+     ],
+     "weak": null,
+     "outcome": "detected",
+     "triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ],
+     "other_plans_on_line": []
+    },
+    {
+     "file": "vuln-bank/routes/integrity.js",
+     "line": 32,
+     "sink": "fs.writeFileSync",
+     "vids": [
+      "novatrust-bank-62",
+      "novatrust-bank-62-url"
+     ],
+     "weak": null,
+     "outcome": "detected",
+     "triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ],
+     "other_plans_on_line": []
+    },
+    {
+     "file": "vuln-bank/routes/admin.js",
+     "line": 122,
+     "sink": "child_process.execSync",
+     "vids": [
+      "novatrust-bank-65-cmd"
+     ],
+     "weak": null,
+     "outcome": "detected",
+     "triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ],
+     "other_plans_on_line": []
+    },
+    {
+     "file": "vuln-bank/lib/jwt-lab.js",
+     "line": 97,
+     "sink": "fs.readFileSync",
+     "vids": [
+      "novatrust-bank-19a-kid"
+     ],
+     "weak": null,
+     "outcome": "detected",
+     "triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ],
+     "other_plans_on_line": []
+    }
+   ],
+   "plans": 13,
+   "priority": 8,
+   "same_sink_priority_share": {
+    "JSON.parse": 0.0,
+    "fs.readFileSync": 1.0,
+    "fs.writeFileSync": 1.0,
+    "child_process.execSync": 1.0
+   }
+  },
+  {
+   "id": "dsvw",
+   "language": "python",
+   "commit": "9ca3c9acf3defa0a6148d40e5f5cebeb5dcbb908",
+   "subdirectory": null,
+   "sites": [
+    {
+     "file": "dsvw.py",
+     "line": 31,
+     "sink": "subprocess.run",
+     "vids": [
+      "dsvw-019"
+     ],
+     "weak": null,
+     "outcome": "detected",
+     "triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ],
+     "other_plans_on_line": []
+    },
+    {
+     "file": "dsvw.py",
+     "line": 29,
+     "sink": "builtins.open",
+     "vids": [
+      "dsvw-021",
+      "dsvw-022"
+     ],
+     "weak": null,
+     "outcome": "detected",
+     "triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ],
+     "other_plans_on_line": []
+    },
+    {
+     "file": "dsvw.py",
+     "line": 49,
+     "sink": "builtins.exec",
+     "vids": [
+      "dsvw-023"
+     ],
+     "weak": null,
+     "outcome": "detected",
+     "triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ],
+     "other_plans_on_line": []
+    },
+    {
+     "file": "dsvw.py",
+     "line": 27,
+     "sink": "pickle.loads",
+     "vids": [
+      "dsvw-025"
+     ],
+     "weak": null,
+     "outcome": "detected",
+     "triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ],
+     "other_plans_on_line": []
+    }
+   ],
+   "plans": 13,
+   "priority": 6,
+   "same_sink_priority_share": {
+    "subprocess.run": 0.3333,
+    "builtins.open": 0.4286,
+    "builtins.exec": 1.0,
+    "pickle.loads": 1.0
+   }
+  },
+  {
+   "id": "vulnerable-flask-app",
+   "language": "python",
+   "commit": "155a9d4020cd6382e7cef2a4166a714c54af3441",
+   "subdirectory": null,
+   "sites": [
+    {
+     "file": "vulnerable-flask-app-linux.py",
+     "line": 68,
+     "sink": "subprocess.check_output",
+     "vids": [
+      "vulnerable-flask-app-log"
+     ],
+     "weak": "constant command",
+     "outcome": "detected",
+     "triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ],
+     "other_plans_on_line": []
+    },
+    {
+     "file": "vulnerable-flask-app-linux.py",
+     "line": 77,
+     "sink": "builtins.open",
+     "vids": [
+      "vulnerable-flask-app-read"
+     ],
+     "weak": null,
+     "outcome": "detected",
+     "triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ],
+     "other_plans_on_line": []
+    },
+    {
+     "file": "vulnerable-flask-app-linux.py",
+     "line": 58,
+     "sink": "subprocess.check_output",
+     "vids": [
+      "vulnerable-flask-app-cmd"
+     ],
+     "weak": null,
+     "outcome": "detected",
+     "triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ],
+     "other_plans_on_line": []
+    },
+    {
+     "file": "vulnerable-flask-app-linux.py",
+     "line": 119,
+     "sink": "subprocess.check_output",
+     "vids": [
+      "vulnerable-flask-app-run"
+     ],
+     "weak": null,
+     "outcome": "detected",
+     "triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ],
+     "other_plans_on_line": []
+    },
+    {
+     "file": "vulnerable-flask-app-linux.py",
+     "line": 97,
+     "sink": "pickle.loads",
+     "vids": [
+      "vulnerable-flask-app-pickle"
+     ],
+     "weak": null,
+     "outcome": "detected",
+     "triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ],
+     "other_plans_on_line": []
+    }
+   ],
+   "plans": 12,
+   "priority": 12,
+   "same_sink_priority_share": {
+    "subprocess.check_output": 1.0,
+    "builtins.open": 1.0,
+    "pickle.loads": 1.0
+   }
+  },
+  {
+   "id": "juice-shop",
+   "language": "typescript",
+   "commit": "717f5efa886b0417eeecb52378b03cf10567b7e2",
+   "subdirectory": null,
+   "sites": [
+    {
+     "file": "routes/userProfile.ts",
+     "line": 65,
+     "sink": "eval",
+     "vids": [
+      "juice-shop-usernameXssChallenge",
+      "juice-shop-sstiChallenge"
+     ],
+     "weak": null,
+     "outcome": "detected",
+     "triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ],
+     "other_plans_on_line": []
+    },
+    {
+     "file": "routes/b2bOrder.ts",
+     "line": 23,
+     "sink": "vm.runInContext",
+     "vids": [
+      "juice-shop-rceOccupyChallenge"
+     ],
+     "weak": null,
+     "outcome": "detected",
+     "triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ],
+     "other_plans_on_line": []
+    }
+   ],
+   "plans": 84,
+   "priority": 17,
+   "same_sink_priority_share": {
+    "eval": 0.6667,
+    "vm.runInContext": 1.0
+   }
+  }
+ ],
+ "run": {
+  "date": "2026-10-29",
+  "manifest_sha256": "e55fab66b4d50092a822e880fd4e6973f15fd5e87310bb2d971071874ec2b960",
+  "report_sha256": "f09b220ca64e2c33a1313f2318966b5582501f005562ac7390acaea48ca24895",
+  "python": "3.13.18",
+  "quotes_verified": "306/306 located quotes match the pinned sources"
+ }
+}
