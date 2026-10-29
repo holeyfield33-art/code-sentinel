@@ -1,0 +1,3034 @@
+{
+ "summary": {
+  "pairs": 55,
+  "pairs_errored": [],
+  "groups": 97,
+  "calls": 109,
+  "call_recall": 0.9266,
+  "recall": 0.9175,
+  "quiet_on_fix": 0.866,
+  "vulnerable_outcomes": {
+   "detected": 89,
+   "under-ranked": 6,
+   "missed": 2
+  },
+  "fixed_outcomes": {
+   "gone": 83,
+   "downgraded": 1,
+   "still-flagged": 13
+  },
+  "base_rate": {
+   "plans": 13739,
+   "priority": 3930,
+   "priority_share": 0.286,
+   "same_sink_priority_share_at_groups": 0.7152,
+   "median_priority_plans_per_repo": 32
+  }
+ },
+ "rows": [
+  {
+   "id": "PYSEC-2023-262",
+   "repo": "https://github.com/ArjunSharda/Searchor",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "src/searchor/main.py",
+     "function": "search",
+     "sink": "builtins.eval",
+     "lines": [
+      32
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 7,
+    "fixed": 6
+   }
+  },
+  {
+   "id": "PYSEC-2026-1196",
+   "repo": "https://github.com/AstrBotDevs/AstrBot",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "astrbot/dashboard/routes/chat.py",
+     "function": "ChatRoute.get_file",
+     "sink": "builtins.open",
+     "lines": [
+      64
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "still-flagged",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 118,
+    "fixed": 118
+   }
+  },
+  {
+   "id": "PYSEC-2026-389",
+   "repo": "https://github.com/BerriAI/litellm",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "litellm/utils.py",
+     "function": "get_secret",
+     "sink": "builtins.eval",
+     "lines": [
+      7187
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 190,
+    "fixed": 189
+   }
+  },
+  {
+   "id": "PYSEC-2026-1264",
+   "repo": "https://github.com/ComposioHQ/composio",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "python/composio/tools/local/mathematical/actions/calculator.py",
+     "function": "Calculator.execute",
+     "sink": "builtins.eval",
+     "lines": [
+      29
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 141,
+    "fixed": 140
+   }
+  },
+  {
+   "id": "PYSEC-2026-3862",
+   "repo": "https://github.com/IBM/mcp-context-forge",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "mcp-servers/python/python_sandbox_server/src/python_sandbox_server/server_fastmcp.py",
+     "function": "PythonSandbox.execute",
+     "sink": "builtins.eval",
+     "lines": [
+      576
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "still-flagged",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "mcp-servers/python/python_sandbox_server/src/python_sandbox_server/server_fastmcp.py",
+     "function": "PythonSandbox.execute",
+     "sink": "builtins.exec",
+     "lines": [
+      578
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "still-flagged",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 566,
+    "fixed": 564
+   }
+  },
+  {
+   "id": "PYSEC-2026-512",
+   "repo": "https://github.com/Kozea/Radicale",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "radicale/storage/filesystem.py",
+     "function": "Collection.save",
+     "sink": "builtins.open",
+     "lines": [
+      82
+     ],
+     "vulnerable": "missed",
+     "calls_detected": 0,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": []
+    },
+    {
+     "file": "radicale/storage/filesystem.py",
+     "function": "Collection.text",
+     "sink": "builtins.open",
+     "lines": [
+      92
+     ],
+     "vulnerable": "missed",
+     "calls_detected": 0,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": []
+    }
+   ],
+   "plans": {
+    "vulnerable": 7,
+    "fixed": 7
+   }
+  },
+  {
+   "id": "PYSEC-2019-102",
+   "repo": "https://github.com/ProgVal/Limnoria",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "plugins/Math/plugin.py",
+     "function": "Math.calc",
+     "sink": "builtins.eval",
+     "lines": [
+      223
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "plugins/Math/plugin.py",
+     "function": "Math.icalc",
+     "sink": "builtins.eval",
+     "lines": [
+      260
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "plugins/Math/plugin.py",
+     "function": "Math.rpn",
+     "sink": "builtins.eval",
+     "lines": [
+      313
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 141,
+    "fixed": 138
+   }
+  },
+  {
+   "id": "PYSEC-2021-17",
+   "repo": "https://github.com/SecureAuthCorp/impacket",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "impacket/smbserver.py",
+     "function": "writeJohnOutputToFile",
+     "sink": "builtins.open",
+     "lines": [
+      176
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "still-flagged",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 83,
+    "fixed": 83
+   }
+  },
+  {
+   "id": "PYSEC-2026-2053",
+   "repo": "https://github.com/WeblateOrg/wlc",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "wlc/main.py",
+     "function": "Download.download_component",
+     "sink": "builtins.open",
+     "lines": [
+      663
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 9,
+    "fixed": 8
+   }
+  },
+  {
+   "id": "PYSEC-2026-1771",
+   "repo": "https://github.com/akshay-joshi/pgadmin4",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "web/pgadmin/tools/backup/__init__.py",
+     "function": "filename_with_file_manager_path",
+     "sink": "builtins.open",
+     "lines": [
+      220
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "web/pgadmin/tools/import_export/__init__.py",
+     "function": "filename_with_file_manager_path",
+     "sink": "builtins.open",
+     "lines": [
+      166
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 596,
+    "fixed": 595
+   }
+  },
+  {
+   "id": "PYSEC-2026-1127",
+   "repo": "https://github.com/ansys/pyansys-geometry",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "src/ansys/geometry/core/connection/product_instance.py",
+     "function": "_start_program",
+     "sink": "subprocess.Popen",
+     "lines": [
+      423
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 12,
+    "fixed": 12
+   }
+  },
+  {
+   "id": "PYSEC-2026-491",
+   "repo": "https://github.com/apache/fory",
+   "kind": "DESERIALIZATION",
+   "sites": [
+    {
+     "file": "python/pyfory/serializer.py",
+     "function": "PickleStrongCacheSerializer.read",
+     "sink": "pickle.loads",
+     "lines": [
+      175
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "python/pyfory/serializer.py",
+     "function": "PickleCacheSerializer.read",
+     "sink": "pickle.loads",
+     "lines": [
+      206
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 81,
+    "fixed": 79
+   }
+  },
+  {
+   "id": "PYSEC-2026-521",
+   "repo": "https://github.com/aws/amazon-redshift-python-driver",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "redshift_connector/utils/type_utils.py",
+     "function": "vector_in",
+     "sink": "builtins.eval",
+     "lines": [
+      86
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 28,
+    "fixed": 27
+   }
+  },
+  {
+   "id": "PYSEC-2026-1887",
+   "repo": "https://github.com/aws/sagemaker-python-sdk",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "src/sagemaker/serve/save_retrive/version_1_0_0/save/utils.py",
+     "function": "capture_dependencies",
+     "sink": "os.system",
+     "lines": [
+      104
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 571,
+    "fixed": 571
+   }
+  },
+  {
+   "id": "PYSEC-2017-78",
+   "repo": "https://github.com/bbengfort/confire",
+   "kind": "DESERIALIZATION",
+   "sites": [
+    {
+     "file": "confire/config.py",
+     "function": "Configuration.load",
+     "sink": "yaml.load",
+     "lines": [
+      146
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 3,
+    "fixed": 2
+   }
+  },
+  {
+   "id": "PYSEC-2026-793",
+   "repo": "https://github.com/cobbler/cobbler",
+   "kind": "DESERIALIZATION",
+   "sites": [
+    {
+     "file": "cobbler/item.py",
+     "function": "Item.set_mgmt_parameters",
+     "sink": "yaml.load",
+     "lines": [
+      248
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "scripts/services.py",
+     "function": "application",
+     "sink": "yaml.load",
+     "lines": [
+      64
+     ],
+     "vulnerable": "under-ranked",
+     "calls_detected": 0,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": false,
+       "signal": "high",
+       "code_context": "build_tooling",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 49,
+    "fixed": 47
+   }
+  },
+  {
+   "id": "PYSEC-2026-4009",
+   "repo": "https://github.com/damianvtran/local-operator",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "local_operator/server/routes/chat.py",
+     "function": "edit_file_with_agent",
+     "sink": "builtins.open",
+     "lines": [
+      648
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 672,
+    "fixed": 672
+   }
+  },
+  {
+   "id": "PYSEC-2026-1313",
+   "repo": "https://github.com/docling-project/docling-core",
+   "kind": "DESERIALIZATION",
+   "sites": [
+    {
+     "file": "docling_core/types/doc/document.py",
+     "function": "DoclingDocument.load_from_yaml",
+     "sink": "yaml.load",
+     "lines": [
+      4357
+     ],
+     "vulnerable": "under-ranked",
+     "calls_detected": 0,
+     "fixed": "downgraded",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": false,
+       "signal": "high",
+       "code_context": "docs",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 127,
+    "fixed": 127
+   }
+  },
+  {
+   "id": "PYSEC-2026-281",
+   "repo": "https://github.com/dwisiswant0/apkleaks",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "apkleaks/apkleaks.py",
+     "function": "APKLeaks.decompile",
+     "sink": "os.system",
+     "lines": [
+      88
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "still-flagged",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 7,
+    "fixed": 7
+   }
+  },
+  {
+   "id": "PYSEC-2024-112",
+   "repo": "https://github.com/gaizhenbiao/chuanhuchatgpt",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "modules/utils.py",
+     "function": "load_template",
+     "sink": "builtins.open",
+     "lines": [
+      524
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "still-flagged",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 59,
+    "fixed": 59
+   }
+  },
+  {
+   "id": "PYSEC-2026-1432",
+   "repo": "https://github.com/guardrails-ai/guardrails",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "guardrails/utils/validator_utils.py",
+     "function": "parse_rail_arguments",
+     "sink": "builtins.eval",
+     "lines": [
+      36
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 92,
+    "fixed": 91
+   }
+  },
+  {
+   "id": "PYSEC-2026-1978",
+   "repo": "https://github.com/huggingface/transformers",
+   "kind": "DESERIALIZATION",
+   "sites": [
+    {
+     "file": "src/transformers/modeling_tf_utils.py",
+     "function": "TFPreTrainedModel.load_repo_checkpoint",
+     "sink": "pickle.load",
+     "lines": [
+      1401
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 1614,
+    "fixed": 1612
+   }
+  },
+  {
+   "id": "PYSEC-2026-2892",
+   "repo": "https://github.com/icip-cas/PPTAgent",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "pptagent/apis.py",
+     "function": "CodeExecutor.execute_actions",
+     "sink": "builtins.eval",
+     "lines": [
+      185
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "still-flagged",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 90,
+    "fixed": 90
+   }
+  },
+  {
+   "id": "PYSEC-2022-288",
+   "repo": "https://github.com/joblib/joblib",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "joblib/parallel.py",
+     "function": "Parallel.__call__",
+     "sink": "builtins.eval",
+     "lines": [
+      1052
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "still-flagged",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 91,
+    "fixed": 91
+   }
+  },
+  {
+   "id": "PYSEC-2024-62",
+   "repo": "https://github.com/langchain-ai/langchain",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "libs/experimental/langchain_experimental/sql/vector_sql.py",
+     "function": "_try_eval",
+     "sink": "builtins.eval",
+     "lines": [
+      81
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 278,
+    "fixed": 277
+   }
+  },
+  {
+   "id": "PYSEC-2026-4236",
+   "repo": "https://github.com/langflow-ai/langflow",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "src/lfx/src/lfx/custom/validate.py",
+     "function": "validate_code",
+     "sink": "builtins.exec",
+     "lines": [
+      67
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 620,
+    "fixed": 619
+   }
+  },
+  {
+   "id": "PYSEC-2026-381",
+   "repo": "https://github.com/langroid/langroid",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "langroid/agent/special/table_chat_agent.py",
+     "function": "TableChatAgent.pandas_eval",
+     "sink": "builtins.eval",
+     "lines": [
+      218
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "still-flagged",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "langroid/vector_store/base.py",
+     "function": "VectorStore.compute_from_docs",
+     "sink": "builtins.eval",
+     "lines": [
+      166
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "still-flagged",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 100,
+    "fixed": 100
+   }
+  },
+  {
+   "id": "PYSEC-2026-3970",
+   "repo": "https://github.com/lightning-ai/pytorch-lightning",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "src/lightning/__setup__.py",
+     "function": "_setup_args",
+     "sink": "builtins.open",
+     "lines": [
+      80
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 294,
+    "fixed": 80
+   }
+  },
+  {
+   "id": "PYSEC-2024-226",
+   "repo": "https://github.com/materialsproject/pymatgen",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "pymatgen/symmetry/settings.py",
+     "function": "JonesFaithfulTransformation.parse_transformation_string",
+     "sink": "builtins.eval",
+     "lines": [
+      111
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 594,
+    "fixed": 593
+   }
+  },
+  {
+   "id": "PYSEC-2026-2636",
+   "repo": "https://github.com/mem0ai/mem0",
+   "kind": "DESERIALIZATION",
+   "sites": [
+    {
+     "file": "mem0/vector_stores/faiss.py",
+     "function": "FAISS._load",
+     "sink": "pickle.load",
+     "lines": [
+      93
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 231,
+    "fixed": 241
+   }
+  },
+  {
+   "id": "PYSEC-2026-1854",
+   "repo": "https://github.com/miguelgrinberg/python-socketio",
+   "kind": "DESERIALIZATION",
+   "sites": [
+    {
+     "file": "src/socketio/async_aiopika_manager.py",
+     "function": "AsyncAioPikaManager._listen",
+     "sink": "pickle.loads",
+     "lines": [
+      116
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "src/socketio/async_pubsub_manager.py",
+     "function": "AsyncPubSubManager._thread",
+     "sink": "pickle.loads",
+     "lines": [
+      207
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "src/socketio/kafka_manager.py",
+     "function": "KafkaManager._listen",
+     "sink": "pickle.loads",
+     "lines": [
+      65
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "src/socketio/pubsub_manager.py",
+     "function": "PubSubManager._thread",
+     "sink": "pickle.loads",
+     "lines": [
+      201
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "src/socketio/zmq_manager.py",
+     "function": "ZmqManager._listen",
+     "sink": "pickle.loads",
+     "lines": [
+      97
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 12,
+    "fixed": 7
+   }
+  },
+  {
+   "id": "PYSEC-2026-1629",
+   "repo": "https://github.com/mindsdb/mindsdb",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "mindsdb/integrations/handlers/chromadb_handler/chromadb_handler.py",
+     "function": "ChromaDBHandler.insert",
+     "sink": "builtins.eval",
+     "lines": [
+      332
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "mindsdb/integrations/handlers/sharepoint_handler/sharepoint_api.py",
+     "function": "SharepointAPI.create_a_list",
+     "sink": "builtins.eval",
+     "lines": [
+      252,
+      255
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 2,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      },
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "mindsdb/integrations/handlers/sharepoint_handler/sharepoint_api.py",
+     "function": "SharepointAPI.create_a_site_column",
+     "sink": "builtins.eval",
+     "lines": [
+      413
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "mindsdb/integrations/handlers/sharepoint_handler/sharepoint_api.py",
+     "function": "SharepointAPI.create_an_item",
+     "sink": "builtins.eval",
+     "lines": [
+      577
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "mindsdb/integrations/handlers/weaviate_handler/weaviate_handler.py",
+     "function": "WeaviateDBHandler.select",
+     "sink": "builtins.eval",
+     "lines": [
+      338
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "mindsdb/integrations/libs/vectordatabase_handler.py",
+     "function": "VectorStoreHandler._dispatch_update",
+     "sink": "builtins.eval",
+     "lines": [
+      245
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 187,
+    "fixed": 180
+   }
+  },
+  {
+   "id": "PYSEC-2022-42998",
+   "repo": "https://github.com/miurahr/py7zr",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "py7zr/py7zr.py",
+     "function": "Worker.extract",
+     "sink": "builtins.open",
+     "lines": [
+      1239
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "still-flagged",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 40,
+    "fixed": 40
+   }
+  },
+  {
+   "id": "PYSEC-2026-2661",
+   "repo": "https://github.com/mlflow/mlflow",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "mlflow/sagemaker/__init__.py",
+     "function": "push_image_to_ecr",
+     "sink": "os.system",
+     "lines": [
+      167
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 1534,
+    "fixed": 1537
+   }
+  },
+  {
+   "id": "PYSEC-2026-1682",
+   "repo": "https://github.com/modelscope/ms-swift",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "swift/ui/llm_eval/llm_eval.py",
+     "function": "LLMEval.eval_model",
+     "sink": "os.system",
+     "lines": [
+      187
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "swift/ui/llm_export/llm_export.py",
+     "function": "LLMExport.export_model",
+     "sink": "os.system",
+     "lines": [
+      189
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "swift/ui/llm_grpo/external_rollout.py",
+     "function": "LLMRollout.rollout_model",
+     "sink": "os.system",
+     "lines": [
+      235
+     ],
+     "vulnerable": "under-ranked",
+     "calls_detected": 0,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": false,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": "swift.ui.llm_grpo.external_rollout.LLMRollout.rollout",
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "swift/ui/llm_grpo/external_runtime.py",
+     "function": "RolloutRuntime.kill_task",
+     "sink": "os.system",
+     "lines": [
+      125,
+      127,
+      129,
+      131
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 4,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      },
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      },
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      },
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "swift/ui/llm_infer/llm_infer.py",
+     "function": "LLMInfer.deploy_model",
+     "sink": "os.system",
+     "lines": [
+      280
+     ],
+     "vulnerable": "under-ranked",
+     "calls_detected": 0,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": false,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": "swift.ui.llm_infer.llm_infer.LLMInfer.deploy",
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "swift/ui/llm_infer/runtime.py",
+     "function": "Runtime.kill_task",
+     "sink": "os.system",
+     "lines": [
+      253,
+      255
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 2,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      },
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "swift/ui/llm_sample/llm_sample.py",
+     "function": "LLMSample.sample_model",
+     "sink": "os.system",
+     "lines": [
+      255
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "swift/ui/llm_train/llm_train.py",
+     "function": "LLMTrain.train_local",
+     "sink": "os.system",
+     "lines": [
+      508
+     ],
+     "vulnerable": "under-ranked",
+     "calls_detected": 0,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": false,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": "swift.ui.llm_train.llm_train.LLMTrain.train",
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "swift/ui/llm_train/runtime.py",
+     "function": "Runtime.kill_task",
+     "sink": "os.system",
+     "lines": [
+      584,
+      586
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 2,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      },
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 201,
+    "fixed": 192
+   }
+  },
+  {
+   "id": "PYSEC-2026-3790",
+   "repo": "https://github.com/nltk/nltk",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "nltk/chunk/named_entity.py",
+     "function": "load_ace_file",
+     "sink": "builtins.open",
+     "lines": [
+      235,
+      247
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 2,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      },
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "nltk/corpus/reader/crubadan.py",
+     "function": "CrubadanCorpusReader._load_lang_mapping_data",
+     "sink": "builtins.open",
+     "lines": [
+      78
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "nltk/corpus/reader/crubadan.py",
+     "function": "CrubadanCorpusReader._load_lang_ngrams",
+     "sink": "builtins.open",
+     "lines": [
+      97
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "nltk/corpus/reader/ipipan.py",
+     "function": "IPIPANCorpusReader._get_tag",
+     "sink": "builtins.open",
+     "lines": [
+      209
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "nltk/corpus/reader/lin.py",
+     "function": "LinThesaurusCorpusReader.__init__",
+     "sink": "builtins.open",
+     "lines": [
+      43
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "nltk/corpus/reader/nkjp.py",
+     "function": "XML_Tool.build_preprocessed_file",
+     "sink": "builtins.open",
+     "lines": [
+      283
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "nltk/corpus/reader/pl196x.py",
+     "function": "Pl196xCorpusReader._init_textids",
+     "sink": "builtins.open",
+     "lines": [
+      110
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "nltk/corpus/reader/xmldocs.py",
+     "function": "XMLCorpusView._detect_encoding",
+     "sink": "builtins.open",
+     "lines": [
+      168
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 116,
+    "fixed": 112
+   }
+  },
+  {
+   "id": "PYSEC-2022-209",
+   "repo": "https://github.com/nuitka/nuitka",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "nuitka/__main__.py",
+     "function": "main",
+     "sink": "builtins.eval",
+     "lines": [
+      45,
+      108,
+      117
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 3,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      },
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      },
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "nuitka/build/SconsCaching.py",
+     "function": "checkCachingSuccess",
+     "sink": "builtins.eval",
+     "lines": [
+      385
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "nuitka/nodes/NodeBases.py",
+     "function": "fromXML",
+     "sink": "builtins.eval",
+     "lines": [
+      1180
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "nuitka/plugins/PluginBase.py",
+     "function": "NuitkaPluginBase.queryRuntimeInformationMultiple",
+     "sink": "builtins.eval",
+     "lines": [
+      850
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 421,
+    "fixed": 415
+   }
+  },
+  {
+   "id": "PYSEC-2026-2239",
+   "repo": "https://github.com/onnx/onnx",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "onnx/external_data_helper.py",
+     "function": "load_external_data_for_tensor",
+     "sink": "builtins.open",
+     "lines": [
+      58
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "onnx/model_container.py",
+     "function": "ModelContainer._load_large_initializers",
+     "sink": "builtins.open",
+     "lines": [
+      299
+     ],
+     "vulnerable": "under-ranked",
+     "calls_detected": 0,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": false,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": "onnx.external_data_helper.uses_external_data",
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 54,
+    "fixed": 57
+   }
+  },
+  {
+   "id": "PYSEC-2026-564",
+   "repo": "https://github.com/openstack/vitrage",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "vitrage/graph/query.py",
+     "function": "create_predicate",
+     "sink": "builtins.eval",
+     "lines": [
+      70
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 56,
+    "fixed": 55
+   }
+  },
+  {
+   "id": "PYSEC-2026-451",
+   "repo": "https://github.com/pgadmin-org/pgadmin4",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "web/pgacloud/providers/google.py",
+     "function": "GoogleProvider._create_google_postgresql_instance",
+     "sink": "builtins.eval",
+     "lines": [
+      140
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "web/pgadmin/tools/sqleditor/__init__.py",
+     "function": "start_query_download_tool",
+     "sink": "builtins.eval",
+     "lines": [
+      2159
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 981,
+    "fixed": 979
+   }
+  },
+  {
+   "id": "PYSEC-2026-3916",
+   "repo": "https://github.com/pollen-robotics/reachy_mini",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "src/reachy_mini/daemon/app/routers/media.py",
+     "function": "upload_sound",
+     "sink": "builtins.open",
+     "lines": [
+      172
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 95,
+    "fixed": 94
+   }
+  },
+  {
+   "id": "PYSEC-2026-1918",
+   "repo": "https://github.com/pypa/setuptools",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "setuptools/package_index.py",
+     "function": "PackageIndex._download_git",
+     "sink": "os.system",
+     "lines": [
+      888,
+      892
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 2,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      },
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "setuptools/package_index.py",
+     "function": "PackageIndex._download_hg",
+     "sink": "os.system",
+     "lines": [
+      907,
+      911
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 2,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      },
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 231,
+    "fixed": 229
+   }
+  },
+  {
+   "id": "PYSEC-2026-2257",
+   "repo": "https://github.com/python-pillow/Pillow",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "src/PIL/ImageShow.py",
+     "function": "WindowsViewer.show_file",
+     "sink": "subprocess.Popen",
+     "lines": [
+      146
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "src/PIL/ImageShow.py",
+     "function": "MacViewer.show_file",
+     "sink": "subprocess.Popen",
+     "lines": [
+      182
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 234,
+    "fixed": 233
+   }
+  },
+  {
+   "id": "PYSEC-2026-3919",
+   "repo": "https://github.com/senaite/senaite.core",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "src/bika/lims/jsonapi/__init__.py",
+     "function": "set_fields_from_request",
+     "sink": "builtins.eval",
+     "lines": [
+      240
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "src/senaite/core/browser/fields/records.py",
+     "function": "RecordsField._to_dict",
+     "sink": "builtins.eval",
+     "lines": [
+      140
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 55,
+    "fixed": 53
+   }
+  },
+  {
+   "id": "PYSEC-2026-4095",
+   "repo": "https://github.com/sooperset/mcp-atlassian",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "src/mcp_atlassian/utils/oauth.py",
+     "function": "OAuthConfig._save_tokens_to_file",
+     "sink": "builtins.open",
+     "lines": [
+      417
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 206,
+    "fixed": 207
+   }
+  },
+  {
+   "id": "PYSEC-2021-60",
+   "repo": "https://github.com/tenable/integration-jira-cloud",
+   "kind": "DESERIALIZATION",
+   "sites": [
+    {
+     "file": "tenable_jira/cli.py",
+     "function": "cli",
+     "sink": "yaml.load",
+     "lines": [
+      65
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 5,
+    "fixed": 4
+   }
+  },
+  {
+   "id": "PYSEC-2026-1950",
+   "repo": "https://github.com/tendenci/tendenci",
+   "kind": "DESERIALIZATION",
+   "sites": [
+    {
+     "file": "tendenci/apps/imports/views.py",
+     "function": "user_upload_subprocess",
+     "sink": "pickle.loads",
+     "lines": [
+      134
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "tendenci/apps/imports/views.py",
+     "function": "user_upload_recap",
+     "sink": "pickle.loads",
+     "lines": [
+      199
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 176,
+    "fixed": 176
+   }
+  },
+  {
+   "id": "PYSEC-2021-789",
+   "repo": "https://github.com/tensorflow/tensorflow",
+   "kind": "DESERIALIZATION",
+   "sites": [
+    {
+     "file": "tensorflow/python/keras/saving/model_config.py",
+     "function": "model_from_yaml",
+     "sink": "yaml.load",
+     "lines": [
+      98
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 431,
+    "fixed": 430
+   }
+  },
+  {
+   "id": "PYSEC-2021-376",
+   "repo": "https://github.com/theupdateframework/python-tuf",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "tuf/ngclient/updater.py",
+     "function": "Updater._load_local_metadata",
+     "sink": "builtins.open",
+     "lines": [
+      288
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "still-flagged",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 84,
+    "fixed": 85
+   }
+  },
+  {
+   "id": "PYSEC-2014-25",
+   "repo": "https://github.com/toastdriven/django-tastypie",
+   "kind": "DESERIALIZATION",
+   "sites": [
+    {
+     "file": "tastypie/serializers.py",
+     "function": "Serializer.from_yaml",
+     "sink": "yaml.load",
+     "lines": [
+      357
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 8,
+    "fixed": 7
+   }
+  },
+  {
+   "id": "PYSEC-2026-1976",
+   "repo": "https://github.com/tqdm/tqdm",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "tqdm/cli.py",
+     "function": "cast",
+     "sink": "builtins.eval",
+     "lines": [
+      35,
+      38
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 2,
+     "fixed": "still-flagged",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      },
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 12,
+    "fixed": 11
+   }
+  },
+  {
+   "id": "PYSEC-2026-2138",
+   "repo": "https://github.com/unclecode/crawl4ai",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "deploy/docker/utils.py",
+     "function": "write_output_file",
+     "sink": "os.open",
+     "lines": [
+      355
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 440,
+    "fixed": 445
+   }
+  },
+  {
+   "id": "PYSEC-2026-3047",
+   "repo": "https://github.com/vibrantlabsai/ragas",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "src/ragas/prompt/multi_modal_prompt.py",
+     "function": "ImageTextPromptValue.encode_image_to_base64",
+     "sink": "builtins.open",
+     "lines": [
+      198
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 29,
+    "fixed": 29
+   }
+  },
+  {
+   "id": "PYSEC-2026-3946",
+   "repo": "https://github.com/xorbitsai/inference",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "xinference/model/llm/tool_parsers/llama3_tool_parser.py",
+     "function": "Llama3ToolParser.extract_tool_calls",
+     "sink": "builtins.eval",
+     "lines": [
+      46
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "xinference/model/llm/utils.py",
+     "function": "ChatModelMixin._eval_llama3_chat_arguments",
+     "sink": "builtins.eval",
+     "lines": [
+      753
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 484,
+    "fixed": 484
+   }
+  },
+  {
+   "id": "PYSEC-2026-2064",
+   "repo": "https://github.com/yt-dlp/yt-dlp",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "yt_dlp/postprocessor/exec.py",
+     "function": "ExecPP.run",
+     "sink": "subprocess.call",
+     "lines": [
+      31
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 176,
+    "fixed": 175
+   }
+  }
+ ],
+ "run": {
+  "date": "2026-10-28",
+  "python": "3.13.18",
+  "note": "53 pairs from the full run on e309ee7; the 2 pairs whose sites changed under the deleted-file rule were re-scored with the same scanner"
+ },
+ "base_rate_per_pair": [
+  {
+   "id": "PYSEC-2023-262",
+   "plans": 7,
+   "priority": 5
+  },
+  {
+   "id": "PYSEC-2026-1196",
+   "plans": 118,
+   "priority": 83
+  },
+  {
+   "id": "PYSEC-2026-389",
+   "plans": 190,
+   "priority": 30
+  },
+  {
+   "id": "PYSEC-2026-1264",
+   "plans": 141,
+   "priority": 91
+  },
+  {
+   "id": "PYSEC-2026-3862",
+   "plans": 566,
+   "priority": 59
+  },
+  {
+   "id": "PYSEC-2026-512",
+   "plans": 7,
+   "priority": 4
+  },
+  {
+   "id": "PYSEC-2019-102",
+   "plans": 141,
+   "priority": 93
+  },
+  {
+   "id": "PYSEC-2021-17",
+   "plans": 83,
+   "priority": 22
+  },
+  {
+   "id": "PYSEC-2026-2053",
+   "plans": 9,
+   "priority": 3
+  },
+  {
+   "id": "PYSEC-2026-1771",
+   "plans": 596,
+   "priority": 62
+  },
+  {
+   "id": "PYSEC-2026-1127",
+   "plans": 12,
+   "priority": 3
+  },
+  {
+   "id": "PYSEC-2026-491",
+   "plans": 81,
+   "priority": 6
+  },
+  {
+   "id": "PYSEC-2026-521",
+   "plans": 28,
+   "priority": 4
+  },
+  {
+   "id": "PYSEC-2026-1887",
+   "plans": 571,
+   "priority": 110
+  },
+  {
+   "id": "PYSEC-2017-78",
+   "plans": 3,
+   "priority": 2
+  },
+  {
+   "id": "PYSEC-2026-793",
+   "plans": 49,
+   "priority": 28
+  },
+  {
+   "id": "PYSEC-2026-4009",
+   "plans": 672,
+   "priority": 115
+  },
+  {
+   "id": "PYSEC-2026-1313",
+   "plans": 127,
+   "priority": 4
+  },
+  {
+   "id": "PYSEC-2026-281",
+   "plans": 7,
+   "priority": 6
+  },
+  {
+   "id": "PYSEC-2024-112",
+   "plans": 59,
+   "priority": 29
+  },
+  {
+   "id": "PYSEC-2026-1432",
+   "plans": 92,
+   "priority": 25
+  },
+  {
+   "id": "PYSEC-2026-1978",
+   "plans": 1614,
+   "priority": 658
+  },
+  {
+   "id": "PYSEC-2026-2892",
+   "plans": 90,
+   "priority": 66
+  },
+  {
+   "id": "PYSEC-2022-288",
+   "plans": 91,
+   "priority": 24
+  },
+  {
+   "id": "PYSEC-2024-62",
+   "plans": 278,
+   "priority": 116
+  },
+  {
+   "id": "PYSEC-2026-4236",
+   "plans": 620,
+   "priority": 32
+  },
+  {
+   "id": "PYSEC-2026-381",
+   "plans": 100,
+   "priority": 25
+  },
+  {
+   "id": "PYSEC-2026-3970",
+   "plans": 294,
+   "priority": 121
+  },
+  {
+   "id": "PYSEC-2024-226",
+   "plans": 594,
+   "priority": 170
+  },
+  {
+   "id": "PYSEC-2026-2636",
+   "plans": 231,
+   "priority": 89
+  },
+  {
+   "id": "PYSEC-2026-1854",
+   "plans": 12,
+   "priority": 5
+  },
+  {
+   "id": "PYSEC-2026-1629",
+   "plans": 187,
+   "priority": 64
+  },
+  {
+   "id": "PYSEC-2022-42998",
+   "plans": 40,
+   "priority": 9
+  },
+  {
+   "id": "PYSEC-2026-2661",
+   "plans": 1534,
+   "priority": 245
+  },
+  {
+   "id": "PYSEC-2026-1682",
+   "plans": 201,
+   "priority": 80
+  },
+  {
+   "id": "PYSEC-2026-3790",
+   "plans": 116,
+   "priority": 82
+  },
+  {
+   "id": "PYSEC-2022-209",
+   "plans": 421,
+   "priority": 283
+  },
+  {
+   "id": "PYSEC-2026-2239",
+   "plans": 54,
+   "priority": 23
+  },
+  {
+   "id": "PYSEC-2026-564",
+   "plans": 56,
+   "priority": 12
+  },
+  {
+   "id": "PYSEC-2026-451",
+   "plans": 981,
+   "priority": 79
+  },
+  {
+   "id": "PYSEC-2026-3916",
+   "plans": 95,
+   "priority": 64
+  },
+  {
+   "id": "PYSEC-2026-1918",
+   "plans": 231,
+   "priority": 109
+  },
+  {
+   "id": "PYSEC-2026-2257",
+   "plans": 234,
+   "priority": 54
+  },
+  {
+   "id": "PYSEC-2026-3919",
+   "plans": 55,
+   "priority": 27
+  },
+  {
+   "id": "PYSEC-2026-4095",
+   "plans": 206,
+   "priority": 4
+  },
+  {
+   "id": "PYSEC-2021-60",
+   "plans": 5,
+   "priority": 2
+  },
+  {
+   "id": "PYSEC-2026-1950",
+   "plans": 176,
+   "priority": 160
+  },
+  {
+   "id": "PYSEC-2021-789",
+   "plans": 431,
+   "priority": 131
+  },
+  {
+   "id": "PYSEC-2021-376",
+   "plans": 84,
+   "priority": 6
+  },
+  {
+   "id": "PYSEC-2014-25",
+   "plans": 8,
+   "priority": 1
+  },
+  {
+   "id": "PYSEC-2026-1976",
+   "plans": 12,
+   "priority": 3
+  },
+  {
+   "id": "PYSEC-2026-2138",
+   "plans": 440,
+   "priority": 75
+  },
+  {
+   "id": "PYSEC-2026-3047",
+   "plans": 29,
+   "priority": 13
+  },
+  {
+   "id": "PYSEC-2026-3946",
+   "plans": 484,
+   "priority": 267
+  },
+  {
+   "id": "PYSEC-2026-2064",
+   "plans": 176,
+   "priority": 47
+  }
+ ]
+}
