@@ -33,11 +33,12 @@ LOW_SIGNAL_SINKS: dict[str, str] = {
                   "result reaches an unsafe merge (prototype pollution) or an execution sink.",
 }
 
-# Directory names, matched case-insensitively. Test, example and docs
-# names match at any depth (packages/a/__tests__ is still tests). Build and
-# tooling names match only as the repo's top-level directory: a nested
-# "tools" is often product code -- django-DefectDojo's dojo/tools/ holds
-# its scanner parsers, the core feature -- and must not be down-ranked.
+# Directory names, matched case-insensitively. Test and example names match
+# at any depth (packages/a/__tests__ is still tests). Docs, build and tooling
+# names match only as the repo's top-level directory: a nested "tools" or
+# "doc" is often product code -- django-DefectDojo's dojo/tools/ holds its
+# scanner parsers, docling-core's docling_core/types/doc/ holds its document
+# model (a real yaml.load CVE site) -- and must not be down-ranked.
 # Order matters: the first context whose rule matches wins.
 _CONTEXT_DIRS: list[tuple[str, frozenset[str]]] = [
     ("test", frozenset({
@@ -46,8 +47,8 @@ _CONTEXT_DIRS: list[tuple[str, frozenset[str]]] = [
         "__mocks__", "mocks", "testdata", "test_data",
     })),
     ("example", frozenset({"example", "examples", "demo", "demos", "sample", "samples", "playground"})),
-    ("docs", frozenset({"doc", "docs", "documentation"})),
 ]
+_TOP_LEVEL_DOCS_DIRS = frozenset({"doc", "docs", "documentation"})
 _TOP_LEVEL_TOOLING_DIRS = frozenset({
     ".github", ".circleci", ".gitlab", ".ci", "ci", "scripts", "script", "build_scripts",
     "tools", "tooling", "benchmark", "benchmarks", "bench", "docker", "devtools",
@@ -78,6 +79,8 @@ def code_context(source_path: str, repo_root: str) -> tuple[str, str]:
         for context, names in _CONTEXT_DIRS:
             if lowered in names:
                 return context, f"directory {segment!r}"
+    if len(parts) > 1 and parts[0].lower() in _TOP_LEVEL_DOCS_DIRS:
+        return "docs", f"top-level directory {parts[0]!r}"
     if len(parts) > 1 and parts[0].lower() in _TOP_LEVEL_TOOLING_DIRS:
         return "build_tooling", f"top-level directory {parts[0]!r}"
     return "production", "no non-production path rule matched"

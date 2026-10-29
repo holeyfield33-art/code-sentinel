@@ -32,6 +32,11 @@ ROOT = "/work/repo"
     ("packages/a/__tests__/x.js", "test"),
     ("examples/optimistic-ui/pages/api/data.js", "example"),
     ("docs/conf.py", "docs"),
+    ("doc/source/conf.py", "docs"),
+    # A nested "doc" package is product code: docling-core's document model
+    # (PYSEC-2026-1313, a real yaml.load site) lives there.
+    ("docling_core/types/doc/document.py", "production"),
+    ("pkg/docs/build.py", "production"),
     (".github/workflows/check.py", "build_tooling"),
     ("scripts/release.py", "build_tooling"),
     ("benchmarks/run.py", "build_tooling"),
