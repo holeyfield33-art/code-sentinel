@@ -1,0 +1,4 @@
+# Frozen research artifacts: keep exact bytes so SHA256SUMS holds on every checkout.
+calibration/labs/vuln_labs_manifest.json -text
+calibration/labs/vuln_labs_report.md -text
+calibration/labs/SHA256SUMS -text

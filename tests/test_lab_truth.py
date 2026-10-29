@@ -42,4 +42,16 @@ def test_bundled_key_is_the_hashed_one():
     import hashlib
     data = (ROOT / "calibration" / "labs" / "vuln_labs_manifest.json").read_bytes()
     assert sums[0] == hashlib.sha256(data).hexdigest()
+    report = (ROOT / "calibration" / "labs" / "vuln_labs_report.md").read_bytes()
+    assert sums[2] == hashlib.sha256(report).hexdigest()
     assert json.loads(data)["schema"] == lab.SCHEMA
+
+
+def test_monorepo_lab_statistics_use_only_its_declared_subdirectory():
+    # Codex review on #24: NovaTrust lives in vuln-bank/ of a monorepo.
+    def plan(path):
+        return {"hypothesis": {"source_node": f"/r/{path}:1"}}
+    ledger = {"plans": [plan("vuln-bank/a.js"), plan("other-app/b.js"), plan("vuln-bank-old/c.js")]}
+    kept = lab.restrict_to_subdirectory(ledger, "/r/", "vuln-bank")["plans"]
+    assert [p["hypothesis"]["source_node"] for p in kept] == ["/r/vuln-bank/a.js:1"]
+    assert lab.restrict_to_subdirectory(ledger, "/r/", "") is ledger

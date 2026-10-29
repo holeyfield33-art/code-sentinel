@@ -60,6 +60,14 @@ def weak_reason(v: dict) -> str | None:
     return None
 
 
+def restrict_to_subdirectory(ledger: dict, root: str, sub: str) -> dict:
+    """Keep only plans under `sub` (repository-relative); an empty `sub` keeps everything."""
+    if not sub:
+        return ledger
+    prefix = f"{root}{sub}/"
+    return {**ledger, "plans": [p for p in ledger["plans"] if p["hypothesis"]["source_node"].startswith(prefix)]}
+
+
 def score_lab(lab: dict, cache: Path) -> dict:
     tree = checkout(cache, lab["repo"], lab["commit"])
     language = lab["language"]
@@ -76,6 +84,10 @@ def score_lab(lab: dict, cache: Path) -> dict:
         site["weak"] = site["weak"] or weak_reason(v)
     ledger = scan(tree, resolver_language(language))
     root = str(tree).rstrip("/") + "/"
+    # A lab that lives in one folder of a monorepo declares it; plans elsewhere belong to other
+    # applications and must not enter this lab's statistics. Paths stay repository-relative.
+    sub = (lab.get("subdirectory") or "").strip("/")
+    ledger = restrict_to_subdirectory(ledger, root, sub)
     by_site: dict[tuple, list] = {}
     for plan in ledger["plans"]:
         path, _, lineno = plan["hypothesis"]["source_node"].rpartition(":")
@@ -97,7 +109,7 @@ def score_lab(lab: dict, cache: Path) -> dict:
     for site in rows:
         same = [p for p in ledger["plans"] if p["hypothesis"]["sink_node"] == site["sink"]]
         same_sink[site["sink"]] = round(sum(bool((p.get("triage") or {}).get("priority")) for p in same) / len(same), 4) if same else None
-    return {"id": lab["id"], "language": language, "commit": lab["commit"], "sites": rows,
+    return {"id": lab["id"], "language": language, "commit": lab["commit"], "subdirectory": sub or None, "sites": rows,
             "plans": total, "priority": prio, "same_sink_priority_share": same_sink}
 
 

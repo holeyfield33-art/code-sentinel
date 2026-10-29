@@ -164,7 +164,8 @@ The scorer follows the key's handoff rules:
 - Never score unlocated entries as misses.
 
 Before scoring, it re-checks every quoted line against the pinned source. All
-306 located quotes matched.
+306 located quotes matched. The bundled key and report are the research agent's
+frozen bytes (`calibration/labs/SHA256SUMS`).
 
 **Result (2026-10-28):**
 
@@ -177,9 +178,10 @@ The weak cases behave as designed: the four JSON parsers are low signal, so
 they are not priority. The fifth, Vulnerable-Flask-App's
 `check_output("cat restapi.log")`, *should* be down-ranked but is priority.
 
-**Read this beside the base rate.** In these labs, 40% of all plans and 90% of
-plans on the same sinks are priority. Small training apps put a vulnerability
-behind almost every dangerous call. So the labs show that Sentinel-Zero does
+**Read this beside the base rate.** In these labs, 39% of all plans and 90% of
+plans on the same sinks are priority. NovaTrust is scored within its declared
+`vuln-bank/` folder; the rest of that monorepo is other applications. Small
+training apps put a vulnerability behind almost every dangerous call. So the labs show that Sentinel-Zero does
 not hide these bugs; they cannot show that it ranks well.
 
 **Defects found:**

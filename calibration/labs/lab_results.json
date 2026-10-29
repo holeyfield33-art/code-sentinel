@@ -15,9 +15,9 @@
    "recall": 0.2
   },
   "base_rate": {
-   "plans": 184,
-   "priority": 74,
-   "priority_share": 0.4022,
+   "plans": 169,
+   "priority": 66,
+   "priority_share": 0.3905,
    "same_sink_priority_share_mean_direct": 0.9023
   }
  },
@@ -26,6 +26,7 @@
    "id": "dvws-node",
    "language": "javascript",
    "commit": "35f999505028f580dd6acc8bb7ddecfb87fe4bf6",
+   "subdirectory": null,
    "sites": [
     {
      "file": "src/controllers/notes.js",
@@ -173,6 +174,7 @@
    "id": "pygoat",
    "language": "python",
    "commit": "46fef968f3f44d1191363baf936aaa3335dc5c6d",
+   "subdirectory": null,
    "sites": [
     {
      "file": "dockerized_labs/command_injection_lab/app.py",
@@ -330,6 +332,7 @@
    "id": "novatrust-bank",
    "language": "javascript",
    "commit": "5947d09a16afdc2753839fa7360b1bceae7ecaab",
+   "subdirectory": "vuln-bank",
    "sites": [
     {
      "file": "vuln-bank/routes/profile.js",
@@ -433,8 +436,8 @@
      "other_plans_on_line": []
     }
    ],
-   "plans": 28,
-   "priority": 16,
+   "plans": 13,
+   "priority": 8,
    "same_sink_priority_share": {
     "JSON.parse": 0.0,
     "fs.readFileSync": 1.0,
@@ -446,6 +449,7 @@
    "id": "dsvw",
    "language": "python",
    "commit": "9ca3c9acf3defa0a6148d40e5f5cebeb5dcbb908",
+   "subdirectory": null,
    "sites": [
     {
      "file": "dsvw.py",
@@ -542,6 +546,7 @@
    "id": "vulnerable-flask-app",
    "language": "python",
    "commit": "155a9d4020cd6382e7cef2a4166a714c54af3441",
+   "subdirectory": null,
    "sites": [
     {
      "file": "vulnerable-flask-app-linux.py",
@@ -656,6 +661,7 @@
    "id": "juice-shop",
    "language": "typescript",
    "commit": "717f5efa886b0417eeecb52378b03cf10567b7e2",
+   "subdirectory": null,
    "sites": [
     {
      "file": "routes/userProfile.ts",
@@ -708,8 +714,9 @@
   }
  ],
  "run": {
-  "date": "2026-10-28",
-  "manifest_sha256": "f4ca05fb62de050e34b87dd995e672b380fdc115a28759a637a03b3e23f5afc5",
+  "date": "2026-10-29",
+  "manifest_sha256": "e55fab66b4d50092a822e880fd4e6973f15fd5e87310bb2d971071874ec2b960",
+  "report_sha256": "f09b220ca64e2c33a1313f2318966b5582501f005562ac7390acaea48ca24895",
   "python": "3.13.18",
   "quotes_verified": "306/306 located quotes match the pinned sources"
  }
