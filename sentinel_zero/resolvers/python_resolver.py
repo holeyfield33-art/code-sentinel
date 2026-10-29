@@ -753,6 +753,24 @@ def _resolve_module(
                     versions[node.id] = versions.get(node.id, 0) + 1
                     derived[node.id] = read - {node.id}
 
+        def bound_names(target: ast.AST) -> list[str]:
+            """Plain names bound by an assignment target, through tuple/list
+            unpacking; `obj.attr` and `d[k]` targets bind no local name."""
+            if isinstance(target, ast.Name):
+                return [target.id]
+            if isinstance(target, ast.Starred):
+                return bound_names(target.value)
+            if isinstance(target, (ast.Tuple, ast.List)):
+                return [n for elt in target.elts for n in bound_names(elt)]
+            return []
+
+        def mark_results(first_call: int, targets: list[ast.expr]) -> None:
+            """Record, on the calls made since index `first_call`, the
+            just-assigned names their results flow into."""
+            names = frozenset((n, versions[n]) for t in targets for n in bound_names(t))
+            for site in calls[first_call:]:
+                site.result_names = names
+
         def note_walrus(expr: ast.AST) -> None:
             for node in ast.walk(expr):
                 if isinstance(node, ast.NamedExpr):
@@ -883,9 +901,11 @@ def _resolve_module(
                     local_bindings.update(_import_bindings(ast.Module(body=[stmt], type_ignores=[]), module_qualname))
                     continue
                 if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1 and isinstance(stmt.targets[0], ast.Name):
+                    first_call = len(calls)
                     record_calls_in_expr(stmt.value, branch_path)
                     note_walrus(stmt.value)
                     note_assignment(stmt.targets[0], stmt.value)  # after the RHS runs
+                    mark_results(first_call, stmt.targets)
                     resolved_rhs = _resolve_dotted(stmt.value, local_bindings)
                     # Only propagate the alias when it's actually trustworthy
                     # -- see _alias_rhs_is_trustworthy's docstring for the two
@@ -960,13 +980,16 @@ def _resolve_module(
                     continue
                 # simple statement (Expr, Return, Raise, Assert, AugAssign, ...):
                 # record every call nested in it at the current branch_path.
+                first_call = len(calls)
                 record_calls_in_expr(stmt, branch_path)
                 note_walrus(stmt)
                 if isinstance(stmt, ast.Assign):
                     for assigned in stmt.targets:
                         note_assignment(assigned, stmt.value)
+                    mark_results(first_call, stmt.targets)
                 elif isinstance(stmt, (ast.AnnAssign, ast.AugAssign)):
                     note_assignment(stmt.target, stmt.value)
+                    mark_results(first_call, [stmt.target])
 
         walk_stmts(body, ())
         # Closures see the enclosing scope's completed lexical bindings,

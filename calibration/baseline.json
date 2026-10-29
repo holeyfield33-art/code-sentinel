@@ -1,14 +1,14 @@
 {
   "summary": {
-    "cases": 41,
-    "correct": 32,
-    "reachable_priority_rate": 0.9583,
+    "cases": 42,
+    "correct": 33,
+    "reachable_priority_rate": 0.96,
     "near_miss_priority_rate": 0.1,
     "near_miss_downgrade_rate": 0.9,
-    "youden": 0.8583,
-    "priority_precision": 0.9583,
+    "youden": 0.86,
+    "priority_precision": 0.96,
     "near_miss_not_detected": [],
-    "guard_evidence_accuracy": 0.9167,
+    "guard_evidence_accuracy": 0.9231,
     "constant_accuracy": 0.8333,
     "coverage_gaps": {
       "detected": [],
@@ -28,7 +28,7 @@
     "by_dimension": {
       "alias": "5/5",
       "baseline": "6/6",
-      "callee-guard": "2/2",
+      "callee-guard": "3/3",
       "caller-guard": "9/10",
       "code-context": "4/4",
       "constant-args": "5/6",
@@ -352,6 +352,24 @@
       "plans": 1,
       "priority": true,
       "unresolved": 1,
+      "guarded_by": [],
+      "constant": [
+        false
+      ],
+      "outcome": "correct",
+      "checks": {
+        "guard": true
+      },
+      "correct": true
+    },
+    {
+      "id": "guard-callee-producer",
+      "family": "reachable",
+      "dimension": "callee-guard",
+      "sink": "subprocess.run",
+      "plans": 1,
+      "priority": true,
+      "unresolved": 0,
       "guarded_by": [],
       "constant": [
         false

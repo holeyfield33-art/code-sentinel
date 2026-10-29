@@ -124,6 +124,10 @@ CASES: list[Case] = [
     Case("guard-callee-unrelated", "reachable", "callee-guard", "subprocess.run",
          app(RAISING_VALIDATOR + "def run(name, cmd):\n    require_safe_name(name)\n    return subprocess.run(cmd, shell=True)\n"),
          pair="guard-callee-ok", expect_guard=None, note="validator runs, but on a different value"),
+    Case("guard-callee-producer", "reachable", "callee-guard", "subprocess.run",
+         app("def build_command(name):\n    if not name:\n        raise ValueError(name)\n    return f'echo {name}'\n\n\n"
+             "def run(name):\n    cmd = build_command(name)\n    return subprocess.run(cmd, shell=True)\n"),
+         pair="guard-callee-ok", expect_guard=None, note="the raising call builds the command it would 'guard'"),
 
     # --- constant arguments --------------------------------------------------------
     Case("const-literal", "near_miss", "constant-args", "subprocess.run",

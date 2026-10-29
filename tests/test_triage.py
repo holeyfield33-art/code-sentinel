@@ -178,3 +178,26 @@ def test_keyword_arguments_count_for_constant_check(tmp_path):
 def test_env_derived_eval_stays_priority(tmp_path):
     ledger, _ = _scan(tmp_path, {"app.py": "from os import getenv\ndef run():\n    eval(getenv('USER_CODE'))\n"}, fmt="json")
     assert ledger["plans"][0]["triage"]["priority"] is True
+
+
+_BUILDER = ("import os\n"
+            "def build(name):\n"
+            "    if not name:\n"
+            "        raise ValueError(name)\n"
+            "    return f'echo {name}', 'log'\n")
+
+
+@pytest.mark.parametrize("assign", ["cmd, log = build(name)", "cmd = build(name)[0]"])
+def test_a_call_that_builds_the_sink_argument_is_not_its_guard(tmp_path, assign):
+    # ms-swift CVE-2025-41419: `run_command, ... = cls.eval(*args)` then
+    # os.system(run_command). eval can raise, but it produces the command;
+    # crediting it as the guard hid the injection.
+    ledger, _ = _scan(tmp_path, {"app.py": _BUILDER + f"def run(name):\n    {assign}\n    os.system(cmd)\n"}, fmt="json")
+    tag = ledger["plans"][0]["triage"]
+    assert tag["guarded_by"] is None and tag["priority"] is True
+
+
+def test_a_raising_check_called_for_effect_still_guards(tmp_path):
+    ledger, _ = _scan(tmp_path, {"app.py": _BUILDER + "def run(name):\n    build(name)\n    os.system(name)\n"}, fmt="json")
+    tag = ledger["plans"][0]["triage"]
+    assert tag["guarded_by"] == "app.build" and tag["priority"] is False

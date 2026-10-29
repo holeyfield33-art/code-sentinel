@@ -28,6 +28,7 @@
   "gap-shutil-rmtree": "sha256:4735ddce8b29d0135e96d1cf7df49fc41111eafb5a2745db52d6d77712f8fd42",
   "gap-urlopen": "sha256:b51d17bd24edc56530308e63a7b3efd56f391c51690e557224f1020d96c24c1d",
   "guard-callee-ok": "sha256:b3eeb53deab78f4fb35b61efd6fe471b2a39994a1debd12795e6f3b7f7d70c16",
+  "guard-callee-producer": "sha256:2bbdd749f99bd99dcfe3fc5af2943f9da4a6434fdf8ceb76856add3d70572ea7",
   "guard-callee-unrelated": "sha256:2d4cdf318ec10b74fc01715a5c34dd945019126b03d8c49d2b40c2721919fe67",
   "guard-caller-after-sink": "sha256:350cf036c2c0f81a05f81ceca3fdf0c3f99746faa6fdf280cd515e68cff8736e",
   "guard-caller-loop-continue": "sha256:892ed47bae351d5bc4106ae50d00e5dcba02e55b65a004724df17bc055201508",
