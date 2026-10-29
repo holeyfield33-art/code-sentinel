@@ -54,10 +54,15 @@ The gate fails when a previously correct case turns incorrect, or when
 `youden`, `near_miss_downgrade_rate` or `reachable_priority_rate` falls. It does
 not gate on plan counts: finding more sinks while mis-tagging guards should fail.
 
-## Baseline (2026-10-28)
+## Baseline
 
-32/41 correct; `youden` 0.858, `priority_precision` 0.958, guard evidence
-0.917, constant accuracy 0.833. Misses:
+2026-10-29, after the calibration fixes below: **35/44 correct**. Three cases
+were added, one per fix that the synthetic set can express
+(`guard-callee-producer`, `const-local-variable`, `const-local-rebound`). All
+three are correct, and none of the original 41 changed outcome.
+
+2026-10-28: 32/41 correct; `youden` 0.858, `priority_precision` 0.958, guard
+evidence 0.917, constant accuracy 0.833. Misses (still open):
 
 - `guard-caller-partial`: a guard is credited when it covers *any* variable the
   sink reads, so `read(base, name)` with only `name` validated is hidden even
@@ -123,9 +128,9 @@ still faces a median of 32 priority plans per repository.
 
 | Cause | Groups | Fix |
 |---|---|---|
-| A wrapper the scanner does not model: Radicale's own `open()` calls `codecs.open` | 2 missed | Add `codecs.open` as a sink |
-| A producer credited as a guard: ms-swift's `cls.rollout(*args)` *builds* the shell command and can raise, so it was credited as the callee-raises guard of the `os.system` it feeds | 3 | A call whose return value flows into the sink must not count as its guard |
-| A `doc` package directory treated as documentation (`docling_core/types/doc/`) | 1 | Match docs directories at the top level only, as tooling directories already are |
+| A wrapper the scanner did not model: Radicale's own `open()` calls `codecs.open` | 2 missed | **Fixed** (`codecs.open`, `io.open` are sinks). Radicale is now flagged at the real sink, the wrapper's `codecs.open(abs_path)`. The pair still scores "missed": its sites are the wrapper's *callers*, which the selection regex labeled `builtins.open`. That is an answer-key error, left as is because the pair set is frozen. |
+| A producer credited as a guard: ms-swift's `cls.rollout(*args)` *builds* the shell command and can raise, so it was credited as the callee-raises guard of the `os.system` it feeds | 3 | **Fixed**: a call whose result is assigned to a variable the sink reads is never its guard |
+| A `doc` package directory treated as documentation (`docling_core/types/doc/`) | 1 | **Fixed**: docs directories match at the top level only |
 | A feature predicate credited as a guard: onnx's `if not uses_external_data(t): continue` | 1 | Not fixable by name-based rules. A known limit of static guard crediting. |
 | A top-level `scripts/` file treated as build tooling (cobbler `scripts/services.py`) | 1 | Correct by the rule as written. Whether that script is deployed is not visible statically. |
 
@@ -188,13 +193,46 @@ not hide these bugs; they cannot show that it ranks well.
 
 | Cause | Site | Fix |
 |---|---|---|
-| Calls inside a function declared inside a callback are not recorded at all. This is a *silent* gap: no edge, no unresolved marker. | dvws-node `src/utils/vulnerable-xml.js:64`, `fs.readFileSync` | Make the JS resolver walk nested function declarations inside callbacks |
-| A constant reached through a local variable is not recognized as constant (`command = "cat restapi.log"`, then `check_output(command, shell=True)`) | Vulnerable-Flask-App line 68 | Propagate constants through simple local assignments. This is the same family as the module-constant miss in the synthetic set. |
+| Calls inside a `function` declared inside another function were not recorded at all, nor were callbacks inside it. This was a *silent* gap: no edge, no unresolved marker. (Earlier described as "inside a callback"; the real shape is a nested declaration with a callback inside it.) | dvws-node `src/utils/vulnerable-xml.js:64`, `fs.readFileSync` | **Fixed**: nested declarations are walked as `outer.<locals>.inner` |
+| A constant reached through a local variable was not recognized as constant (`command = "cat restapi.log"`, then `check_output(command, shell=True)`) | Vulnerable-Flask-App line 68 | **Fixed** for locals whose every binding is the same kind of constant assignment. Module-level constants are still the open synthetic miss. |
 
 **Limits of this layer:** it has 25 direct sites, and only one negative
 control sits on a supported sink. That control (`juice-shop-rceChallenge`)
 shares its line with a vulnerable entry, so it cannot act as a negative at site
 level. False positives are therefore not measured here.
+
+## After the calibration fixes (2026-10-29)
+
+Each defect above was fixed in its own commit with a regression test, then
+every layer was rerun with the same caches and pinned commits.
+
+| Layer | Measure | Before | After |
+|---|---|---|---|
+| Synthetic | correct cases | 32/41 | 35/44 (+3 new cases, all correct; no case changed) |
+| CVE pairs | groups ranked priority (recall) | 89/97 (0.92) | **93/97 (0.96)**; per call 101/109 -> 105/109 |
+| CVE pairs | quiet on fix | 84/97 (0.87) | 83/97 (0.86) |
+| CVE pairs | priority share, all plans | 0.286 (3,930 of 13,739) | 0.289 (3,987 of 13,817) |
+| CVE pairs | priority share, same sink | 0.72 | 0.74 |
+| Labs | direct sites detected | 24/25 | **25/25** |
+| Labs | weak cases wrongly priority | 1 | 0 |
+| Labs | priority share, all plans / same sink | 0.39 / 0.90 | 0.38 / 0.88 |
+| Held-out benchmark | priority plans (swr, stytch-node, DefectDojo, chia) | 0, 0, 0, 52 | 0, 0, 0, 52, the identical set |
+
+Attribution: the 4 CVE groups that moved are ms-swift (3, producer-not-guard)
+and docling (1, docs directories). Docling's fix only switched
+`Loader=yaml.FullLoader` to `yaml.SafeLoader`, which static triage does not
+distinguish, so it is now "still flagged" after the fix; that is the single
+point quiet-on-fix lost, and it was "downgraded" before only because the
+directory rule hid the whole file. The lab gains are dvws-node (nested JS
+functions) and Vulnerable-Flask-App (local constants, both its Linux and
+Windows copies).
+
+How to read it: recall went up on real bugs and the held-out repositories did
+not move, so nothing was tuned at their expense. But the same-sink priority
+share went up too (0.72 to 0.74 on CVEs), so these fixes recover missed bugs;
+they do not make the vulnerable call stand out more from its neighbors.
+Ranking sharpness is still the open problem. Next candidates from this run:
+`yaml.load` with an explicit safe loader, and module-level constants.
 
 ## Limits
 

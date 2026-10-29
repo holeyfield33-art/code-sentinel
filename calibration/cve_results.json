@@ -4,24 +4,24 @@
   "pairs_errored": [],
   "groups": 97,
   "calls": 109,
-  "call_recall": 0.9266,
-  "recall": 0.9175,
-  "quiet_on_fix": 0.866,
+  "call_recall": 0.9633,
+  "recall": 0.9588,
+  "quiet_on_fix": 0.8557,
   "vulnerable_outcomes": {
-   "detected": 89,
-   "under-ranked": 6,
+   "detected": 93,
+   "under-ranked": 2,
    "missed": 2
   },
   "fixed_outcomes": {
    "gone": 83,
-   "downgraded": 1,
-   "still-flagged": 13
+   "downgraded": 0,
+   "still-flagged": 14
   },
   "base_rate": {
-   "plans": 13739,
-   "priority": 3930,
-   "priority_share": 0.286,
-   "same_sink_priority_share_at_groups": 0.7152,
+   "plans": 13817,
+   "priority": 3987,
+   "priority_share": 0.2886,
+   "same_sink_priority_share_at_groups": 0.7362,
    "median_priority_plans_per_repo": 32
   }
  },
@@ -240,8 +240,8 @@
     }
    ],
    "plans": {
-    "vulnerable": 7,
-    "fixed": 7
+    "vulnerable": 8,
+    "fixed": 8
    }
   },
   {
@@ -314,8 +314,8 @@
     }
    ],
    "plans": {
-    "vulnerable": 141,
-    "fixed": 138
+    "vulnerable": 145,
+    "fixed": 142
    }
   },
   {
@@ -346,8 +346,8 @@
     }
    ],
    "plans": {
-    "vulnerable": 83,
-    "fixed": 83
+    "vulnerable": 85,
+    "fixed": 85
    }
   },
   {
@@ -431,8 +431,8 @@
     }
    ],
    "plans": {
-    "vulnerable": 596,
-    "fixed": 595
+    "vulnerable": 602,
+    "fixed": 601
    }
   },
   {
@@ -612,8 +612,8 @@
     }
    ],
    "plans": {
-    "vulnerable": 3,
-    "fixed": 2
+    "vulnerable": 4,
+    "fixed": 3
    }
   },
   {
@@ -713,15 +713,15 @@
      "lines": [
       4357
      ],
-     "vulnerable": "under-ranked",
-     "calls_detected": 0,
-     "fixed": "downgraded",
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "still-flagged",
      "guard_after_fix": [],
      "vulnerable_triage": [
       {
-       "priority": false,
+       "priority": true,
        "signal": "high",
-       "code_context": "docs",
+       "code_context": "production",
        "guarded_by": null,
        "constant_arguments": false
       }
@@ -857,8 +857,8 @@
     }
    ],
    "plans": {
-    "vulnerable": 1614,
-    "fixed": 1612
+    "vulnerable": 1621,
+    "fixed": 1619
    }
   },
   {
@@ -921,8 +921,8 @@
     }
    ],
    "plans": {
-    "vulnerable": 91,
-    "fixed": 91
+    "vulnerable": 92,
+    "fixed": 92
    }
   },
   {
@@ -1102,8 +1102,8 @@
     }
    ],
    "plans": {
-    "vulnerable": 594,
-    "fixed": 593
+    "vulnerable": 595,
+    "fixed": 594
    }
   },
   {
@@ -1459,8 +1459,8 @@
     }
    ],
    "plans": {
-    "vulnerable": 1534,
-    "fixed": 1537
+    "vulnerable": 1540,
+    "fixed": 1543
    }
   },
   {
@@ -1517,16 +1517,16 @@
      "lines": [
       235
      ],
-     "vulnerable": "under-ranked",
-     "calls_detected": 0,
+     "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
       {
-       "priority": false,
+       "priority": true,
        "signal": "high",
        "code_context": "production",
-       "guarded_by": "swift.ui.llm_grpo.external_rollout.LLMRollout.rollout",
+       "guarded_by": null,
        "constant_arguments": false
       }
      ]
@@ -1583,16 +1583,16 @@
      "lines": [
       280
      ],
-     "vulnerable": "under-ranked",
-     "calls_detected": 0,
+     "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
       {
-       "priority": false,
+       "priority": true,
        "signal": "high",
        "code_context": "production",
-       "guarded_by": "swift.ui.llm_infer.llm_infer.LLMInfer.deploy",
+       "guarded_by": null,
        "constant_arguments": false
       }
      ]
@@ -1654,16 +1654,16 @@
      "lines": [
       508
      ],
-     "vulnerable": "under-ranked",
-     "calls_detected": 0,
+     "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
       {
-       "priority": false,
+       "priority": true,
        "signal": "high",
        "code_context": "production",
-       "guarded_by": "swift.ui.llm_train.llm_train.LLMTrain.train",
+       "guarded_by": null,
        "constant_arguments": false
       }
      ]
@@ -1886,8 +1886,8 @@
     }
    ],
    "plans": {
-    "vulnerable": 116,
-    "fixed": 112
+    "vulnerable": 120,
+    "fixed": 115
    }
   },
   {
@@ -1997,8 +1997,8 @@
     }
    ],
    "plans": {
-    "vulnerable": 421,
-    "fixed": 415
+    "vulnerable": 436,
+    "fixed": 430
    }
   },
   {
@@ -2135,8 +2135,8 @@
     }
    ],
    "plans": {
-    "vulnerable": 981,
-    "fixed": 979
+    "vulnerable": 987,
+    "fixed": 985
    }
   },
   {
@@ -2342,8 +2342,8 @@
     }
    ],
    "plans": {
-    "vulnerable": 55,
-    "fixed": 53
+    "vulnerable": 57,
+    "fixed": 55
    }
   },
   {
@@ -2459,8 +2459,8 @@
     }
    ],
    "plans": {
-    "vulnerable": 176,
-    "fixed": 176
+    "vulnerable": 178,
+    "fixed": 178
    }
   },
   {
@@ -2491,8 +2491,8 @@
     }
    ],
    "plans": {
-    "vulnerable": 431,
-    "fixed": 430
+    "vulnerable": 436,
+    "fixed": 435
    }
   },
   {
@@ -2595,8 +2595,8 @@
     }
    ],
    "plans": {
-    "vulnerable": 12,
-    "fixed": 11
+    "vulnerable": 13,
+    "fixed": 12
    }
   },
   {
@@ -2712,8 +2712,8 @@
     }
    ],
    "plans": {
-    "vulnerable": 484,
-    "fixed": 484
+    "vulnerable": 498,
+    "fixed": 498
    }
   },
   {
@@ -2750,9 +2750,9 @@
   }
  ],
  "run": {
-  "date": "2026-10-28",
+  "date": "2026-10-29",
   "python": "3.13.18",
-  "note": "53 pairs from the full run on e309ee7; the 2 pairs whose sites changed under the deleted-file rule were re-scored with the same scanner"
+  "note": "full rerun of all 55 pairs after the five calibration fixes (fix/calibration-defects)"
  },
  "base_rate_per_pair": [
   {
@@ -2773,7 +2773,7 @@
   {
    "id": "PYSEC-2026-1264",
    "plans": 141,
-   "priority": 91
+   "priority": 90
   },
   {
    "id": "PYSEC-2026-3862",
@@ -2782,17 +2782,17 @@
   },
   {
    "id": "PYSEC-2026-512",
-   "plans": 7,
-   "priority": 4
+   "plans": 8,
+   "priority": 5
   },
   {
    "id": "PYSEC-2019-102",
-   "plans": 141,
-   "priority": 93
+   "plans": 145,
+   "priority": 97
   },
   {
    "id": "PYSEC-2021-17",
-   "plans": 83,
+   "plans": 85,
    "priority": 22
   },
   {
@@ -2802,8 +2802,8 @@
   },
   {
    "id": "PYSEC-2026-1771",
-   "plans": 596,
-   "priority": 62
+   "plans": 602,
+   "priority": 66
   },
   {
    "id": "PYSEC-2026-1127",
@@ -2823,17 +2823,17 @@
   {
    "id": "PYSEC-2026-1887",
    "plans": 571,
-   "priority": 110
+   "priority": 109
   },
   {
    "id": "PYSEC-2017-78",
-   "plans": 3,
-   "priority": 2
+   "plans": 4,
+   "priority": 3
   },
   {
    "id": "PYSEC-2026-793",
    "plans": 49,
-   "priority": 28
+   "priority": 23
   },
   {
    "id": "PYSEC-2026-4009",
@@ -2843,7 +2843,7 @@
   {
    "id": "PYSEC-2026-1313",
    "plans": 127,
-   "priority": 4
+   "priority": 14
   },
   {
    "id": "PYSEC-2026-281",
@@ -2862,8 +2862,8 @@
   },
   {
    "id": "PYSEC-2026-1978",
-   "plans": 1614,
-   "priority": 658
+   "plans": 1621,
+   "priority": 660
   },
   {
    "id": "PYSEC-2026-2892",
@@ -2872,13 +2872,13 @@
   },
   {
    "id": "PYSEC-2022-288",
-   "plans": 91,
-   "priority": 24
+   "plans": 92,
+   "priority": 22
   },
   {
    "id": "PYSEC-2024-62",
    "plans": 278,
-   "priority": 116
+   "priority": 115
   },
   {
    "id": "PYSEC-2026-4236",
@@ -2897,13 +2897,13 @@
   },
   {
    "id": "PYSEC-2024-226",
-   "plans": 594,
-   "priority": 170
+   "plans": 595,
+   "priority": 169
   },
   {
    "id": "PYSEC-2026-2636",
    "plans": 231,
-   "priority": 89
+   "priority": 73
   },
   {
    "id": "PYSEC-2026-1854",
@@ -2922,23 +2922,23 @@
   },
   {
    "id": "PYSEC-2026-2661",
-   "plans": 1534,
-   "priority": 245
+   "plans": 1540,
+   "priority": 254
   },
   {
    "id": "PYSEC-2026-1682",
    "plans": 201,
-   "priority": 80
+   "priority": 84
   },
   {
    "id": "PYSEC-2026-3790",
-   "plans": 116,
-   "priority": 82
+   "plans": 120,
+   "priority": 86
   },
   {
    "id": "PYSEC-2022-209",
-   "plans": 421,
-   "priority": 283
+   "plans": 436,
+   "priority": 298
   },
   {
    "id": "PYSEC-2026-2239",
@@ -2952,8 +2952,8 @@
   },
   {
    "id": "PYSEC-2026-451",
-   "plans": 981,
-   "priority": 79
+   "plans": 987,
+   "priority": 83
   },
   {
    "id": "PYSEC-2026-3916",
@@ -2963,17 +2963,17 @@
   {
    "id": "PYSEC-2026-1918",
    "plans": 231,
-   "priority": 109
+   "priority": 107
   },
   {
    "id": "PYSEC-2026-2257",
    "plans": 234,
-   "priority": 54
+   "priority": 52
   },
   {
    "id": "PYSEC-2026-3919",
-   "plans": 55,
-   "priority": 27
+   "plans": 57,
+   "priority": 29
   },
   {
    "id": "PYSEC-2026-4095",
@@ -2987,13 +2987,13 @@
   },
   {
    "id": "PYSEC-2026-1950",
-   "plans": 176,
-   "priority": 160
+   "plans": 178,
+   "priority": 162
   },
   {
    "id": "PYSEC-2021-789",
-   "plans": 431,
-   "priority": 131
+   "plans": 436,
+   "priority": 142
   },
   {
    "id": "PYSEC-2021-376",
@@ -3007,7 +3007,7 @@
   },
   {
    "id": "PYSEC-2026-1976",
-   "plans": 12,
+   "plans": 13,
    "priority": 3
   },
   {
@@ -3022,13 +3022,13 @@
   },
   {
    "id": "PYSEC-2026-3946",
-   "plans": 484,
-   "priority": 267
+   "plans": 498,
+   "priority": 281
   },
   {
    "id": "PYSEC-2026-2064",
    "plans": 176,
-   "priority": 47
+   "priority": 48
   }
  ]
 }
