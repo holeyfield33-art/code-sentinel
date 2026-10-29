@@ -115,6 +115,9 @@ class CallSite:
     # gives cmd and log). A call whose result reaches the sink's arguments
     # produced that data, so it is never credited as the sink's guard.
     # Python resolver only.
+    guard_eligible: bool = True  # False for calls that may be skipped by an
+    # expression, deferred in a comprehension/lambda, or removed with assert
+    # optimization. They remain call sites but cannot establish guard credit.
 
 
 @dataclass
@@ -137,6 +140,9 @@ class FunctionInfo:
     raises_on_guard: bool
     file_path: str
     lineno: int
+    body_is_deferred: bool = False  # Calling this function returns a coroutine
+    # or generator instead of synchronously executing its body. Python sets
+    # this for async/generator definitions; syntax alone cannot certify a gate.
 
 
 @dataclass(frozen=True)

@@ -163,7 +163,9 @@ def test_container_output_is_bounded_and_overflow_fails_closed(tmp_path):
         emitted.append(args[0])
         return real_popen([sys.executable, "-I", "-c", "import os;os.write(1,b'x'*300000)"], **kwargs)
 
-    with patch.object(container_runner.subprocess, "Popen", side_effect=emitter), patch.object(
+    with patch.object(container_runner, "_docker_executable", return_value="docker"), patch.object(
+        container_runner.subprocess, "Popen", side_effect=emitter
+    ), patch.object(
         container_runner.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "", "")
     ) as remove:
         code, stdout, stderr, timed_out = container_runner._docker_run([], timeout=5)
@@ -184,7 +186,9 @@ def test_timeout_removes_named_container_and_never_retries_on_host():
     def sleepy(*args, **kwargs):
         return real_popen([sys.executable, "-I", "-c", "import time;time.sleep(60)"], **kwargs)
 
-    with patch.object(container_runner.subprocess, "Popen", side_effect=sleepy), patch.object(
+    with patch.object(container_runner, "_docker_executable", return_value="docker"), patch.object(
+        container_runner.subprocess, "Popen", side_effect=sleepy
+    ), patch.object(
         container_runner.subprocess, "run", return_value=subprocess.CompletedProcess([], 0, "", "")
     ) as cleanup:
         code, stdout, stderr, timed_out = container_runner._docker_run([], timeout=0)

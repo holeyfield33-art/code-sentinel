@@ -60,6 +60,7 @@ from __future__ import annotations
 
 import ast
 from pathlib import Path
+from sentinel_zero.source_inputs import SourceInputError, read_source_text
 
 import sys
 
@@ -125,6 +126,57 @@ def _module_qualname(py_path: Path, repo_root: Path) -> str:
     if parts[-1] == "__init__":
         parts = parts[:-1]
     return ".".join(parts) if parts else py_path.stem
+
+
+def _module_identities(
+    paths: list[Path], repo_root: Path,
+) -> tuple[dict[Path, str], dict[str, str], list[dict]]:
+    """Preserve physical files when multiple paths share an import name.
+
+    Ordinary modules retain their existing identities. Collision groups use
+    encoded physical paths; imports select the package before its sibling
+    module, and a real package path before a dotted filename. Every file is
+    still analyzed, regardless of that import preference.
+    """
+    groups: dict[str, list[Path]] = {}
+    for path in paths:
+        groups.setdefault(_module_qualname(path, repo_root), []).append(path)
+    identities: dict[Path, str] = {}
+    aliases: dict[str, str] = {}
+    warnings: list[dict] = []
+    reserved = set(groups)
+    for legacy, members in sorted(groups.items()):
+        if len(members) == 1:
+            identities[members[0]] = legacy
+            aliases[legacy] = legacy
+            continue
+        for path in sorted(members):
+            identity = "@file:" + path.relative_to(repo_root).as_posix().encode("utf-8").hex()
+            while identity in reserved:
+                identity = "@" + identity
+            reserved.add(identity)
+            identities[path] = identity
+        import_path = Path(*legacy.split("."))
+
+        def import_rank(path: Path) -> tuple[int, str]:
+            relative = path.relative_to(repo_root)
+            if relative == import_path / "__init__.py":
+                rank = 0
+            elif relative == import_path.with_suffix(".py"):
+                rank = 1
+            else:
+                rank = 2
+            return rank, relative.as_posix()
+
+        imported = min(members, key=import_rank)
+        aliases[legacy] = identities[imported]
+        warnings.append({
+            "kind": "module_identity_disambiguated", "legacy_id": legacy,
+            "files": [str(path) for path in sorted(members)],
+            "import_target": str(imported),
+            "detail": "Each parsed file retains a distinct identity; imports prefer a package over a sibling module.",
+        })
+    return identities, aliases, warnings
 
 
 def _is_guard_shaped(fn: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
@@ -247,46 +299,34 @@ def _dispatch_forwards_to(method: ast.FunctionDef | ast.AsyncFunctionDef, wrappe
     return False
 
 
+def _direct_scope_definitions(
+    stmts: list[ast.stmt],
+) -> list[ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef]:
+    """Definitions in this lexical scope, including control-flow suites.
+
+    A suite does not introduce a Python scope. A function or class does,
+    so stop at that definition instead of flattening its members into the
+    enclosing scope. The same traversal serves module and function scopes.
+    """
+    found: list[ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef] = []
+
+    def visit(node: ast.AST) -> None:
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            found.append(node)
+            return
+        for child in ast.iter_child_nodes(node):
+            visit(child)
+
+    for stmt in stmts:
+        visit(stmt)
+    return found
+
+
 def _direct_nested_function_defs(
     stmts: list[ast.stmt],
 ) -> list[ast.FunctionDef | ast.AsyncFunctionDef]:
-    """Function defs that belong to THIS scope -- found by walking through
-    control-flow constructs (if/try/for/while/with) exactly the way
-    _resolve_module's own walk_stmts does for CallSites, but collecting
-    FunctionDef/AsyncFunctionDef nodes instead. Stops at a nested
-    FunctionDef/AsyncFunctionDef/ClassDef boundary without descending into
-    it -- each of those is a separate scope, indexed by its own recursive
-    call in _index_function_and_nested below, never flattened into this
-    one's result."""
-    found: list[ast.FunctionDef | ast.AsyncFunctionDef] = []
-    for stmt in stmts:
-        if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            found.append(stmt)
-        elif isinstance(stmt, ast.ClassDef):
-            continue  # a nested class remains out of scope for this pass
-        elif isinstance(stmt, ast.If):
-            found += _direct_nested_function_defs(stmt.body)
-            found += _direct_nested_function_defs(stmt.orelse)
-        elif isinstance(stmt, ast.Try):
-            found += _direct_nested_function_defs(stmt.body)
-            for handler in stmt.handlers:
-                found += _direct_nested_function_defs(handler.body)
-            found += _direct_nested_function_defs(stmt.orelse)
-            found += _direct_nested_function_defs(stmt.finalbody)
-        elif isinstance(stmt, (ast.For, ast.AsyncFor, ast.While)):
-            found += _direct_nested_function_defs(stmt.body)
-            found += _direct_nested_function_defs(stmt.orelse)
-        elif isinstance(stmt, (ast.With, ast.AsyncWith)):
-            found += _direct_nested_function_defs(stmt.body)
-        elif isinstance(stmt, ast.Match):
-            # Codex review, PR #7: `match value: case ...: def inner():
-            # ...` is real, supported Python 3.10+ syntax -- a case body is
-            # just another list of statements, same as an If branch, and a
-            # function def inside one still belongs to the enclosing
-            # scope, not a separate one.
-            for case in stmt.cases:
-                found += _direct_nested_function_defs(case.body)
-    return found
+    return [node for node in _direct_scope_definitions(stmts)
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))]
 
 
 def _index_function_and_nested(
@@ -310,6 +350,9 @@ def _index_function_and_nested(
         raises_on_guard=_is_raise_guard_shaped(node),
         file_path=file_path,
         lineno=node.lineno,
+        body_is_deferred=isinstance(node, ast.AsyncFunctionDef) or any(
+            isinstance(child, (ast.Yield, ast.YieldFrom)) for child in _scope_nodes(node.body)
+        ),
     )
     for nested in _direct_nested_function_defs(node.body):
         _index_function_and_nested(nested, f"{qualname}.<locals>.{nested.name}", file_path, index)
@@ -322,14 +365,14 @@ def _index_module_functions(
     index: dict[str, FunctionInfo],
     wrapper_classes: dict[str, WrapperClass],
 ) -> None:
-    for node in tree.body:
+    for node in _direct_scope_definitions(tree.body):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             qualname = f"{module_qualname}.{node.name}"
             _index_function_and_nested(node, qualname, file_path, index)
         elif isinstance(node, ast.ClassDef):
             class_qualname = f"{module_qualname}.{node.name}"
             init_fn = call_fn = None
-            for member in node.body:
+            for member in _direct_scope_definitions(node.body):
                 if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     member_qualname = f"{class_qualname}.{member.name}"
                     _index_function_and_nested(member, member_qualname, file_path, index)
@@ -350,10 +393,10 @@ def _index_module_functions(
                         )
 
 
-def _import_bindings(tree: ast.Module, module_qualname: str) -> dict[str, str]:
+def _import_bindings(tree: ast.Module, module_qualname: str, *, is_package: bool = False) -> dict[str, str]:
     """local_name -> best-effort fully-qualified dotted path."""
     bindings: dict[str, str] = {}
-    package_parts = module_qualname.split(".")[:-1]
+    package_parts = module_qualname.split(".") if is_package else module_qualname.split(".")[:-1]
 
     for node in _scope_nodes(tree.body):
         if isinstance(node, ast.Import):
@@ -365,7 +408,7 @@ def _import_bindings(tree: ast.Module, module_qualname: str) -> dict[str, str]:
                 # relative import: best-effort resolve against this module's package
                 base_parts = package_parts[: len(package_parts) - (node.level - 1)] if node.level > 1 else package_parts
                 base = ".".join(base_parts)
-                module_base = f"{base}.{node.module}" if node.module else base
+                module_base = ".".join(part for part in (base, node.module) if part)
             else:
                 module_base = node.module or ""
             for alias in node.names:
@@ -746,8 +789,25 @@ def _resolve_module(
     project_top_level_names: set[str],
     file_path: str,
     external_refs: list[ExternalReference],
+    *,
+    import_module_qualname: str | None = None,
+    module_aliases: dict[str, str] | None = None,
+    is_package: bool = False,
 ) -> list[CallSite]:
-    bindings = _import_bindings(tree, module_qualname)
+    import_name = import_module_qualname or module_qualname
+    bindings = _import_bindings(tree, import_name, is_package=is_package)
+    aliases = module_aliases or {}
+
+    def physical_identity(name: str) -> str:
+        # Consult full module prefixes before a parent package so a
+        # disambiguated pkg does not rename its ordinary pkg.helpers module.
+        parts = name.split(".")
+        for length in range(len(parts), 0, -1):
+            imported = ".".join(parts[:length])
+            if imported in aliases:
+                return aliases[imported] + name[len(imported):]
+        return name
+
     calls: list[CallSite] = []
 
     def walk_fn(
@@ -776,7 +836,9 @@ def _resolve_module(
                 local_bindings[name] = ""
             for name in declared_global:
                 local_bindings[name] = bindings.get(name, f"{module_qualname}.{name}")
-            local_bindings.update(_import_bindings(ast.Module(body=body, type_ignores=[]), module_qualname))
+            local_bindings.update(_import_bindings(
+                ast.Module(body=body, type_ignores=[]), import_name, is_package=is_package,
+            ))
             # Bind every sibling before entering any child body, including
             # definitions inside control-flow suites. This is lexical
             # resolution, not proof a conditional def executes at runtime.
@@ -853,9 +915,39 @@ def _resolve_module(
             """Find every ast.Call nested in this expression (but not inside
             a nested def/lambda, which is a separate caller scope handled by
             its own walk_fn call), in source order, and record it."""
-            # ast.walk is BFS and unordered across siblings; for a single
-            # expression tree (no statement sequencing inside it) this is
-            # acceptable because expressions don't branch the way If/Try do.
+            # Expressions can skip calls independently of statement suites.
+            # Keep those calls visible as leads, but withhold guard credit.
+            # This deliberately errs toward extra review instead of proving
+            # an expression-level control-flow fact we do not model.
+            ineligible_calls: set[int] = set()
+
+            def classify_evaluation(node: ast.AST, guaranteed: bool = True) -> None:
+                if isinstance(node, ast.Call) and not guaranteed:
+                    ineligible_calls.add(id(node))
+                if isinstance(node, ast.BoolOp):
+                    for i, value in enumerate(node.values):
+                        classify_evaluation(value, guaranteed and i == 0)
+                    return
+                if isinstance(node, ast.IfExp):
+                    classify_evaluation(node.test, guaranteed)
+                    classify_evaluation(node.body, False)
+                    classify_evaluation(node.orelse, False)
+                    return
+                if isinstance(node, ast.Compare):
+                    # a < b < check(x) skips check when a < b is false.
+                    # The left operand and first comparator are evaluated;
+                    # every later comparator depends on earlier results.
+                    classify_evaluation(node.left, guaranteed)
+                    for i, comparator in enumerate(node.comparators):
+                        classify_evaluation(comparator, guaranteed and i == 0)
+                    return
+                if isinstance(node, (ast.Assert, ast.Lambda, ast.ListComp,
+                                     ast.SetComp, ast.DictComp, ast.GeneratorExp)):
+                    guaranteed = False
+                for child in ast.iter_child_nodes(node):
+                    classify_evaluation(child, guaranteed)
+
+            classify_evaluation(expr)
             # Known, stated gap: a call inside a nested `lambda` body is
             # still attributed to the enclosing function here, rather than
             # treated as its own scope -- lambdas are rare as sink/guard
@@ -865,6 +957,8 @@ def _resolve_module(
                 key=lambda n: (n.lineno, n.col_offset),
             ):
                 dotted = _resolve_dotted(node.func, local_bindings)
+                if dotted and "." in dotted:
+                    dotted = physical_identity(dotted)
                 target: Symbol | Unresolved | None = None
                 if dotted:
                     for cand in (dotted, f"{module_qualname}.{dotted}"):
@@ -925,6 +1019,10 @@ def _resolve_module(
                         arg_taint=arg_taint,
                         kwarg_taint=kwarg_taint,
                         branch_path=branch_path,
+                        guard_eligible=id(node) not in ineligible_calls and not (
+                            isinstance(target, Symbol) and target.qualified_name in project_functions
+                            and project_functions[target.qualified_name].body_is_deferred
+                        ),
                         # Only a project-defined check counts: stdlib/external
                         # predicates (os.path.exists, isinstance) gate
                         # behavior, not trust, and would credit almost
@@ -971,7 +1069,9 @@ def _resolve_module(
                     local_bindings[stmt.name] = ""
                     continue  # a nested class remains out of scope for this pass
                 if isinstance(stmt, (ast.Import, ast.ImportFrom)):
-                    local_bindings.update(_import_bindings(ast.Module(body=[stmt], type_ignores=[]), module_qualname))
+                    local_bindings.update(_import_bindings(
+                        ast.Module(body=[stmt], type_ignores=[]), import_name, is_package=is_package,
+                    ))
                     continue
                 if isinstance(stmt, ast.Assign) and len(stmt.targets) == 1 and isinstance(stmt.targets[0], ast.Name):
                     first_call = len(calls)
@@ -1074,7 +1174,7 @@ def _resolve_module(
 
     # module-level calls
     walk_fn(None, "")
-    for node in tree.body:
+    for node in _direct_scope_definitions(tree.body):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             walk_fn(node, f"{module_qualname}.{node.name}")
         elif isinstance(node, ast.ClassDef):
@@ -1103,7 +1203,7 @@ def _resolve_module(
             # inheritance -- a real dynamic-dispatch nuance, not modeled,
             # same bound this resolver already states for self.
             class_qualname = f"{module_qualname}.{node.name}"
-            for member in node.body:
+            for member in _direct_scope_definitions(node.body):
                 if isinstance(member, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     walk_fn(
                         member,
@@ -1123,8 +1223,8 @@ def build_project_graph(repo_root: Path) -> ProjectGraph:
     parsed: dict[Path, ast.Module] = {}
     for py_path in py_files:
         try:
-            parsed[py_path] = ast.parse(py_path.read_text(encoding="utf-8"), filename=str(py_path))
-        except (SyntaxError, UnicodeDecodeError) as exc:
+            parsed[py_path] = ast.parse(read_source_text(py_path, repo_root), filename=str(py_path))
+        except (SyntaxError, UnicodeDecodeError, SourceInputError) as exc:
             # A file this resolver cannot parse is NOT silently dropped from
             # the run -- recorded on the graph (mirrors js_resolver.py's
             # per-file errors; graph.py's own stated rule is that an
@@ -1137,16 +1237,31 @@ def build_project_graph(repo_root: Path) -> ProjectGraph:
             graph.parse_errors.append({"file_path": str(py_path), "error": f"{type(exc).__name__}: {exc}"})
             continue
 
+    identities, module_aliases, identity_warnings = _module_identities(list(parsed), repo_root)
+    graph.coverage = {
+        "collected_files": len(py_files), "parsed_files": len(parsed),
+        "warnings": identity_warnings,
+    }
+    if graph.parse_errors:
+        graph.coverage["warnings"].append({
+            "kind": "parse_failures", "count": len(graph.parse_errors),
+            "detail": "These files were collected but not analyzed.",
+        })
+
     for py_path, tree in parsed.items():
-        module_qualname = _module_qualname(py_path, repo_root)
+        module_qualname = identities[py_path]
         _index_module_functions(tree, module_qualname, str(py_path), graph.functions, graph.wrapper_classes)
 
     project_top_level_names = {_module_qualname(p, repo_root).split(".", 1)[0] for p in parsed}
+    project_top_level_names.update(identity.split(".", 1)[0] for identity in identities.values())
 
     for py_path, tree in parsed.items():
-        module_qualname = _module_qualname(py_path, repo_root)
+        module_qualname = identities[py_path]
         calls = _resolve_module(
-            tree, module_qualname, graph.functions, project_top_level_names, str(py_path), graph.external_references
+            tree, module_qualname, graph.functions, project_top_level_names, str(py_path), graph.external_references,
+            import_module_qualname=_module_qualname(py_path, repo_root),
+            module_aliases=module_aliases,
+            is_package=py_path.name == "__init__.py" and py_path.parent != repo_root,
         )
         graph.modules[module_qualname] = ModuleGraph(module_qualname=module_qualname, file_path=str(py_path), calls=calls)
 

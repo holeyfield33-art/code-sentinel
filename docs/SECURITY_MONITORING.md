@@ -63,6 +63,13 @@ then the older graph as its baseline. Nodes are classified as new,
 changed, or unchanged using their worst disposition and attached finding
 UID sets. Removed nodes are listed in the comparison summary.
 
+Current schema 2 graph IDs include the node kind (`module:` or `function:`);
+`qualified_name` retains the original analysis symbol. The viewer compares
+kind plus qualified name, so unambiguous historical bare IDs can still be
+used as a baseline. Historical graphs with duplicate IDs are refused and
+must be regenerated; the viewer cannot recover an identity already lost in
+an earlier export.
+
 This is a different granularity from the ledger library: graph nodes
 can contain several finding UIDs, and a changed UID set can change a
 node even when its worst disposition stays the same. Neither comparison

@@ -14,6 +14,33 @@ python calibration/calibrate.py --update-manifest  # accept edited fixtures
 `tests/test_calibration.py` runs the same check in the normal test suite, so a
 triage regression fails `pytest`.
 
+## Calibration integrity
+
+The CVE and lab scorers now require every scored source file to appear in
+the ledger's `analyzed_files` and to have no relevant parse/input failure.
+A genuinely deleted fixed-side file can count as gone; a present file that
+was not analyzed cannot. Unrelated per-file failures are retained in scan
+evidence. The shared checkout helper refuses modified, untracked and ignored
+extra files rather than assuming a matching commit SHA means clean bytes.
+Assume-unchanged and skip-worktree index flags are refused because Git status
+can hide modified tracked bytes under those flags. Lab quote validation uses
+the same contained, bounded regular-file reader before invoking the scanner.
+It never resets an operator's changes; use a fresh cache after preserving them.
+
+New CVE result documents use `sentinel-cve-calibration-v2`. Each successful
+pair retains source/scanner digests, pinned source commits and scan diagnostics.
+Failed pairs retain expected group/call counts. If any pair is unscored,
+`complete` is false, headline recall/quiet-on-fix rates are null, partial rates
+are explicitly named `scored_only_rates`, and the command exits 1. No failed
+file is credited as a successful fix. The lab scorer fails on an unscorable
+required file and retains source identities in successful results.
+
+The committed CVE/lab performance numbers below are historical runs from
+before this integrity change. They have not been recertified by the new
+scorer. The frozen answer key is unchanged. Neither a passing synthetic
+regression gate nor the existing lab negatives establishes an enterprise
+false-positive rate; distinct safe supported-API controls remain required.
+
 ## Fixtures
 
 `calibration/cases.py` holds small, hand-written, generic Python programs. Each

@@ -79,7 +79,7 @@ def test_unconditional_guard_before_conditional_sink_still_detected():
         plans = _run(root)
         assert len(plans) == 1
         assert plans[0]["disposition"]["status"] == "UNRESOLVED_INCONCLUSIVE"
-        assert "genuinely dominates" in plans[0]["disposition"]["reason"]
+        assert "dominates its modeled branch paths" in plans[0]["disposition"]["reason"]
         assert "auth.require_admin" in plans[0]["disposition"]["reason"]
 
 
@@ -130,4 +130,4 @@ def test_both_guard_and_sink_nested_in_same_if_branch_still_detected():
         plans = _run(root)
         assert len(plans) == 1
         assert plans[0]["disposition"]["status"] == "UNRESOLVED_INCONCLUSIVE"
-        assert "genuinely dominates" in plans[0]["disposition"]["reason"]
+        assert "dominates its modeled branch paths" in plans[0]["disposition"]["reason"]

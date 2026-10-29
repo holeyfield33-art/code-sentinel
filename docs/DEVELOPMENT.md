@@ -35,6 +35,16 @@ monkeypatches. Do not disable whole error categories to hide a local defect.
 
 ## Python suite and real Docker tests
 
+The static and mocked test selection can run without a Docker executable:
+
+```sh
+python -m pytest tests -m "not docker_integration" -q -ra --tb=short --strict-markers
+```
+
+Live delegated-site scenarios use the integration marker; synthetic parent
+output/timeout tests mock executable discovery as well as subprocess calls.
+This selection does not establish runtime isolation.
+
 Install Docker and pull the images in the [security guide](SECURITY.md#docker-setup).
 A legacy integration fixture also checks the local `python:3.12-slim` tag.
 Point that local tag at the same pinned image:

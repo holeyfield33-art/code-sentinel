@@ -30,7 +30,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 
-from cve_pairs import checkout, scan  # noqa: E402
+from cve_pairs import checkout, scan, scan_identity, validate_scored_files  # noqa: E402
+from sentinel_zero.source_inputs import read_source_text  # noqa: E402
 
 SCHEMA = "sentinel-lab-groundtruth-v1"
 # The key spells sinks as written in source; Sentinel resolves Python builtins as builtins.X.
@@ -75,7 +76,7 @@ def score_lab(lab: dict, cache: Path) -> dict:
     for v in lab["vulnerabilities"]:
         if not scoreable(v):
             continue
-        lines = (tree / v["file"]).read_text(encoding="utf-8", errors="replace").splitlines()
+        lines = read_source_text(tree / v["file"], tree).splitlines()
         if not (1 <= v["line"] <= len(lines) and lines[v["line"] - 1].rstrip() == v["sink_line_quote"].rstrip()):
             raise RuntimeError(f"{v['vid']}: quoted line does not match {v['file']}:{v['line']} at {lab['commit']}")
         key = (v["file"], v["line"], sentinel_sink(v["sink_identity"], language))
@@ -83,6 +84,7 @@ def score_lab(lab: dict, cache: Path) -> dict:
         site["vids"].append(v["vid"])
         site["weak"] = site["weak"] or weak_reason(v)
     ledger = scan(tree, resolver_language(language))
+    validate_scored_files(ledger, tree, [s["file"] for s in sites.values()])
     root = str(tree).rstrip("/") + "/"
     # A lab that lives in one folder of a monorepo declares it; plans elsewhere belong to other
     # applications and must not enter this lab's statistics. Paths stay repository-relative.
@@ -110,7 +112,9 @@ def score_lab(lab: dict, cache: Path) -> dict:
         same = [p for p in ledger["plans"] if p["hypothesis"]["sink_node"] == site["sink"]]
         same_sink[site["sink"]] = round(sum(bool((p.get("triage") or {}).get("priority")) for p in same) / len(same), 4) if same else None
     return {"id": lab["id"], "language": language, "commit": lab["commit"], "subdirectory": sub or None, "sites": rows,
-            "plans": total, "priority": prio, "same_sink_priority_share": same_sink}
+            "plans": total, "priority": prio, "same_sink_priority_share": same_sink,
+            "scan_evidence": {**scan_identity(ledger, tree), "parse_errors": ledger.get("parse_errors", []),
+                              "coverage_warnings": ledger.get("coverage", {}).get("warnings", [])}}
 
 
 def summarize(labs: list[dict]) -> dict:

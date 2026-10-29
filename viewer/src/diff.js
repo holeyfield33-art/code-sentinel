@@ -27,8 +27,11 @@
  * }}
  */
 export function diffGraphs(newGraph, oldGraph) {
-  const oldById = new Map(oldGraph.nodes.map((n) => [n.id, n]));
-  const newIds = new Set(newGraph.nodes.map((n) => n.id));
+  // Compare original symbols across namespaced V2 and historical bare IDs.
+  // Node kind remains part of identity, so modules cannot alias functions.
+  const identity = (node) => JSON.stringify([node.kind, node.qualified_name ?? node.id]);
+  const oldById = new Map(oldGraph.nodes.map((n) => [identity(n), n]));
+  const newIds = new Set(newGraph.nodes.map(identity));
   const diffByNodeId = new Map();
 
   let newCount = 0;
@@ -36,7 +39,7 @@ export function diffGraphs(newGraph, oldGraph) {
   let unchangedCount = 0;
 
   for (const node of newGraph.nodes) {
-    const oldNode = oldById.get(node.id);
+    const oldNode = oldById.get(identity(node));
     if (!oldNode) {
       diffByNodeId.set(node.id, { classification: "new", oldStatus: null, newStatus: node.worst_disposition ?? null });
       newCount++;
@@ -56,7 +59,7 @@ export function diffGraphs(newGraph, oldGraph) {
     else unchangedCount++;
   }
 
-  const removedNodes = oldGraph.nodes.filter((n) => !newIds.has(n.id));
+  const removedNodes = oldGraph.nodes.filter((n) => !newIds.has(identity(n)));
 
   return { diffByNodeId, removedNodes, newCount, changedCount, unchangedCount };
 }

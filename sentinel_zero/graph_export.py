@@ -10,16 +10,23 @@ keeps calls that reached a known sink; most of the graph isn't in there
 at all). This module adds no new analysis -- it is a pure, lossless
 serialization of data the resolvers already computed.
 
-Node/edge identity is exactly graph.py's own qualified names -- the same
-Symbol strings callgraph.py and dogfood_scan.py already treat as the
-single source of truth for "is this the same callee." Nothing here
-re-derives or guesses an identity.
+Schema version 2 gives module, function and external-symbol references
+separate namespaces. The original qualified name stays on each node and
+resolved call, so exporting a module and a function with the same symbol
+cannot merge their identities in a viewer. Analysis still uses graph.py's
+Symbol strings; this module does not re-resolve source code.
 """
 from __future__ import annotations
 
 from typing import Any
 
 from sentinel_zero.graph import ProjectGraph, Symbol
+
+GRAPH_SCHEMA_VERSION = 2
+
+
+def _node_id(kind: str, qualified_name: str) -> str:
+    return f"{kind}:{qualified_name}"
 
 # A plan's disposition.status that should take priority when a node is
 # touched by more than one finding, ordered most- to least-notable for a
@@ -88,21 +95,34 @@ def export_graph(graph: ProjectGraph, plans: list[dict[str, Any]], repo_name: st
 
     nodes: list[dict[str, Any]] = []
     edges: list[dict[str, Any]] = []
+    modules_by_path: dict[str, str] = {}
+    module_ids: dict[str, str] = {}
+    function_ids = {name: _node_id("function", name) for name in graph.functions}
 
     for module in graph.modules.values():
+        if module.module_qualname in module_ids or module.file_path in modules_by_path:
+            raise ValueError("export_graph found duplicate module identities or file ownership")
+        module_ids[module.module_qualname] = _node_id("module", module.module_qualname)
+        modules_by_path[module.file_path] = module_ids[module.module_qualname]
         nodes.append(
             {
-                "id": module.module_qualname,
+                "id": module_ids[module.module_qualname],
+                "qualified_name": module.module_qualname,
                 "kind": "module",
                 "file_path": module.file_path,
             }
         )
 
     for qualname, fn in graph.functions.items():
+        if fn.qualified_name != qualname:
+            raise ValueError(f"export_graph found inconsistent function identity {qualname!r}")
+        if fn.file_path not in modules_by_path:
+            raise ValueError(f"export_graph cannot locate the owning module for {qualname!r}")
         caller_plans = plans_by_caller.get(qualname, [])
         nodes.append(
             {
-                "id": qualname,
+                "id": function_ids[qualname],
+                "qualified_name": qualname,
                 "kind": "function",
                 "file_path": fn.file_path,
                 "lineno": fn.lineno,
@@ -121,26 +141,44 @@ def export_graph(graph: ProjectGraph, plans: list[dict[str, Any]], repo_name: st
                 "finding_uids": [p.get("finding_uid") for p in caller_plans if p.get("finding_uid")],
             }
         )
-        module_qualname = qualname.rsplit(".", 1)[0] if "." in qualname else qualname
-        if module_qualname in graph.modules:
-            edges.append({"source": module_qualname, "target": qualname, "kind": "contains"})
+        # Lexical parents such as Class.method and outer.<locals>.inner are
+        # not module names. Physical ownership keeps every function attached
+        # to its actual module, even when another module shares its name.
+        edges.append({"source": modules_by_path[fn.file_path], "target": function_ids[qualname], "kind": "contains"})
 
     for module in graph.modules.values():
         for call in module.calls:
             target_name: str | None
+            target_id: str | None
+            target_kind: str | None
             unresolved_reason: str | None
             if isinstance(call.target, Symbol):
                 target_name = call.target.qualified_name
+                if target_name in function_ids:
+                    target_id, target_kind = function_ids[target_name], "function"
+                elif target_name in module_ids:
+                    target_id, target_kind = module_ids[target_name], "module"
+                else:
+                    target_id, target_kind = _node_id("external", target_name), "external"
                 unresolved_reason = None
                 matching_plans = plans_by_call_site.get((module.file_path, call.lineno, target_name), [])
             else:
                 target_name = None
+                target_id, target_kind = None, None
                 unresolved_reason = call.target.reason
                 matching_plans = []
+            if call.caller:
+                if call.caller not in function_ids:
+                    raise ValueError(f"export_graph found a call from unknown function {call.caller!r}")
+                source_id = function_ids[call.caller]
+            else:
+                source_id = module_ids[module.module_qualname]
             edges.append(
                 {
-                    "source": call.caller or module.module_qualname,
-                    "target": target_name,
+                    "source": source_id,
+                    "target": target_id,
+                    "target_symbol": target_name,
+                    "target_kind": target_kind,
                     "kind": "calls",
                     "resolved": isinstance(call.target, Symbol),
                     "unresolved_reason": unresolved_reason,
@@ -152,6 +190,7 @@ def export_graph(graph: ProjectGraph, plans: list[dict[str, Any]], repo_name: st
             )
 
     return {
+        "schema_version": GRAPH_SCHEMA_VERSION,
         "target_repository": repo_name,
         "node_count": len(nodes),
         "edge_count": len(edges),

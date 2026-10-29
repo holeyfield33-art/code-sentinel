@@ -12,6 +12,20 @@ sandbox or an atomic snapshot of a hostile filesystem. Analysis artifacts
 can include source paths, symbols, argument descriptions, and diagnostic
 details; treat them according to the target's data classification.
 
+Both static resolvers refuse collected source-file paths that resolve outside
+the repository, dangling links, nonregular files such as named pipes, and
+files over 8,000,000 bytes. Refusals are retained in `parse_errors`, so they
+must not be interpreted as clean source. File symlinks to regular files
+inside the repository are supported. Reads recheck file type and size;
+nonblocking and no-follow flags are used where the host supports them.
+Keep ancestor directories unchanged throughout a run.
+
+These checks close known file-input attacks; they do not limit Python parser
+CPU or heap use or establish a hosted-service boundary. Unattended processing
+of untrusted repositories still requires a separately isolated worker with
+wall-time and memory limits. A failed or omitted worker check does not grant
+permission to process customer source under the service's normal account.
+
 ## Docker setup
 
 Diagnostics require a Linux-container daemon. On Windows, use Docker
