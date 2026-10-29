@@ -84,6 +84,8 @@ _STDLIB_MODULE_NAMES.add("builtins")
 STDLIB_SINKS = {
     "builtins.open",
     "os.open",
+    "codecs.open",
+    "io.open",
     "builtins.eval",
     "builtins.exec",
     "json.load",

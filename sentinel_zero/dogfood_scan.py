@@ -211,6 +211,10 @@ SINK_ATTACK_IDS = {
 _SINK_KIND_BY_NAME = {
     "builtins.open": "FILE_IO",
     "os.open": "FILE_IO",
+    # codecs.open and io.open open a path like builtins.open; Radicale's
+    # path-traversal CVE read through codecs.open and was otherwise invisible.
+    "codecs.open": "FILE_IO",
+    "io.open": "FILE_IO",
     "json.load": "DESERIALIZATION",
     "json.loads": "DESERIALIZATION",
     # Milestone 15: widened past the Milestone 2 starting set. pickle's
