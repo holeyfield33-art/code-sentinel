@@ -19,8 +19,8 @@
   },
   "base_rate": {
    "plans": 13817,
-   "priority": 3987,
-   "priority_share": 0.2886,
+   "priority": 4005,
+   "priority_share": 0.2899,
    "same_sink_priority_share_at_groups": 0.7362,
    "median_priority_plans_per_repo": 32
   }
@@ -2752,7 +2752,7 @@
  "run": {
   "date": "2026-10-29",
   "python": "3.13.18",
-  "note": "full rerun of all 55 pairs after the five calibration fixes (fix/calibration-defects)"
+  "note": "full rerun of all 55 pairs after the five calibration fixes (fix/calibration-defects); base rate rescored after the Codex review fix 9caafe5"
  },
  "base_rate_per_pair": [
   {
@@ -2898,12 +2898,12 @@
   {
    "id": "PYSEC-2024-226",
    "plans": 595,
-   "priority": 169
+   "priority": 170
   },
   {
    "id": "PYSEC-2026-2636",
    "plans": 231,
-   "priority": 73
+   "priority": 89
   },
   {
    "id": "PYSEC-2026-1854",
@@ -2968,7 +2968,7 @@
   {
    "id": "PYSEC-2026-2257",
    "plans": 234,
-   "priority": 52
+   "priority": 53
   },
   {
    "id": "PYSEC-2026-3919",

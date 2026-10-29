@@ -211,7 +211,7 @@ every layer was rerun with the same caches and pinned commits.
 | Synthetic | correct cases | 32/41 | 35/44 (+3 new cases, all correct; no case changed) |
 | CVE pairs | groups ranked priority (recall) | 89/97 (0.92) | **93/97 (0.96)**; per call 101/109 -> 105/109 |
 | CVE pairs | quiet on fix | 84/97 (0.87) | 83/97 (0.86) |
-| CVE pairs | priority share, all plans | 0.286 (3,930 of 13,739) | 0.289 (3,987 of 13,817) |
+| CVE pairs | priority share, all plans | 0.286 (3,930 of 13,739) | 0.290 (4,005 of 13,817) |
 | CVE pairs | priority share, same sink | 0.72 | 0.74 |
 | Labs | direct sites detected | 24/25 | **25/25** |
 | Labs | weak cases wrongly priority | 1 | 0 |
