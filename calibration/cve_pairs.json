@@ -4,14 +4,14 @@
   "database": "https://github.com/pypa/advisory-database",
   "commit": "30d5858d4f168738a41c83bf5be1fe47726c0e47",
   "selection": "calibration/cve_tools/ (scan_advisories.py -> fetch_diffs.py -> select_pairs.py); no hand-picking",
-  "rule": "fix commit removes or rewrites a call to a modeled Python sink in non-test source; site = the enclosing function of that call, located by its line in the parent commit; sink family must match the advisory text; one pair per repository; repos up to 3000 .py files"
+  "rule": "fix commit removes or rewrites a call to a modeled Python sink in non-test source; site = the enclosing function of that call, located by its line in the parent commit; sink family must match the advisory text; calls in files the fix deleted are not scored; one pair per repository; repos up to 3000 .py files"
  },
  "inventory": {
   "advisories_matched_by_text": 528,
   "fix_commits": 512,
   "fix_commits_fetched": 495,
-  "pairs": 56,
-  "guard_only_fixes_not_scored": 385
+  "pairs": 55,
+  "guard_only_fixes_not_scored": 386
  },
  "pairs": [
   {
@@ -703,465 +703,10 @@
    "kind": "FILE_IO",
    "sites": [
     {
-     "file": "docs/source-app/conf.py",
-     "function": "_package_list_from_file",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 336,
-     "line": "with open(file) as fp:"
-    },
-    {
-     "file": "docs/source-app/examples/file_server/app.py",
-     "function": "FileServer.upload_file",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 64,
-     "line": "with open(self.get_filepath(uploaded_file), \"wb\") as out_file:"
-    },
-    {
-     "file": "docs/source-app/examples/file_server/app.py",
-     "function": "FileServer.upload_file",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 94,
-     "line": "with open(self.get_filepath(meta_file), \"w\") as f:"
-    },
-    {
-     "file": "docs/source-app/examples/model_server_app/model_server.py",
-     "function": "MLServer.run",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 64,
-     "line": "with open(\"settings.json\", \"w\") as f:"
-    },
-    {
-     "file": "docs/source-app/examples/model_server_app/model_server.py",
-     "function": "MLServer.run",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 73,
-     "line": "with open(\"model-settings.json\", \"w\") as f:"
-    },
-    {
-     "file": "examples/app/boring/app.py",
-     "function": "SourceFileWork.run",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 23,
-     "line": "with open(self.boring_path, \"w\", encoding=\"utf-8\") as f:"
-    },
-    {
-     "file": "examples/app/boring/app_dynamic.py",
-     "function": "SourceFileWork.run",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 24,
-     "line": "with open(self.boring_path, \"w\") as f:"
-    },
-    {
-     "file": "examples/app/drive/app.py",
-     "function": "Work_1.run",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 10,
-     "line": "with open(\"a.txt\", \"w\") as f:"
-    },
-    {
-     "file": "examples/app/drive/app.py",
-     "function": "Work_2.run",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 33,
-     "line": "with open(\"a.txt\") as f:"
-    },
-    {
-     "file": "examples/app/hpo/utils.py",
-     "function": "download_data",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 35,
-     "line": "with open(local_filename, \"wb\") as fp:"
-    },
-    {
      "file": "src/lightning/__setup__.py",
      "function": "_setup_args",
      "sink": "builtins.open",
      "line_at_vulnerable": 80,
-     "line": "with open(ui_ver_file, encoding=\"utf-8\") as fo:"
-    },
-    {
-     "file": "src/lightning/app/cli/cmd_init.py",
-     "function": "_make_resource",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 66,
-     "line": "with open(bad_file) as fo:"
-    },
-    {
-     "file": "src/lightning/app/cli/cmd_init.py",
-     "function": "_make_resource",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 68,
-     "line": "with open(bad_file, \"w\") as fw:"
-    },
-    {
-     "file": "src/lightning/app/cli/cmd_pl_init.py",
-     "function": "project_file_from_template",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 132,
-     "line": "with open(destination_dir / template_name, \"w\") as file:"
-    },
-    {
-     "file": "src/lightning/app/cli/commands/cd.py",
-     "function": "cd",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 59,
-     "line": "with open(_CD_FILE, \"w\") as f:"
-    },
-    {
-     "file": "src/lightning/app/cli/commands/cd.py",
-     "function": "cd",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 69,
-     "line": "with open(_CD_FILE) as f:"
-    },
-    {
-     "file": "src/lightning/app/cli/commands/cd.py",
-     "function": "cd",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 103,
-     "line": "with open(_CD_FILE, \"w\") as f:"
-    },
-    {
-     "file": "src/lightning/app/cli/commands/cp.py",
-     "function": "_download_file",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 268,
-     "line": "with open(path, \"wb\") as fp:"
-    },
-    {
-     "file": "src/lightning/app/cli/commands/ls.py",
-     "function": "ls",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 59,
-     "line": "with open(_CD_FILE, \"w\") as f:"
-    },
-    {
-     "file": "src/lightning/app/cli/commands/ls.py",
-     "function": "ls",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 62,
-     "line": "with open(_CD_FILE) as f:"
-    },
-    {
-     "file": "src/lightning/app/cli/commands/pwd.py",
-     "function": "_pwd",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 46,
-     "line": "with open(_CD_FILE, \"w\") as f:"
-    },
-    {
-     "file": "src/lightning/app/cli/commands/pwd.py",
-     "function": "_pwd",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 49,
-     "line": "with open(_CD_FILE) as f:"
-    },
-    {
-     "file": "src/lightning/app/cli/connect/app.py",
-     "function": "connect_app",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 74,
-     "line": "with open(connected_file) as f:"
-    },
-    {
-     "file": "src/lightning/app/cli/connect/app.py",
-     "function": "connect_app",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 108,
-     "line": "with open(os.path.join(commands_folder, \"openapi.json\"), \"w\") as f:"
-    },
-    {
-     "file": "src/lightning/app/cli/connect/app.py",
-     "function": "connect_app",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 124,
-     "line": "with open(os.path.join(commands_folder, f\"{command_name}.txt\"), \"w\") as f:"
-    },
-    {
-     "file": "src/lightning/app/cli/connect/app.py",
-     "function": "connect_app",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 129,
-     "line": "with open(connected_file, \"w\") as f:"
-    },
-    {
-     "file": "src/lightning/app/cli/connect/app.py",
-     "function": "connect_app",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 199,
-     "line": "with open(os.path.join(commands_folder, f\"{command_name}.txt\"), \"w\") as f:"
-    },
-    {
-     "file": "src/lightning/app/cli/connect/app.py",
-     "function": "connect_app",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 204,
-     "line": "with open(connected_file, \"w\") as f:"
-    },
-    {
-     "file": "src/lightning/app/cli/connect/app.py",
-     "function": "disconnect_app",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 225,
-     "line": "with open(connected_file) as f:"
-    },
-    {
-     "file": "src/lightning/app/cli/connect/app.py",
-     "function": "_read_connected_file",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 247,
-     "line": "with open(connected_file) as f:"
-    },
-    {
-     "file": "src/lightning/app/cli/connect/app.py",
-     "function": "_write_commands_metadata",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 267,
-     "line": "with open(metadata_path, \"w\") as f:"
-    },
-    {
-     "file": "src/lightning/app/cli/connect/app.py",
-     "function": "_get_commands_metadata",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 273,
-     "line": "with open(metadata_path) as f:"
-    },
-    {
-     "file": "src/lightning/app/cli/connect/app.py",
-     "function": "_install_missing_requirements",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 343,
-     "line": "with open(std_out_out, \"wb\") as stdout:"
-    },
-    {
-     "file": "src/lightning/app/cli/pl-app-template/setup.py",
-     "function": "_load_requirements",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 11,
-     "line": "with open(os.path.join(path_dir, file_name)) as file:"
-    },
-    {
-     "file": "src/lightning/app/core/api.py",
-     "function": "upload_file",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 333,
-     "line": "with open(tmp_file, \"wb\") as f:"
-    },
-    {
-     "file": "src/lightning/app/core/api.py",
-     "function": "start_server",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 471,
-     "line": "with open(annotations_path) as f:"
-    },
-    {
-     "file": "src/lightning/app/core/app.py",
-     "function": "LightningApp.load_state_dict_from_checkpoint_dir",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 632,
-     "line": "with open(checkpoint_path, \"rb\") as fo:"
-    },
-    {
-     "file": "src/lightning/app/core/app.py",
-     "function": "LightningApp._dump_checkpoint",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 652,
-     "line": "with open(checkpoint_path, \"wb\") as f:"
-    },
-    {
-     "file": "src/lightning/app/frontend/just_py/just_py.py",
-     "function": "JustPyFrontend.start_server",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 107,
-     "line": "with open(std_out_out, \"wb\") as stdout:"
-    },
-    {
-     "file": "src/lightning/app/frontend/stream_lit.py",
-     "function": "StreamlitFrontend.start_server",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 86,
-     "line": "with open(std_err_out, \"wb\") as stderr, open(std_out_out, \"wb\") as stdout:"
-    },
-    {
-     "file": "src/lightning/app/plugin/plugin.py",
-     "function": "_run_plugin",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 149,
-     "line": "with open(download_path, \"wb\") as f:"
-    },
-    {
-     "file": "src/lightning/app/source_code/hashing.py",
-     "function": "_get_hash",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 48,
-     "line": "with open(file, \"rb\") as f:"
-    },
-    {
-     "file": "src/lightning/app/source_code/local.py",
-     "function": "LocalSourceCodeDir.__init__",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 60,
-     "line": "with open(path / DOT_IGNORE_FILENAME, \"w\") as f:"
-    },
-    {
-     "file": "src/lightning/app/source_code/tar.py",
-     "function": "_tar_path_python",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 164,
-     "line": "with open(source_path) as fo:"
-    },
-    {
-     "file": "src/lightning/app/source_code/uploader.py",
-     "function": "FileUploader.upload",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 104,
-     "line": "with open(self.source_file, \"rb\") as f:"
-    },
-    {
-     "file": "src/lightning/app/storage/payload.py",
-     "function": "Payload.save",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 269,
-     "line": "with open(path, \"wb\") as f:"
-    },
-    {
-     "file": "src/lightning/app/storage/payload.py",
-     "function": "Payload.load",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 273,
-     "line": "with open(path, \"rb\") as f:"
-    },
-    {
-     "file": "src/lightning/app/testing/testing.py",
-     "function": "run_app_in_cloud",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 294,
-     "line": "with open(stdout_path, \"w\") as stdout:"
-    },
-    {
-     "file": "src/lightning/app/testing/testing.py",
-     "function": "run_app_in_cloud",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 315,
-     "line": "with open(stdout_path) as fo:"
-    },
-    {
-     "file": "src/lightning/app/testing/testing.py",
-     "function": "run_app_in_cloud",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 325,
-     "line": "with open(stdout_path) as fo:"
-    },
-    {
-     "file": "src/lightning/app/utilities/app_commands.py",
-     "function": "_extract_commands_from_file",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 52,
-     "line": "with open(file_name) as f:"
-    },
-    {
-     "file": "src/lightning/app/utilities/cli_helpers.py",
-     "function": "_LightningAppOpenAPIRetriever.__init__",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 144,
-     "line": "with open(cache_openapi) as f:"
-    },
-    {
-     "file": "src/lightning/app/utilities/commands/base.py",
-     "function": "_download_command",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 133,
-     "line": "with open(target_file, \"wb\") as f:"
-    },
-    {
-     "file": "src/lightning/app/utilities/load_app.py",
-     "function": "open_python_file",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 155,
-     "line": "return open(filename, encoding=\"utf-8\")  # noqa: SIM115"
-    },
-    {
-     "file": "src/lightning/app/utilities/packaging/app_config.py",
-     "function": "AppConfig.save_to_file",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 40,
-     "line": "with open(path, \"w\") as file:"
-    },
-    {
-     "file": "src/lightning/app/utilities/packaging/app_config.py",
-     "function": "AppConfig.load_from_file",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 50,
-     "line": "with open(path) as file:"
-    },
-    {
-     "file": "src/lightning/app/utilities/packaging/build_config.py",
-     "function": "load_requirements",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 41,
-     "line": "with open(path) as file:"
-    },
-    {
-     "file": "src/lightning/app/utilities/packaging/build_config.py",
-     "function": "BuildConfig._prepare_dockerfile",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 191,
-     "line": "with open(path) as f:"
-    },
-    {
-     "file": "src/lightning/app/utilities/packaging/docker.py",
-     "function": "DockerRunner._create_work_container",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 66,
-     "line": "with open(work_destination_path, \"wb\") as f:"
-    },
-    {
-     "file": "src/lightning/app/utilities/packaging/docker.py",
-     "function": "DockerRunner._create_work_container",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 70,
-     "line": "with open(source_path) as f:"
-    },
-    {
-     "file": "src/lightning/app/utilities/packaging/docker.py",
-     "function": "DockerRunner._create_work_container",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 82,
-     "line": "with open(destination_path, \"w\") as f:"
-    },
-    {
-     "file": "src/lightning/app/utilities/packaging/lightning_utils.py",
-     "function": "_prepare_wheel",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 68,
-     "line": "with open(\"log.txt\", \"w\") as logfile:"
-    },
-    {
-     "file": "src/lightning/store/utils.py",
-     "function": "_upload_file_to_url",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 26,
-     "line": "with open(path, \"rb\") as fd, tqdm("
-    },
-    {
-     "file": "src/lightning/store/utils.py",
-     "function": "_upload_file_to_url",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 37,
-     "line": "with open(path, \"rb\") as fo:"
-    },
-    {
-     "file": "src/lightning/store/utils.py",
-     "function": "_download_file_from_url",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 55,
-     "line": "with open(path, \"wb\") as f:"
-    },
-    {
-     "file": "src/lightning_app/__setup__.py",
-     "function": "_setup_args",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 61,
      "line": "with open(ui_ver_file, encoding=\"utf-8\") as fo:"
     }
    ],
@@ -1212,36 +757,6 @@
     }
    ],
    "fix_message": "fix: prevent arbitrary code execution via pickle in FAISS vector store"
-  },
-  {
-   "id": "PYSEC-2026-412",
-   "aliases": [
-    "CVE-2026-33057",
-    "GHSA-gjgx-rvqr-6w6v"
-   ],
-   "package": "mesop",
-   "repo": "https://github.com/mesop-dev/mesop",
-   "vulnerable": "c6b382f363b73ac32c402a2db3aadc7784f66a5b",
-   "fixed": "825f55970c20686de3f28e2c66df4d74e9d4db47",
-   "language": "python",
-   "kind": "PROCESS_EXEC",
-   "sites": [
-    {
-     "file": "ai/src/ai/offline_common/eval.py",
-     "function": "EvalRunner.check_type_checkable",
-     "sink": "subprocess.run",
-     "line_at_vulnerable": 166,
-     "line": "subprocess.run("
-    },
-    {
-     "file": "ai/src/ai/offline_common/eval_lib.py",
-     "function": "check_file_types",
-     "sink": "subprocess.run",
-     "line_at_vulnerable": 58,
-     "line": "subprocess.run("
-    }
-   ],
-   "fix_message": "Remove ai package and related fine-tuning infrastructure (#1362)"
   },
   {
    "id": "PYSEC-2026-1854",
@@ -2054,13 +1569,6 @@
    "language": "python",
    "kind": "FILE_IO",
    "sites": [
-    {
-     "file": "crawl4ai/async_crawler_strategy.back.py",
-     "function": "AsyncPlaywrightCrawlerStrategy.crawl",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 455,
-     "line": "with open(local_file_path, \"r\", encoding=\"utf-8\") as f:"
-    },
     {
      "file": "deploy/docker/utils.py",
      "function": "write_output_file",
@@ -3765,6 +3273,14 @@
    "fix": "a215f6d779966945c56e0af5abed1ae5916fd9d3",
    "kinds": [
     "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-412",
+   "repo": "mesop-dev/mesop",
+   "fix": "825f55970c20686de3f28e2c66df4d74e9d4db47",
+   "kinds": [
+    "PROCESS_EXEC"
    ]
   },
   {

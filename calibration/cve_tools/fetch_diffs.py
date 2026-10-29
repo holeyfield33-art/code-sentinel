@@ -40,7 +40,8 @@ def fetch(key):
                 elif line.startswith(("+++ b/", "+++ /dev/null")):
                     path = old_path or line[6:]
                     cur = {"file": path, "removed_sinks": [], "added_sinks": [], "adds": 0, "dels": 0,
-                           "test_file": bool(re.search(r"(^|/)tests?/|test_", path))}
+                           "test_file": bool(re.search(r"(^|/)tests?/|test_", path)),
+                           "deleted": line.startswith("+++ /dev/null")}
                     files.append(cur)
                 elif cur and line.startswith("@@"):
                     m = hunk.match(line)

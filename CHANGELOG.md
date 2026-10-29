@@ -32,10 +32,10 @@ and historical version tags are not inferred from development commits.
 ### Analysis
 
 - Add a real-CVE calibration layer (`calibration/cve_pairs.py`, not in
-  `pytest` because it clones repositories). 51 vulnerable/fixed pairs, 102
-  sites, selected by rule from the PyPA advisory database. Recall 0.91, quiet
-  on fix 0.87, against a 0.30 overall priority rate and a 0.71 same-sink
-  priority rate. Three triage defects found (producer credited as a guard,
+  `pytest` because it clones repositories). 55 vulnerable/fixed pairs (97
+  function/sink groups, 109 calls), selected by rule from the PyPA advisory
+  database. Recall 0.92 (per call 0.93), quiet on fix 0.87, against a 0.29
+  overall priority rate and a 0.72 same-sink priority rate. Three triage defects found (producer credited as a guard,
   nested `doc` packages treated as docs, `codecs.open` unmodeled); see
   docs/CALIBRATION.md.
 

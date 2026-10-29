@@ -1,25 +1,28 @@
 {
  "summary": {
-  "pairs": 51,
+  "pairs": 55,
   "pairs_errored": [],
-  "sites": 102,
-  "recall": 0.9118,
-  "quiet_on_fix": 0.8725,
+  "groups": 97,
+  "calls": 109,
+  "call_recall": 0.9266,
+  "recall": 0.9175,
+  "quiet_on_fix": 0.866,
   "vulnerable_outcomes": {
-   "detected": 93,
-   "under-ranked": 7,
+   "detected": 89,
+   "under-ranked": 6,
    "missed": 2
   },
   "fixed_outcomes": {
-   "gone": 86,
-   "downgraded": 3,
+   "gone": 83,
+   "downgraded": 1,
    "still-flagged": 13
   },
   "base_rate": {
-   "plans": 12751,
-   "priority": 3769,
-   "priority_share": 0.2956,
-   "same_sink_priority_share_at_sites": 0.7072
+   "plans": 13739,
+   "priority": 3930,
+   "priority_share": 0.286,
+   "same_sink_priority_share_at_groups": 0.7152,
+   "median_priority_plans_per_repo": 32
   }
  },
  "rows": [
@@ -32,9 +35,11 @@
      "file": "src/searchor/main.py",
      "function": "search",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 32,
-     "line": "url = eval(",
+     "lines": [
+      32
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -54,6 +59,38 @@
    }
   },
   {
+   "id": "PYSEC-2026-1196",
+   "repo": "https://github.com/AstrBotDevs/AstrBot",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "astrbot/dashboard/routes/chat.py",
+     "function": "ChatRoute.get_file",
+     "sink": "builtins.open",
+     "lines": [
+      64
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "still-flagged",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 118,
+    "fixed": 118
+   }
+  },
+  {
    "id": "PYSEC-2026-389",
    "repo": "https://github.com/BerriAI/litellm",
    "kind": "PROCESS_EXEC",
@@ -62,9 +99,11 @@
      "file": "litellm/utils.py",
      "function": "get_secret",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 7187,
-     "line": "ciphertext = eval(",
+     "lines": [
+      7187
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -92,9 +131,11 @@
      "file": "python/composio/tools/local/mathematical/actions/calculator.py",
      "function": "Calculator.execute",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 29,
-     "line": "result=str(eval(request.operation))  # pylint: disable=eval-used",
+     "lines": [
+      29
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -122,19 +163,14 @@
      "file": "mcp-servers/python/python_sandbox_server/src/python_sandbox_server/server_fastmcp.py",
      "function": "PythonSandbox.execute",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 576,
-     "line": "expression_result = eval(code, safe_globals, local_vars)",
+     "lines": [
+      576
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "still-flagged",
      "guard_after_fix": [],
      "vulnerable_triage": [
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      },
       {
        "priority": true,
        "signal": "high",
@@ -148,19 +184,14 @@
      "file": "mcp-servers/python/python_sandbox_server/src/python_sandbox_server/server_fastmcp.py",
      "function": "PythonSandbox.execute",
      "sink": "builtins.exec",
-     "line_at_vulnerable": 578,
-     "line": "exec(code, safe_globals, local_vars)",
+     "lines": [
+      578
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "still-flagged",
      "guard_after_fix": [],
      "vulnerable_triage": [
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      },
       {
        "priority": true,
        "signal": "high",
@@ -185,9 +216,11 @@
      "file": "radicale/storage/filesystem.py",
      "function": "Collection.save",
      "sink": "builtins.open",
-     "line_at_vulnerable": 82,
-     "line": "with open(self._path, \"w\") as fd:",
+     "lines": [
+      82
+     ],
      "vulnerable": "missed",
+     "calls_detected": 0,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": []
@@ -196,9 +229,11 @@
      "file": "radicale/storage/filesystem.py",
      "function": "Collection.text",
      "sink": "builtins.open",
-     "line_at_vulnerable": 92,
-     "line": "with open(self._path) as fd:",
+     "lines": [
+      92
+     ],
      "vulnerable": "missed",
+     "calls_detected": 0,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": []
@@ -218,9 +253,11 @@
      "file": "plugins/Math/plugin.py",
      "function": "Math.calc",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 223,
-     "line": "x = complex(eval(text, self._mathSafeEnv, self._mathSafeEnv))",
+     "lines": [
+      223
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -237,9 +274,11 @@
      "file": "plugins/Math/plugin.py",
      "function": "Math.icalc",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 260,
-     "line": "irc.reply(str(eval(text, self._mathEnv, self._mathEnv)))",
+     "lines": [
+      260
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -256,9 +295,11 @@
      "file": "plugins/Math/plugin.py",
      "function": "Math.rpn",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 313,
-     "line": "stack.append(eval(s, self._mathSafeEnv, self._mathSafeEnv))",
+     "lines": [
+      313
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -286,9 +327,11 @@
      "file": "impacket/smbserver.py",
      "function": "writeJohnOutputToFile",
      "sink": "builtins.open",
-     "line_at_vulnerable": 176,
-     "line": "with open(output_filename,\"a\") as f:",
+     "lines": [
+      176
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "still-flagged",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -316,9 +359,11 @@
      "file": "wlc/main.py",
      "function": "Download.download_component",
      "sink": "builtins.open",
-     "line_at_vulnerable": 663,
-     "line": "with open(file_path, \"wb\") as file:",
+     "lines": [
+      663
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -346,9 +391,11 @@
      "file": "web/pgadmin/tools/backup/__init__.py",
      "function": "filename_with_file_manager_path",
      "sink": "builtins.open",
-     "line_at_vulnerable": 220,
-     "line": "with open(_file, 'a'):",
+     "lines": [
+      220
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -365,9 +412,11 @@
      "file": "web/pgadmin/tools/import_export/__init__.py",
      "function": "filename_with_file_manager_path",
      "sink": "builtins.open",
-     "line_at_vulnerable": 166,
-     "line": "with open(_file, 'a'):",
+     "lines": [
+      166
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -395,9 +444,11 @@
      "file": "src/ansys/geometry/core/connection/product_instance.py",
      "function": "_start_program",
      "sink": "subprocess.Popen",
-     "line_at_vulnerable": 423,
-     "line": "return subprocess.Popen(",
+     "lines": [
+      423
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -425,9 +476,11 @@
      "file": "python/pyfory/serializer.py",
      "function": "PickleStrongCacheSerializer.read",
      "sink": "pickle.loads",
-     "line_at_vulnerable": 175,
-     "line": "return pickle.loads(buffer.read_bytes_and_size())",
+     "lines": [
+      175
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -444,9 +497,11 @@
      "file": "python/pyfory/serializer.py",
      "function": "PickleCacheSerializer.read",
      "sink": "pickle.loads",
-     "line_at_vulnerable": 206,
-     "line": "value = pickle.loads(buffer.read_bytes_and_size())",
+     "lines": [
+      206
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -474,9 +529,11 @@
      "file": "redshift_connector/utils/type_utils.py",
      "function": "vector_in",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 86,
-     "line": "return eval(\"[\" + data[idx : idx + length].decode(_client_encoding).replace(\" \", \",\") + \"]\")",
+     "lines": [
+      86
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -504,9 +561,11 @@
      "file": "src/sagemaker/serve/save_retrive/version_1_0_0/save/utils.py",
      "function": "capture_dependencies",
      "sink": "os.system",
-     "line_at_vulnerable": 104,
-     "line": "os.system(command)",
+     "lines": [
+      104
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -534,9 +593,11 @@
      "file": "confire/config.py",
      "function": "Configuration.load",
      "sink": "yaml.load",
-     "line_at_vulnerable": 146,
-     "line": "config.configure(yaml.load(conf))",
+     "lines": [
+      146
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -556,52 +617,56 @@
    }
   },
   {
-   "id": "PYSEC-2026-316",
+   "id": "PYSEC-2026-793",
    "repo": "https://github.com/cobbler/cobbler",
-   "kind": "FILE_IO",
+   "kind": "DESERIALIZATION",
    "sites": [
     {
-     "file": "cobbler/modules/authn_configfile.py",
-     "function": "__parse_storage",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 40,
-     "line": "fd = open(\"/etc/cobbler/users.digest\")",
-     "vulnerable": "under-ranked",
-     "fixed": "downgraded",
+     "file": "cobbler/item.py",
+     "function": "Item.set_mgmt_parameters",
+     "sink": "yaml.load",
+     "lines": [
+      248
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
       {
-       "priority": false,
+       "priority": true,
        "signal": "high",
        "code_context": "production",
        "guarded_by": null,
-       "constant_arguments": true
+       "constant_arguments": false
       }
      ]
     },
     {
-     "file": "cobbler/utils.py",
-     "function": "get_shared_secret",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 1839,
-     "line": "fd = open(\"/var/lib/cobbler/web.ss\", 'rb')",
+     "file": "scripts/services.py",
+     "function": "application",
+     "sink": "yaml.load",
+     "lines": [
+      64
+     ],
      "vulnerable": "under-ranked",
-     "fixed": "downgraded",
+     "calls_detected": 0,
+     "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
       {
        "priority": false,
        "signal": "high",
-       "code_context": "production",
+       "code_context": "build_tooling",
        "guarded_by": null,
-       "constant_arguments": true
+       "constant_arguments": false
       }
      ]
     }
    ],
    "plans": {
-    "vulnerable": 99,
-    "fixed": 99
+    "vulnerable": 49,
+    "fixed": 47
    }
   },
   {
@@ -613,9 +678,11 @@
      "file": "local_operator/server/routes/chat.py",
      "function": "edit_file_with_agent",
      "sink": "builtins.open",
-     "line_at_vulnerable": 648,
-     "line": "with open(resolved_file_path, \"r\", encoding=\"utf-8\") as f:",
+     "lines": [
+      648
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -643,9 +710,11 @@
      "file": "docling_core/types/doc/document.py",
      "function": "DoclingDocument.load_from_yaml",
      "sink": "yaml.load",
-     "line_at_vulnerable": 4357,
-     "line": "data = yaml.load(f, Loader=yaml.FullLoader)",
+     "lines": [
+      4357
+     ],
      "vulnerable": "under-ranked",
+     "calls_detected": 0,
      "fixed": "downgraded",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -673,9 +742,11 @@
      "file": "apkleaks/apkleaks.py",
      "function": "APKLeaks.decompile",
      "sink": "os.system",
-     "line_at_vulnerable": 88,
-     "line": "os.system(dec)",
+     "lines": [
+      88
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "still-flagged",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -695,6 +766,38 @@
    }
   },
   {
+   "id": "PYSEC-2024-112",
+   "repo": "https://github.com/gaizhenbiao/chuanhuchatgpt",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "modules/utils.py",
+     "function": "load_template",
+     "sink": "builtins.open",
+     "lines": [
+      524
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "still-flagged",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 59,
+    "fixed": 59
+   }
+  },
+  {
    "id": "PYSEC-2026-1432",
    "repo": "https://github.com/guardrails-ai/guardrails",
    "kind": "PROCESS_EXEC",
@@ -703,9 +806,11 @@
      "file": "guardrails/utils/validator_utils.py",
      "function": "parse_rail_arguments",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 36,
-     "line": "t = eval(t)",
+     "lines": [
+      36
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -733,9 +838,11 @@
      "file": "src/transformers/modeling_tf_utils.py",
      "function": "TFPreTrainedModel.load_repo_checkpoint",
      "sink": "pickle.load",
-     "line_at_vulnerable": 1401,
-     "line": "extra_data = pickle.load(f)",
+     "lines": [
+      1401
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -763,9 +870,11 @@
      "file": "pptagent/apis.py",
      "function": "CodeExecutor.execute_actions",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 185,
-     "line": "eval(line, {}, {func: partial_func})",
+     "lines": [
+      185
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "still-flagged",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -793,9 +902,11 @@
      "file": "joblib/parallel.py",
      "function": "Parallel.__call__",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 1052,
-     "line": "pre_dispatch = eval(pre_dispatch)",
+     "lines": [
+      1052
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "still-flagged",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -823,9 +934,11 @@
      "file": "libs/experimental/langchain_experimental/sql/vector_sql.py",
      "function": "_try_eval",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 81,
-     "line": "return eval(x)",
+     "lines": [
+      81
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -845,6 +958,38 @@
    }
   },
   {
+   "id": "PYSEC-2026-4236",
+   "repo": "https://github.com/langflow-ai/langflow",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "src/lfx/src/lfx/custom/validate.py",
+     "function": "validate_code",
+     "sink": "builtins.exec",
+     "lines": [
+      67
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 620,
+    "fixed": 619
+   }
+  },
+  {
    "id": "PYSEC-2026-381",
    "repo": "https://github.com/langroid/langroid",
    "kind": "PROCESS_EXEC",
@@ -853,9 +998,11 @@
      "file": "langroid/agent/special/table_chat_agent.py",
      "function": "TableChatAgent.pandas_eval",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 218,
-     "line": "eval_result = eval(exprn, {}, local_vars)",
+     "lines": [
+      218
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "still-flagged",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -872,9 +1019,11 @@
      "file": "langroid/vector_store/base.py",
      "function": "VectorStore.compute_from_docs",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 166,
-     "line": "result = eval(calc, {}, {\"df\": df})  # type: ignore",
+     "lines": [
+      166
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "still-flagged",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -902,9 +1051,11 @@
      "file": "src/lightning/__setup__.py",
      "function": "_setup_args",
      "sink": "builtins.open",
-     "line_at_vulnerable": 80,
-     "line": "with open(ui_ver_file, encoding=\"utf-8\") as fo:",
+     "lines": [
+      80
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -932,9 +1083,11 @@
      "file": "pymatgen/symmetry/settings.py",
      "function": "JonesFaithfulTransformation.parse_transformation_string",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 111,
-     "line": "P = np.array([eval(x, {\"__builtins__\": None}, {\"a\": a, \"b\": b, \"c\": c}) for x in basis_change])",
+     "lines": [
+      111
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -962,9 +1115,11 @@
      "file": "mem0/vector_stores/faiss.py",
      "function": "FAISS._load",
      "sink": "pickle.load",
-     "line_at_vulnerable": 93,
-     "line": "self.docstore, self.index_to_id = pickle.load(f)",
+     "lines": [
+      93
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -992,9 +1147,11 @@
      "file": "src/socketio/async_aiopika_manager.py",
      "function": "AsyncAioPikaManager._listen",
      "sink": "pickle.loads",
-     "line_at_vulnerable": 116,
-     "line": "yield pickle.loads(message.body)",
+     "lines": [
+      116
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -1011,9 +1168,11 @@
      "file": "src/socketio/async_pubsub_manager.py",
      "function": "AsyncPubSubManager._thread",
      "sink": "pickle.loads",
-     "line_at_vulnerable": 207,
-     "line": "data = pickle.loads(message)",
+     "lines": [
+      207
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -1030,9 +1189,11 @@
      "file": "src/socketio/kafka_manager.py",
      "function": "KafkaManager._listen",
      "sink": "pickle.loads",
-     "line_at_vulnerable": 65,
-     "line": "yield pickle.loads(message.value)",
+     "lines": [
+      65
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -1049,9 +1210,11 @@
      "file": "src/socketio/pubsub_manager.py",
      "function": "PubSubManager._thread",
      "sink": "pickle.loads",
-     "line_at_vulnerable": 201,
-     "line": "data = pickle.loads(message)",
+     "lines": [
+      201
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -1068,9 +1231,11 @@
      "file": "src/socketio/zmq_manager.py",
      "function": "ZmqManager._listen",
      "sink": "pickle.loads",
-     "line_at_vulnerable": 97,
-     "line": "message = pickle.loads(message)",
+     "lines": [
+      97
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -1098,9 +1263,11 @@
      "file": "mindsdb/integrations/handlers/chromadb_handler/chromadb_handler.py",
      "function": "ChromaDBHandler.insert",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 332,
-     "line": "lambda x: x if isinstance(x, dict) else eval(x)",
+     "lines": [
+      332
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -1117,35 +1284,12 @@
      "file": "mindsdb/integrations/handlers/sharepoint_handler/sharepoint_api.py",
      "function": "SharepointAPI.create_a_list",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 252,
-     "line": "column = eval(column)",
+     "lines": [
+      252,
+      255
+     ],
      "vulnerable": "detected",
-     "fixed": "gone",
-     "guard_after_fix": [],
-     "vulnerable_triage": [
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      },
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      }
-     ]
-    },
-    {
-     "file": "mindsdb/integrations/handlers/sharepoint_handler/sharepoint_api.py",
-     "function": "SharepointAPI.create_a_list",
-     "sink": "builtins.eval",
-     "line_at_vulnerable": 255,
-     "line": "payload[\"list\"] = eval(list_template)",
-     "vulnerable": "detected",
+     "calls_detected": 2,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -1169,9 +1313,11 @@
      "file": "mindsdb/integrations/handlers/sharepoint_handler/sharepoint_api.py",
      "function": "SharepointAPI.create_a_site_column",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 413,
-     "line": "text = eval(text)",
+     "lines": [
+      413
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -1188,9 +1334,11 @@
      "file": "mindsdb/integrations/handlers/sharepoint_handler/sharepoint_api.py",
      "function": "SharepointAPI.create_an_item",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 577,
-     "line": "payload[\"fields\"] = eval(fields)",
+     "lines": [
+      577
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -1207,9 +1355,11 @@
      "file": "mindsdb/integrations/handlers/weaviate_handler/weaviate_handler.py",
      "function": "WeaviateDBHandler.select",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 338,
-     "line": "\"vector\": eval(vector_filter.value)",
+     "lines": [
+      338
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -1226,9 +1376,11 @@
      "file": "mindsdb/integrations/libs/vectordatabase_handler.py",
      "function": "VectorStoreHandler._dispatch_update",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 245,
-     "line": "v = eval(v)",
+     "lines": [
+      245
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -1256,9 +1408,11 @@
      "file": "py7zr/py7zr.py",
      "function": "Worker.extract",
      "sink": "builtins.open",
-     "line_at_vulnerable": 1239,
-     "line": "self.extract_single(open(filename, \"rb\"), empty_files, 0, 0, q)",
+     "lines": [
+      1239
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "still-flagged",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -1286,9 +1440,11 @@
      "file": "mlflow/sagemaker/__init__.py",
      "function": "push_image_to_ecr",
      "sink": "os.system",
-     "line_at_vulnerable": 167,
-     "line": "os.system(cmd)",
+     "lines": [
+      167
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -1316,9 +1472,11 @@
      "file": "swift/ui/llm_eval/llm_eval.py",
      "function": "LLMEval.eval_model",
      "sink": "os.system",
-     "line_at_vulnerable": 187,
-     "line": "os.system(run_command)",
+     "lines": [
+      187
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -1335,9 +1493,11 @@
      "file": "swift/ui/llm_export/llm_export.py",
      "function": "LLMExport.export_model",
      "sink": "os.system",
-     "line_at_vulnerable": 189,
-     "line": "os.system(run_command)",
+     "lines": [
+      189
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -1354,9 +1514,11 @@
      "file": "swift/ui/llm_grpo/external_rollout.py",
      "function": "LLMRollout.rollout_model",
      "sink": "os.system",
-     "line_at_vulnerable": 235,
-     "line": "os.system(run_command)",
+     "lines": [
+      235
+     ],
      "vulnerable": "under-ranked",
+     "calls_detected": 0,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -1373,129 +1535,14 @@
      "file": "swift/ui/llm_grpo/external_runtime.py",
      "function": "RolloutRuntime.kill_task",
      "sink": "os.system",
-     "line_at_vulnerable": 125,
-     "line": "os.system(f'taskkill /f /t /pid \"{pid}\"')",
+     "lines": [
+      125,
+      127,
+      129,
+      131
+     ],
      "vulnerable": "detected",
-     "fixed": "gone",
-     "guard_after_fix": [],
-     "vulnerable_triage": [
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      },
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      },
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      },
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      }
-     ]
-    },
-    {
-     "file": "swift/ui/llm_grpo/external_runtime.py",
-     "function": "RolloutRuntime.kill_task",
-     "sink": "os.system",
-     "line_at_vulnerable": 127,
-     "line": "os.system(f'taskkill /f /t /pid \"{child.pid}\"')",
-     "vulnerable": "detected",
-     "fixed": "gone",
-     "guard_after_fix": [],
-     "vulnerable_triage": [
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      },
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      },
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      },
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      }
-     ]
-    },
-    {
-     "file": "swift/ui/llm_grpo/external_runtime.py",
-     "function": "RolloutRuntime.kill_task",
-     "sink": "os.system",
-     "line_at_vulnerable": 129,
-     "line": "os.system(f'pkill -9 -f {log_file}')",
-     "vulnerable": "detected",
-     "fixed": "gone",
-     "guard_after_fix": [],
-     "vulnerable_triage": [
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      },
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      },
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      },
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      }
-     ]
-    },
-    {
-     "file": "swift/ui/llm_grpo/external_runtime.py",
-     "function": "RolloutRuntime.kill_task",
-     "sink": "os.system",
-     "line_at_vulnerable": 131,
-     "line": "os.system(f'kill -9 {child.pid}')",
-     "vulnerable": "detected",
+     "calls_detected": 4,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -1533,9 +1580,11 @@
      "file": "swift/ui/llm_infer/llm_infer.py",
      "function": "LLMInfer.deploy_model",
      "sink": "os.system",
-     "line_at_vulnerable": 280,
-     "line": "os.system(run_command)",
+     "lines": [
+      280
+     ],
      "vulnerable": "under-ranked",
+     "calls_detected": 0,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -1552,35 +1601,12 @@
      "file": "swift/ui/llm_infer/runtime.py",
      "function": "Runtime.kill_task",
      "sink": "os.system",
-     "line_at_vulnerable": 253,
-     "line": "os.system(f'taskkill /f /t /pid \"{pid}\"')",
+     "lines": [
+      253,
+      255
+     ],
      "vulnerable": "detected",
-     "fixed": "gone",
-     "guard_after_fix": [],
-     "vulnerable_triage": [
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      },
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      }
-     ]
-    },
-    {
-     "file": "swift/ui/llm_infer/runtime.py",
-     "function": "Runtime.kill_task",
-     "sink": "os.system",
-     "line_at_vulnerable": 255,
-     "line": "os.system(f'pkill -9 -f {log_file}')",
-     "vulnerable": "detected",
+     "calls_detected": 2,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -1604,9 +1630,11 @@
      "file": "swift/ui/llm_sample/llm_sample.py",
      "function": "LLMSample.sample_model",
      "sink": "os.system",
-     "line_at_vulnerable": 255,
-     "line": "os.system(run_command)",
+     "lines": [
+      255
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -1623,9 +1651,11 @@
      "file": "swift/ui/llm_train/llm_train.py",
      "function": "LLMTrain.train_local",
      "sink": "os.system",
-     "line_at_vulnerable": 508,
-     "line": "os.system(run_command)",
+     "lines": [
+      508
+     ],
      "vulnerable": "under-ranked",
+     "calls_detected": 0,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -1642,35 +1672,12 @@
      "file": "swift/ui/llm_train/runtime.py",
      "function": "Runtime.kill_task",
      "sink": "os.system",
-     "line_at_vulnerable": 584,
-     "line": "os.system(f'taskkill /f /t /pid \"{pid}\"')",
+     "lines": [
+      584,
+      586
+     ],
      "vulnerable": "detected",
-     "fixed": "gone",
-     "guard_after_fix": [],
-     "vulnerable_triage": [
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      },
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      }
-     ]
-    },
-    {
-     "file": "swift/ui/llm_train/runtime.py",
-     "function": "Runtime.kill_task",
-     "sink": "os.system",
-     "line_at_vulnerable": 586,
-     "line": "os.system(f'pkill -9 -f {output_dir}')",
-     "vulnerable": "detected",
+     "calls_detected": 2,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -1705,35 +1712,12 @@
      "file": "nltk/chunk/named_entity.py",
      "function": "load_ace_file",
      "sink": "builtins.open",
-     "line_at_vulnerable": 235,
-     "line": "with open(annfile) as infile:",
+     "lines": [
+      235,
+      247
+     ],
      "vulnerable": "detected",
-     "fixed": "gone",
-     "guard_after_fix": [],
-     "vulnerable_triage": [
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      },
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      }
-     ]
-    },
-    {
-     "file": "nltk/chunk/named_entity.py",
-     "function": "load_ace_file",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 247,
-     "line": "with open(textfile) as infile:",
-     "vulnerable": "detected",
+     "calls_detected": 2,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -1757,9 +1741,11 @@
      "file": "nltk/corpus/reader/crubadan.py",
      "function": "CrubadanCorpusReader._load_lang_mapping_data",
      "sink": "builtins.open",
-     "line_at_vulnerable": 78,
-     "line": "with open(mapper_file, encoding=\"utf-8\") as raw:",
+     "lines": [
+      78
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -1776,9 +1762,11 @@
      "file": "nltk/corpus/reader/crubadan.py",
      "function": "CrubadanCorpusReader._load_lang_ngrams",
      "sink": "builtins.open",
-     "line_at_vulnerable": 97,
-     "line": "with open(ngram_file, encoding=\"utf-8\") as f:",
+     "lines": [
+      97
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -1795,9 +1783,11 @@
      "file": "nltk/corpus/reader/ipipan.py",
      "function": "IPIPANCorpusReader._get_tag",
      "sink": "builtins.open",
-     "line_at_vulnerable": 209,
-     "line": "with open(f) as infile:",
+     "lines": [
+      209
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -1814,9 +1804,11 @@
      "file": "nltk/corpus/reader/lin.py",
      "function": "LinThesaurusCorpusReader.__init__",
      "sink": "builtins.open",
-     "line_at_vulnerable": 43,
-     "line": "with open(path) as lin_file:",
+     "lines": [
+      43
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -1833,9 +1825,11 @@
      "file": "nltk/corpus/reader/nkjp.py",
      "function": "XML_Tool.build_preprocessed_file",
      "sink": "builtins.open",
-     "line_at_vulnerable": 283,
-     "line": "fr = open(self.read_file)",
+     "lines": [
+      283
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -1852,9 +1846,11 @@
      "file": "nltk/corpus/reader/pl196x.py",
      "function": "Pl196xCorpusReader._init_textids",
      "sink": "builtins.open",
-     "line_at_vulnerable": 110,
-     "line": "with open(self._textids) as fp:",
+     "lines": [
+      110
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -1871,9 +1867,11 @@
      "file": "nltk/corpus/reader/xmldocs.py",
      "function": "XMLCorpusView._detect_encoding",
      "sink": "builtins.open",
-     "line_at_vulnerable": 168,
-     "line": "with open(fileid, \"rb\") as infile:",
+     "lines": [
+      168
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -1901,75 +1899,13 @@
      "file": "nuitka/__main__.py",
      "function": "main",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 45,
-     "line": "sys.path = eval(os.environ[\"NUITKA_PYTHONPATH\"])",
+     "lines": [
+      45,
+      108,
+      117
+     ],
      "vulnerable": "detected",
-     "fixed": "gone",
-     "guard_after_fix": [],
-     "vulnerable_triage": [
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      },
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      },
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      }
-     ]
-    },
-    {
-     "file": "nuitka/__main__.py",
-     "function": "main",
-     "sink": "builtins.eval",
-     "line_at_vulnerable": 108,
-     "line": "setPreloadedPackagePaths(eval(os.environ[\"NUITKA_NAMESPACES\"]))",
-     "vulnerable": "detected",
-     "fixed": "gone",
-     "guard_after_fix": [],
-     "vulnerable_triage": [
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      },
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      },
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      }
-     ]
-    },
-    {
-     "file": "nuitka/__main__.py",
-     "function": "main",
-     "sink": "builtins.eval",
-     "line_at_vulnerable": 117,
-     "line": "setPthImportedPackages(eval(os.environ[\"NUITKA_PTH_IMPORTED\"]))",
-     "vulnerable": "detected",
+     "calls_detected": 3,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -2000,9 +1936,11 @@
      "file": "nuitka/build/SconsCaching.py",
      "function": "checkCachingSuccess",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 385,
-     "line": "stats = eval(  # lazy, pylint: disable=eval-used",
+     "lines": [
+      385
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -2019,9 +1957,11 @@
      "file": "nuitka/nodes/NodeBases.py",
      "function": "fromXML",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 1180,
-     "line": "args[\"constant\"] = eval(args[\"constant\"])",
+     "lines": [
+      1180
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -2038,9 +1978,11 @@
      "file": "nuitka/plugins/PluginBase.py",
      "function": "NuitkaPluginBase.queryRuntimeInformationMultiple",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 850,
-     "line": "*(eval(value) for value in feedback)",
+     "lines": [
+      850
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -2068,9 +2010,11 @@
      "file": "onnx/external_data_helper.py",
      "function": "load_external_data_for_tensor",
      "sink": "builtins.open",
-     "line_at_vulnerable": 58,
-     "line": "with open(external_data_file_path, \"rb\") as data_file:",
+     "lines": [
+      58
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -2087,9 +2031,11 @@
      "file": "onnx/model_container.py",
      "function": "ModelContainer._load_large_initializers",
      "sink": "builtins.open",
-     "line_at_vulnerable": 299,
-     "line": "with open(external_data_file_path, \"rb\") as data_file:",
+     "lines": [
+      299
+     ],
      "vulnerable": "under-ranked",
+     "calls_detected": 0,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -2117,9 +2063,11 @@
      "file": "vitrage/graph/query.py",
      "function": "create_predicate",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 70,
-     "line": "return eval(expression)",
+     "lines": [
+      70
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -2147,9 +2095,11 @@
      "file": "web/pgacloud/providers/google.py",
      "function": "GoogleProvider._create_google_postgresql_instance",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 140,
-     "line": "'REGIONAL' if eval(args.high_availability) else 'ZONAL'",
+     "lines": [
+      140
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -2166,9 +2116,11 @@
      "file": "web/pgadmin/tools/sqleditor/__init__.py",
      "function": "start_query_download_tool",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 2159,
-     "line": "eval(value) if isinstance(value, str) else value",
+     "lines": [
+      2159
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -2196,9 +2148,11 @@
      "file": "src/reachy_mini/daemon/app/routers/media.py",
      "function": "upload_sound",
      "sink": "builtins.open",
-     "line_at_vulnerable": 172,
-     "line": "with open(dest, \"wb\") as f:",
+     "lines": [
+      172
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -2226,35 +2180,12 @@
      "file": "setuptools/package_index.py",
      "function": "PackageIndex._download_git",
      "sink": "os.system",
-     "line_at_vulnerable": 888,
-     "line": "os.system(\"git clone --quiet %s %s\" % (url, filename))",
+     "lines": [
+      888,
+      892
+     ],
      "vulnerable": "detected",
-     "fixed": "gone",
-     "guard_after_fix": [],
-     "vulnerable_triage": [
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      },
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      }
-     ]
-    },
-    {
-     "file": "setuptools/package_index.py",
-     "function": "PackageIndex._download_git",
-     "sink": "os.system",
-     "line_at_vulnerable": 892,
-     "line": "os.system(",
-     "vulnerable": "detected",
+     "calls_detected": 2,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -2278,9 +2209,12 @@
      "file": "setuptools/package_index.py",
      "function": "PackageIndex._download_hg",
      "sink": "os.system",
-     "line_at_vulnerable": 907,
-     "line": "os.system(\"hg clone --quiet %s %s\" % (url, filename))",
+     "lines": [
+      907,
+      911
+     ],
      "vulnerable": "detected",
+     "calls_detected": 2,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -2307,6 +2241,59 @@
    }
   },
   {
+   "id": "PYSEC-2026-2257",
+   "repo": "https://github.com/python-pillow/Pillow",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "src/PIL/ImageShow.py",
+     "function": "WindowsViewer.show_file",
+     "sink": "subprocess.Popen",
+     "lines": [
+      146
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "src/PIL/ImageShow.py",
+     "function": "MacViewer.show_file",
+     "sink": "subprocess.Popen",
+     "lines": [
+      182
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    }
+   ],
+   "plans": {
+    "vulnerable": 234,
+    "fixed": 233
+   }
+  },
+  {
    "id": "PYSEC-2026-3919",
    "repo": "https://github.com/senaite/senaite.core",
    "kind": "PROCESS_EXEC",
@@ -2315,9 +2302,11 @@
      "file": "src/bika/lims/jsonapi/__init__.py",
      "function": "set_fields_from_request",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 240,
-     "line": "value = eval(value)",
+     "lines": [
+      240
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -2334,9 +2323,11 @@
      "file": "src/senaite/core/browser/fields/records.py",
      "function": "RecordsField._to_dict",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 140,
-     "line": "value = eval(value.replace('}\\n', '},'))",
+     "lines": [
+      140
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -2364,9 +2355,11 @@
      "file": "src/mcp_atlassian/utils/oauth.py",
      "function": "OAuthConfig._save_tokens_to_file",
      "sink": "builtins.open",
-     "line_at_vulnerable": 417,
-     "line": "with open(token_path, \"w\") as f:",
+     "lines": [
+      417
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -2394,9 +2387,11 @@
      "file": "tenable_jira/cli.py",
      "function": "cli",
      "sink": "yaml.load",
-     "line_at_vulnerable": 65,
-     "line": "config_from_file = yaml.load(configfile, Loader=yaml.Loader)",
+     "lines": [
+      65
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -2424,9 +2419,32 @@
      "file": "tendenci/apps/imports/views.py",
      "function": "user_upload_subprocess",
      "sink": "pickle.loads",
-     "line_at_vulnerable": 134,
-     "line": "recap_dict = pickle.loads(content)",
+     "lines": [
+      134
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
+     "fixed": "gone",
+     "guard_after_fix": [],
+     "vulnerable_triage": [
+      {
+       "priority": true,
+       "signal": "high",
+       "code_context": "production",
+       "guarded_by": null,
+       "constant_arguments": false
+      }
+     ]
+    },
+    {
+     "file": "tendenci/apps/imports/views.py",
+     "function": "user_upload_recap",
+     "sink": "pickle.loads",
+     "lines": [
+      199
+     ],
+     "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -2446,18 +2464,20 @@
    }
   },
   {
-   "id": "PYSEC-2026-963",
+   "id": "PYSEC-2021-789",
    "repo": "https://github.com/tensorflow/tensorflow",
-   "kind": "PROCESS_EXEC",
+   "kind": "DESERIALIZATION",
    "sites": [
     {
-     "file": "tensorflow/python/tools/saved_model_cli.py",
-     "function": "preprocess_input_exprs_arg_string",
-     "sink": "builtins.eval",
-     "line_at_vulnerable": 549,
-     "line": "input_dict[input_key] = eval(expr)  # pylint: disable=eval-used",
+     "file": "tensorflow/python/keras/saving/model_config.py",
+     "function": "model_from_yaml",
+     "sink": "yaml.load",
+     "lines": [
+      98
+     ],
      "vulnerable": "detected",
-     "fixed": "still-flagged",
+     "calls_detected": 1,
+     "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
       {
@@ -2471,8 +2491,8 @@
     }
    ],
    "plans": {
-    "vulnerable": 424,
-    "fixed": 424
+    "vulnerable": 431,
+    "fixed": 430
    }
   },
   {
@@ -2484,9 +2504,11 @@
      "file": "tuf/ngclient/updater.py",
      "function": "Updater._load_local_metadata",
      "sink": "builtins.open",
-     "line_at_vulnerable": 288,
-     "line": "with open(os.path.join(self._dir, f\"{rolename}.json\"), \"rb\") as f:",
+     "lines": [
+      288
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "still-flagged",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -2514,9 +2536,11 @@
      "file": "tastypie/serializers.py",
      "function": "Serializer.from_yaml",
      "sink": "yaml.load",
-     "line_at_vulnerable": 357,
-     "line": "return yaml.load(content)",
+     "lines": [
+      357
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -2544,35 +2568,12 @@
      "file": "tqdm/cli.py",
      "function": "cast",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 35,
-     "line": "return eval(typ + '(\"' + val + '\")')",
+     "lines": [
+      35,
+      38
+     ],
      "vulnerable": "detected",
-     "fixed": "still-flagged",
-     "guard_after_fix": [],
-     "vulnerable_triage": [
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      },
-      {
-       "priority": true,
-       "signal": "high",
-       "code_context": "production",
-       "guarded_by": null,
-       "constant_arguments": false
-      }
-     ]
-    },
-    {
-     "file": "tqdm/cli.py",
-     "function": "cast",
-     "sink": "builtins.eval",
-     "line_at_vulnerable": 38,
-     "line": "return chr(ord(eval('\"' + val + '\"'))).encode()",
-     "vulnerable": "detected",
+     "calls_detected": 2,
      "fixed": "still-flagged",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -2607,9 +2608,11 @@
      "file": "deploy/docker/utils.py",
      "function": "write_output_file",
      "sink": "os.open",
-     "line_at_vulnerable": 355,
-     "line": "fd = os.open(abs_path, flags, 0o600)",
+     "lines": [
+      355
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -2637,9 +2640,11 @@
      "file": "src/ragas/prompt/multi_modal_prompt.py",
      "function": "ImageTextPromptValue.encode_image_to_base64",
      "sink": "builtins.open",
-     "line_at_vulnerable": 198,
-     "line": "with open(file_path, \"rb\") as image_file:",
+     "lines": [
+      198
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -2667,9 +2672,11 @@
      "file": "xinference/model/llm/tool_parsers/llama3_tool_parser.py",
      "function": "Llama3ToolParser.extract_tool_calls",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 46,
-     "line": "data = eval(model_output, {}, {})",
+     "lines": [
+      46
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -2686,9 +2693,11 @@
      "file": "xinference/model/llm/utils.py",
      "function": "ChatModelMixin._eval_llama3_chat_arguments",
      "sink": "builtins.eval",
-     "line_at_vulnerable": 753,
-     "line": "data = eval(text, {}, {})",
+     "lines": [
+      753
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -2716,9 +2725,11 @@
      "file": "yt_dlp/postprocessor/exec.py",
      "function": "ExecPP.run",
      "sink": "subprocess.call",
-     "line_at_vulnerable": 31,
-     "line": "retCode = subprocess.call(encodeArgument(cmd), shell=True)",
+     "lines": [
+      31
+     ],
      "vulnerable": "detected",
+     "calls_detected": 1,
      "fixed": "gone",
      "guard_after_fix": [],
      "vulnerable_triage": [
@@ -2740,14 +2751,19 @@
  ],
  "run": {
   "date": "2026-10-28",
-  "sentinel_commit": "ba811d4 + this branch",
-  "python": "3.13.18"
+  "python": "3.13.18",
+  "note": "53 pairs from the full run on e309ee7; the 2 pairs whose sites changed under the deleted-file rule were re-scored with the same scanner"
  },
  "base_rate_per_pair": [
   {
    "id": "PYSEC-2023-262",
    "plans": 7,
    "priority": 5
+  },
+  {
+   "id": "PYSEC-2026-1196",
+   "plans": 118,
+   "priority": 83
   },
   {
    "id": "PYSEC-2026-389",
@@ -2815,9 +2831,9 @@
    "priority": 2
   },
   {
-   "id": "PYSEC-2026-316",
-   "plans": 99,
-   "priority": 68
+   "id": "PYSEC-2026-793",
+   "plans": 49,
+   "priority": 28
   },
   {
    "id": "PYSEC-2026-4009",
@@ -2833,6 +2849,11 @@
    "id": "PYSEC-2026-281",
    "plans": 7,
    "priority": 6
+  },
+  {
+   "id": "PYSEC-2024-112",
+   "plans": 59,
+   "priority": 29
   },
   {
    "id": "PYSEC-2026-1432",
@@ -2858,6 +2879,11 @@
    "id": "PYSEC-2024-62",
    "plans": 278,
    "priority": 116
+  },
+  {
+   "id": "PYSEC-2026-4236",
+   "plans": 620,
+   "priority": 32
   },
   {
    "id": "PYSEC-2026-381",
@@ -2940,6 +2966,11 @@
    "priority": 109
   },
   {
+   "id": "PYSEC-2026-2257",
+   "plans": 234,
+   "priority": 54
+  },
+  {
    "id": "PYSEC-2026-3919",
    "plans": 55,
    "priority": 27
@@ -2960,9 +2991,9 @@
    "priority": 160
   },
   {
-   "id": "PYSEC-2026-963",
-   "plans": 424,
-   "priority": 128
+   "id": "PYSEC-2021-789",
+   "plans": 431,
+   "priority": 131
   },
   {
    "id": "PYSEC-2021-376",

@@ -82,8 +82,13 @@ for f in sorted(diffs.glob("*.json")):
     if "error" in d or not d.get("parents") or c is None:
         skipped["fetch_error_or_root"] += 1; continue
     src = [x for x in d["files"] if not x["test_file"] and not re.search(r"(^|/)tests?/|(^|/)test_[^/]*$|_tests?\.py$|(^|/)conftest\.py$", x["file"])]
-    changed = [(x["file"], rem["text"], rem["old_lineno"]) for x in src for rem in x["removed_sinks"]
-               if sink_of(rem["text"])]
+    # A file the fix deleted is a removal, not a fix: "gone" afterwards would be trivially
+    # true, and the code may not be the advisory's vulnerability at all.
+    deleted = sum(len(x["removed_sinks"]) for x in src if x.get("deleted"))
+    if deleted:
+        skipped["sink_calls_in_deleted_files"] += deleted
+    changed = [(x["file"], rem["text"], rem["old_lineno"]) for x in src if not x.get("deleted")
+               for rem in x["removed_sinks"] if sink_of(rem["text"])]
     if not changed:
         if src:
             guard_only.append({"id": c["id"], "repo": f"{o}/{r}", "fix": sha, "kinds": c["kinds"]})
@@ -132,7 +137,8 @@ manifest = {
                "selection": "calibration/cve_tools/ (scan_advisories.py -> fetch_diffs.py -> select_pairs.py); no hand-picking",
                "rule": "fix commit removes or rewrites a call to a modeled Python sink in non-test source; site = the "
                        "enclosing function of that call, located by its line in the parent commit; sink family must "
-                       "match the advisory text; one pair per repository; repos up to 3000 .py files"},
+                       "match the advisory text; calls in files the fix deleted are not scored; one pair per repository; "
+                       "repos up to 3000 .py files"},
     "inventory": {"advisories_matched_by_text": len(cands), "fix_commits": fix_commits, "fix_commits_fetched": fetched,
                   "pairs": len(pairs), "guard_only_fixes_not_scored": len(guard_only)},
     "pairs": [{k: p[k] for k in ("id", "aliases", "package", "repo", "vulnerable", "fixed", "language", "kind",
