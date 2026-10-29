@@ -10,22 +10,24 @@ This is NOT part of the pytest gate: it clones public repositories over the
 network. The synthetic harness (calibrate.py) stays the offline regression
 gate; this script measures what the synthetic set cannot: recall on real bugs.
 
-Each pair names one or more vulnerable sites: (file, function, sink). A site is
-matched to a plan by sink identity, file path suffix and the function the call
-sits in (symbol_binding), not by line number, because lines move between the
-two commits.
+Each pair names the vulnerable calls the fix changed: (file, function, sink,
+line_at_vulnerable). Scoring is per GROUP, one group per (file, function,
+sink), because a function may contain several calls to the same sink.
 
-Per site, at the vulnerable commit:
-    detected      a priority plan exists at the site
-    under-ranked  a plan exists, but none is priority
-    missed        no plan at the site
-And at the fixed commit:
-    gone          no plan at the site any more
-    downgraded    a plan remains, but none is priority
+At the vulnerable commit each call is matched by its exact line, so one
+detected call cannot hide a missed call in the same function:
+    detected      every call in the group has a priority plan
+    under-ranked  every call has a plan, but at least one is not priority
+    missed        at least one call has no plan at all
+At the fixed commit lines move and calls cannot be mapped one to one, so the
+group is judged as a whole (any plan on that sink in that function):
+    gone          no plan remains
+    downgraded    plans remain, none is priority
     still-flagged a priority plan remains (the fix is invisible to triage)
 
-Headline: recall = detected / sites, and quiet-on-fix = (gone + downgraded) / sites.
-Both are reported whatever they are; the pair list must not be tuned to them.
+Headline: recall = detected / groups, and quiet-on-fix = (gone + downgraded) /
+groups. Per-call recall is reported too. All are reported whatever they are;
+the pair list must not be tuned to them.
 """
 from __future__ import annotations
 
@@ -79,18 +81,41 @@ def scan(tree: Path, language: str) -> dict:
         return json.loads((Path(out) / "verification_ledger.json").read_text(encoding="utf-8"))
 
 
-def site_plans(ledger: dict, tree: Path, site: dict) -> list[dict]:
+def site_plans(ledger: dict, tree: Path, site: dict, line: int | None = None) -> list[dict]:
+    """Plans on `site`'s sink in its file and function; with `line`, only the call on that line."""
     root = str(tree).rstrip("/") + "/"
     hits = []
     for plan in ledger["plans"]:
         hyp = plan["hypothesis"]
-        path = hyp["source_node"].rsplit(":", 1)[0]
+        path, _, lineno = hyp["source_node"].rpartition(":")
         rel = path[len(root):] if path.startswith(root) else path
         func = hyp.get("symbol_binding") or ""
         if (hyp["sink_node"] == site["sink"] and rel == site["file"]
-                and (func == site["function"] or func.endswith("." + site["function"]))):
+                and (func == site["function"] or func.endswith("." + site["function"]))
+                and (line is None or lineno == str(line))):
             hits.append(plan)
     return hits
+
+
+def group_sites(sites: list[dict]) -> list[dict]:
+    """One group per (file, function, sink), keeping each vulnerable call's line."""
+    groups: dict[tuple, dict] = {}
+    for site in sites:
+        key = (site["file"], site["function"], site["sink"])
+        group = groups.setdefault(key, {"file": site["file"], "function": site["function"],
+                                        "sink": site["sink"], "lines": []})
+        if site["line_at_vulnerable"] not in group["lines"]:
+            group["lines"].append(site["line_at_vulnerable"])
+    return list(groups.values())
+
+
+def classify_vulnerable(per_call: list[list[dict]]) -> str:
+    """per_call: the plans matched at each vulnerable call's exact line."""
+    if any(not plans for plans in per_call):
+        return "missed"
+    if all(any(p.get("triage", {}).get("priority") for p in plans) for plans in per_call):
+        return "detected"
+    return "under-ranked"
 
 
 def classify(plans: list[dict], vulnerable: bool) -> str:
@@ -108,18 +133,19 @@ def score_pair(pair: dict, cache: Path) -> dict:
     except (RuntimeError, subprocess.TimeoutExpired, OSError) as exc:
         row["error"] = str(exc)[-600:]
         return row
-    for site in pair["sites"]:
-        before = site_plans(ledgers["vulnerable"], trees["vulnerable"], site)
-        after = site_plans(ledgers["fixed"], trees["fixed"], site)
+    for group in group_sites(pair["sites"]):
+        per_call = [site_plans(ledgers["vulnerable"], trees["vulnerable"], group, line) for line in group["lines"]]
+        after = site_plans(ledgers["fixed"], trees["fixed"], group)
         row["sites"].append({
-            **site,
-            "vulnerable": classify(before, True),
+            **group,
+            "vulnerable": classify_vulnerable(per_call),
+            "calls_detected": sum(any(p.get("triage", {}).get("priority") for p in plans) for plans in per_call),
             "fixed": classify(after, False),
             "guard_after_fix": sorted({(p.get("triage") or {}).get("guarded_by") or "" for p in after} - {""}),
-            # Why a plan at the vulnerable site was or was not priority, so every miss is explainable.
+            # Why each vulnerable call was or was not priority, so every miss is explainable.
             "vulnerable_triage": [{k: (p.get("triage") or {}).get(k) for k in
                                    ("priority", "signal", "code_context", "guarded_by", "constant_arguments")}
-                                  for p in before],
+                                  for plans in per_call for p in plans],
         })
     row["plans"] = {k: len(v["plans"]) for k, v in ledgers.items()}
     return row
@@ -132,10 +158,13 @@ def summarize(rows: list[dict]) -> dict:
     def rate(n: int) -> float | None:
         return round(n / count, 4) if count else None
 
+    calls = sum(len(s.get("lines", [])) for s in sites)
     return {
         "pairs": len(rows),
         "pairs_errored": [r["id"] for r in rows if "error" in r],
-        "sites": count,
+        "groups": count,
+        "calls": calls,
+        "call_recall": round(sum(s.get("calls_detected", 0) for s in sites) / calls, 4) if calls else None,
         "recall": rate(sum(s["vulnerable"] == "detected" for s in sites)),
         "quiet_on_fix": rate(sum(s["fixed"] in ("gone", "downgraded") for s in sites)),
         "vulnerable_outcomes": {k: sum(s["vulnerable"] == k for s in sites) for k in ("detected", "under-ranked", "missed")},
@@ -159,8 +188,8 @@ def main(argv: list[str] | None = None) -> int:
         if "error" in row:
             print(f"{row['id']}: ERROR {row['error'][-200:]}", flush=True)
         for s in row.get("sites", []):
-            print(f"{row['id']}: {s['sink']} in {s['file']}:{s['function']} -> vulnerable={s['vulnerable']} "
-                  f"fixed={s['fixed']}", flush=True)
+            print(f"{row['id']}: {s['sink']} in {s['file']}:{s['function']} lines={s['lines']} -> "
+                  f"vulnerable={s['vulnerable']} fixed={s['fixed']}", flush=True)
     result = {"summary": summarize(rows), "rows": rows}
     print(json.dumps(result["summary"], indent=2))
     if args.out:

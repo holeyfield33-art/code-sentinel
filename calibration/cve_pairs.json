@@ -4,13 +4,14 @@
   "database": "https://github.com/pypa/advisory-database",
   "commit": "30d5858d4f168738a41c83bf5be1fe47726c0e47",
   "selection": "calibration/cve_tools/ (scan_advisories.py -> fetch_diffs.py -> select_pairs.py); no hand-picking",
-  "rule": "fix commit removes or rewrites a call to a modeled Python sink in non-test source; site = enclosing function at the parent commit; sink family must match the advisory text; one pair per repository; repos up to 3000 .py files"
+  "rule": "fix commit removes or rewrites a call to a modeled Python sink in non-test source; site = the enclosing function of that call, located by its line in the parent commit; sink family must match the advisory text; one pair per repository; repos up to 3000 .py files"
  },
  "inventory": {
   "advisories_matched_by_text": 528,
   "fix_commits": 512,
-  "pairs": 51,
-  "guard_only_fixes_not_scored": 380
+  "fix_commits_fetched": 495,
+  "pairs": 56,
+  "guard_only_fixes_not_scored": 385
  },
  "pairs": [
   {
@@ -35,6 +36,29 @@
     }
    ],
    "fix_message": "Merge pull request #130 from dan-pavlov/remove-eval-from-cli"
+  },
+  {
+   "id": "PYSEC-2026-1196",
+   "aliases": [
+    "CVE-2025-48957",
+    "GHSA-cq37-g2qp-3c2p"
+   ],
+   "package": "astrbot",
+   "repo": "https://github.com/AstrBotDevs/AstrBot",
+   "vulnerable": "2fc0ec0f720ef96b6fba4b453538dbc91978189a",
+   "fixed": "cceadf222c46813c7f41115b40d371e7eb91e492",
+   "language": "python",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "astrbot/dashboard/routes/chat.py",
+     "function": "ChatRoute.get_file",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 64,
+     "line": "with open(os.path.join(self.imgs_dir, filename), \"rb\") as f:"
+    }
+   ],
+   "fix_message": "Merge pull request #1676 from AstrBotDevs/fix-chat-get-file-bug"
   },
   {
    "id": "PYSEC-2026-389",
@@ -378,34 +402,34 @@
    "fix_message": "use safe load instead of load"
   },
   {
-   "id": "PYSEC-2026-316",
+   "id": "PYSEC-2026-793",
    "aliases": [
-    "CVE-2024-47533",
-    "GHSA-m26c-fcgh-cp6h"
+    "CVE-2011-4953",
+    "GHSA-hpj3-5p46-g87w"
    ],
    "package": "cobbler",
    "repo": "https://github.com/cobbler/cobbler",
-   "vulnerable": "a4d2419de4697d0b6820eeac31f1d8bba64f4f48",
-   "fixed": "32c5cada013dc8daa7320a8eda9932c2814742b0",
+   "vulnerable": "08de569c29333e7d45f9f58d83304486b4a63e78",
+   "fixed": "1b4f9ecf051422eb8512794701900f6199651442",
    "language": "python",
-   "kind": "FILE_IO",
+   "kind": "DESERIALIZATION",
    "sites": [
     {
-     "file": "cobbler/modules/authn_configfile.py",
-     "function": "__parse_storage",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 40,
-     "line": "fd = open(\"/etc/cobbler/users.digest\")"
+     "file": "cobbler/item.py",
+     "function": "Item.set_mgmt_parameters",
+     "sink": "yaml.load",
+     "line_at_vulnerable": 248,
+     "line": "data = yaml.load(mgmt_parameters)"
     },
     {
-     "file": "cobbler/utils.py",
-     "function": "get_shared_secret",
-     "sink": "builtins.open",
-     "line_at_vulnerable": 1839,
-     "line": "fd = open(\"/var/lib/cobbler/web.ss\", 'rb')"
+     "file": "scripts/services.py",
+     "function": "application",
+     "sink": "yaml.load",
+     "line_at_vulnerable": 64,
+     "line": "ydata = yaml.load(data)"
     }
    ],
-   "fix_message": "Use utf-8 encoding for md5 handling and web.ss data."
+   "fix_message": "Convert all yaml loads to safe_loads for security/safety reasons. https://bugs.launchpad.net/ubuntu/+source/cobbler/+bug/858883"
   },
   {
    "id": "PYSEC-2026-4009",
@@ -474,6 +498,28 @@
     }
    ],
    "fix_message": "Escapes decompiling arguments"
+  },
+  {
+   "id": "PYSEC-2024-112",
+   "aliases": [
+    "CVE-2024-7962"
+   ],
+   "package": "chuanhuchatgpt",
+   "repo": "https://github.com/gaizhenbiao/chuanhuchatgpt",
+   "vulnerable": "c2c2b86d14e28d3b106f067ebb9b44f8acfbff1e",
+   "fixed": "2836fd1db3efcd5ede63c0e7fbbdf677730dbb51",
+   "language": "python",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "modules/utils.py",
+     "function": "load_template",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 524,
+     "line": "with open(os.path.join(TEMPLATES_DIR, filename), \"r\", encoding=\"utf8\") as f:"
+    }
+   ],
+   "fix_message": "bugfix: Added additional checks when loading template"
   },
   {
    "id": "PYSEC-2026-1432",
@@ -591,6 +637,29 @@
    "fix_message": "Remove python eval from vector sql db chain (#10937)"
   },
   {
+   "id": "PYSEC-2026-4236",
+   "aliases": [
+    "CVE-2026-51886",
+    "GHSA-w584-2h2r-2hvf"
+   ],
+   "package": "langflow",
+   "repo": "https://github.com/langflow-ai/langflow",
+   "vulnerable": "094694d3f20c1da499f4d8dbac15c510609e3026",
+   "fixed": "e7c33dbaade20b5295c7fa26bf83cc1ff68fba02",
+   "language": "python",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "src/lfx/src/lfx/custom/validate.py",
+     "function": "validate_code",
+     "sink": "builtins.exec",
+     "line_at_vulnerable": 67,
+     "line": "exec(code_obj, exec_globals)"
+    }
+   ],
+   "fix_message": "fix(security): do not execute code in validate_code (GHSA-2wcq-pvw2-xh7v) (#13696)"
+  },
+  {
    "id": "PYSEC-2026-381",
    "aliases": [
     "CVE-2025-46724",
@@ -634,10 +703,465 @@
    "kind": "FILE_IO",
    "sites": [
     {
+     "file": "docs/source-app/conf.py",
+     "function": "_package_list_from_file",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 336,
+     "line": "with open(file) as fp:"
+    },
+    {
+     "file": "docs/source-app/examples/file_server/app.py",
+     "function": "FileServer.upload_file",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 64,
+     "line": "with open(self.get_filepath(uploaded_file), \"wb\") as out_file:"
+    },
+    {
+     "file": "docs/source-app/examples/file_server/app.py",
+     "function": "FileServer.upload_file",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 94,
+     "line": "with open(self.get_filepath(meta_file), \"w\") as f:"
+    },
+    {
+     "file": "docs/source-app/examples/model_server_app/model_server.py",
+     "function": "MLServer.run",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 64,
+     "line": "with open(\"settings.json\", \"w\") as f:"
+    },
+    {
+     "file": "docs/source-app/examples/model_server_app/model_server.py",
+     "function": "MLServer.run",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 73,
+     "line": "with open(\"model-settings.json\", \"w\") as f:"
+    },
+    {
+     "file": "examples/app/boring/app.py",
+     "function": "SourceFileWork.run",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 23,
+     "line": "with open(self.boring_path, \"w\", encoding=\"utf-8\") as f:"
+    },
+    {
+     "file": "examples/app/boring/app_dynamic.py",
+     "function": "SourceFileWork.run",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 24,
+     "line": "with open(self.boring_path, \"w\") as f:"
+    },
+    {
+     "file": "examples/app/drive/app.py",
+     "function": "Work_1.run",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 10,
+     "line": "with open(\"a.txt\", \"w\") as f:"
+    },
+    {
+     "file": "examples/app/drive/app.py",
+     "function": "Work_2.run",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 33,
+     "line": "with open(\"a.txt\") as f:"
+    },
+    {
+     "file": "examples/app/hpo/utils.py",
+     "function": "download_data",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 35,
+     "line": "with open(local_filename, \"wb\") as fp:"
+    },
+    {
      "file": "src/lightning/__setup__.py",
      "function": "_setup_args",
      "sink": "builtins.open",
      "line_at_vulnerable": 80,
+     "line": "with open(ui_ver_file, encoding=\"utf-8\") as fo:"
+    },
+    {
+     "file": "src/lightning/app/cli/cmd_init.py",
+     "function": "_make_resource",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 66,
+     "line": "with open(bad_file) as fo:"
+    },
+    {
+     "file": "src/lightning/app/cli/cmd_init.py",
+     "function": "_make_resource",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 68,
+     "line": "with open(bad_file, \"w\") as fw:"
+    },
+    {
+     "file": "src/lightning/app/cli/cmd_pl_init.py",
+     "function": "project_file_from_template",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 132,
+     "line": "with open(destination_dir / template_name, \"w\") as file:"
+    },
+    {
+     "file": "src/lightning/app/cli/commands/cd.py",
+     "function": "cd",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 59,
+     "line": "with open(_CD_FILE, \"w\") as f:"
+    },
+    {
+     "file": "src/lightning/app/cli/commands/cd.py",
+     "function": "cd",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 69,
+     "line": "with open(_CD_FILE) as f:"
+    },
+    {
+     "file": "src/lightning/app/cli/commands/cd.py",
+     "function": "cd",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 103,
+     "line": "with open(_CD_FILE, \"w\") as f:"
+    },
+    {
+     "file": "src/lightning/app/cli/commands/cp.py",
+     "function": "_download_file",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 268,
+     "line": "with open(path, \"wb\") as fp:"
+    },
+    {
+     "file": "src/lightning/app/cli/commands/ls.py",
+     "function": "ls",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 59,
+     "line": "with open(_CD_FILE, \"w\") as f:"
+    },
+    {
+     "file": "src/lightning/app/cli/commands/ls.py",
+     "function": "ls",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 62,
+     "line": "with open(_CD_FILE) as f:"
+    },
+    {
+     "file": "src/lightning/app/cli/commands/pwd.py",
+     "function": "_pwd",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 46,
+     "line": "with open(_CD_FILE, \"w\") as f:"
+    },
+    {
+     "file": "src/lightning/app/cli/commands/pwd.py",
+     "function": "_pwd",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 49,
+     "line": "with open(_CD_FILE) as f:"
+    },
+    {
+     "file": "src/lightning/app/cli/connect/app.py",
+     "function": "connect_app",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 74,
+     "line": "with open(connected_file) as f:"
+    },
+    {
+     "file": "src/lightning/app/cli/connect/app.py",
+     "function": "connect_app",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 108,
+     "line": "with open(os.path.join(commands_folder, \"openapi.json\"), \"w\") as f:"
+    },
+    {
+     "file": "src/lightning/app/cli/connect/app.py",
+     "function": "connect_app",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 124,
+     "line": "with open(os.path.join(commands_folder, f\"{command_name}.txt\"), \"w\") as f:"
+    },
+    {
+     "file": "src/lightning/app/cli/connect/app.py",
+     "function": "connect_app",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 129,
+     "line": "with open(connected_file, \"w\") as f:"
+    },
+    {
+     "file": "src/lightning/app/cli/connect/app.py",
+     "function": "connect_app",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 199,
+     "line": "with open(os.path.join(commands_folder, f\"{command_name}.txt\"), \"w\") as f:"
+    },
+    {
+     "file": "src/lightning/app/cli/connect/app.py",
+     "function": "connect_app",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 204,
+     "line": "with open(connected_file, \"w\") as f:"
+    },
+    {
+     "file": "src/lightning/app/cli/connect/app.py",
+     "function": "disconnect_app",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 225,
+     "line": "with open(connected_file) as f:"
+    },
+    {
+     "file": "src/lightning/app/cli/connect/app.py",
+     "function": "_read_connected_file",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 247,
+     "line": "with open(connected_file) as f:"
+    },
+    {
+     "file": "src/lightning/app/cli/connect/app.py",
+     "function": "_write_commands_metadata",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 267,
+     "line": "with open(metadata_path, \"w\") as f:"
+    },
+    {
+     "file": "src/lightning/app/cli/connect/app.py",
+     "function": "_get_commands_metadata",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 273,
+     "line": "with open(metadata_path) as f:"
+    },
+    {
+     "file": "src/lightning/app/cli/connect/app.py",
+     "function": "_install_missing_requirements",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 343,
+     "line": "with open(std_out_out, \"wb\") as stdout:"
+    },
+    {
+     "file": "src/lightning/app/cli/pl-app-template/setup.py",
+     "function": "_load_requirements",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 11,
+     "line": "with open(os.path.join(path_dir, file_name)) as file:"
+    },
+    {
+     "file": "src/lightning/app/core/api.py",
+     "function": "upload_file",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 333,
+     "line": "with open(tmp_file, \"wb\") as f:"
+    },
+    {
+     "file": "src/lightning/app/core/api.py",
+     "function": "start_server",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 471,
+     "line": "with open(annotations_path) as f:"
+    },
+    {
+     "file": "src/lightning/app/core/app.py",
+     "function": "LightningApp.load_state_dict_from_checkpoint_dir",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 632,
+     "line": "with open(checkpoint_path, \"rb\") as fo:"
+    },
+    {
+     "file": "src/lightning/app/core/app.py",
+     "function": "LightningApp._dump_checkpoint",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 652,
+     "line": "with open(checkpoint_path, \"wb\") as f:"
+    },
+    {
+     "file": "src/lightning/app/frontend/just_py/just_py.py",
+     "function": "JustPyFrontend.start_server",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 107,
+     "line": "with open(std_out_out, \"wb\") as stdout:"
+    },
+    {
+     "file": "src/lightning/app/frontend/stream_lit.py",
+     "function": "StreamlitFrontend.start_server",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 86,
+     "line": "with open(std_err_out, \"wb\") as stderr, open(std_out_out, \"wb\") as stdout:"
+    },
+    {
+     "file": "src/lightning/app/plugin/plugin.py",
+     "function": "_run_plugin",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 149,
+     "line": "with open(download_path, \"wb\") as f:"
+    },
+    {
+     "file": "src/lightning/app/source_code/hashing.py",
+     "function": "_get_hash",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 48,
+     "line": "with open(file, \"rb\") as f:"
+    },
+    {
+     "file": "src/lightning/app/source_code/local.py",
+     "function": "LocalSourceCodeDir.__init__",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 60,
+     "line": "with open(path / DOT_IGNORE_FILENAME, \"w\") as f:"
+    },
+    {
+     "file": "src/lightning/app/source_code/tar.py",
+     "function": "_tar_path_python",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 164,
+     "line": "with open(source_path) as fo:"
+    },
+    {
+     "file": "src/lightning/app/source_code/uploader.py",
+     "function": "FileUploader.upload",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 104,
+     "line": "with open(self.source_file, \"rb\") as f:"
+    },
+    {
+     "file": "src/lightning/app/storage/payload.py",
+     "function": "Payload.save",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 269,
+     "line": "with open(path, \"wb\") as f:"
+    },
+    {
+     "file": "src/lightning/app/storage/payload.py",
+     "function": "Payload.load",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 273,
+     "line": "with open(path, \"rb\") as f:"
+    },
+    {
+     "file": "src/lightning/app/testing/testing.py",
+     "function": "run_app_in_cloud",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 294,
+     "line": "with open(stdout_path, \"w\") as stdout:"
+    },
+    {
+     "file": "src/lightning/app/testing/testing.py",
+     "function": "run_app_in_cloud",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 315,
+     "line": "with open(stdout_path) as fo:"
+    },
+    {
+     "file": "src/lightning/app/testing/testing.py",
+     "function": "run_app_in_cloud",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 325,
+     "line": "with open(stdout_path) as fo:"
+    },
+    {
+     "file": "src/lightning/app/utilities/app_commands.py",
+     "function": "_extract_commands_from_file",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 52,
+     "line": "with open(file_name) as f:"
+    },
+    {
+     "file": "src/lightning/app/utilities/cli_helpers.py",
+     "function": "_LightningAppOpenAPIRetriever.__init__",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 144,
+     "line": "with open(cache_openapi) as f:"
+    },
+    {
+     "file": "src/lightning/app/utilities/commands/base.py",
+     "function": "_download_command",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 133,
+     "line": "with open(target_file, \"wb\") as f:"
+    },
+    {
+     "file": "src/lightning/app/utilities/load_app.py",
+     "function": "open_python_file",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 155,
+     "line": "return open(filename, encoding=\"utf-8\")  # noqa: SIM115"
+    },
+    {
+     "file": "src/lightning/app/utilities/packaging/app_config.py",
+     "function": "AppConfig.save_to_file",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 40,
+     "line": "with open(path, \"w\") as file:"
+    },
+    {
+     "file": "src/lightning/app/utilities/packaging/app_config.py",
+     "function": "AppConfig.load_from_file",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 50,
+     "line": "with open(path) as file:"
+    },
+    {
+     "file": "src/lightning/app/utilities/packaging/build_config.py",
+     "function": "load_requirements",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 41,
+     "line": "with open(path) as file:"
+    },
+    {
+     "file": "src/lightning/app/utilities/packaging/build_config.py",
+     "function": "BuildConfig._prepare_dockerfile",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 191,
+     "line": "with open(path) as f:"
+    },
+    {
+     "file": "src/lightning/app/utilities/packaging/docker.py",
+     "function": "DockerRunner._create_work_container",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 66,
+     "line": "with open(work_destination_path, \"wb\") as f:"
+    },
+    {
+     "file": "src/lightning/app/utilities/packaging/docker.py",
+     "function": "DockerRunner._create_work_container",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 70,
+     "line": "with open(source_path) as f:"
+    },
+    {
+     "file": "src/lightning/app/utilities/packaging/docker.py",
+     "function": "DockerRunner._create_work_container",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 82,
+     "line": "with open(destination_path, \"w\") as f:"
+    },
+    {
+     "file": "src/lightning/app/utilities/packaging/lightning_utils.py",
+     "function": "_prepare_wheel",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 68,
+     "line": "with open(\"log.txt\", \"w\") as logfile:"
+    },
+    {
+     "file": "src/lightning/store/utils.py",
+     "function": "_upload_file_to_url",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 26,
+     "line": "with open(path, \"rb\") as fd, tqdm("
+    },
+    {
+     "file": "src/lightning/store/utils.py",
+     "function": "_upload_file_to_url",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 37,
+     "line": "with open(path, \"rb\") as fo:"
+    },
+    {
+     "file": "src/lightning/store/utils.py",
+     "function": "_download_file_from_url",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 55,
+     "line": "with open(path, \"wb\") as f:"
+    },
+    {
+     "file": "src/lightning_app/__setup__.py",
+     "function": "_setup_args",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 61,
      "line": "with open(ui_ver_file, encoding=\"utf-8\") as fo:"
     }
    ],
@@ -688,6 +1212,36 @@
     }
    ],
    "fix_message": "fix: prevent arbitrary code execution via pickle in FAISS vector store"
+  },
+  {
+   "id": "PYSEC-2026-412",
+   "aliases": [
+    "CVE-2026-33057",
+    "GHSA-gjgx-rvqr-6w6v"
+   ],
+   "package": "mesop",
+   "repo": "https://github.com/mesop-dev/mesop",
+   "vulnerable": "c6b382f363b73ac32c402a2db3aadc7784f66a5b",
+   "fixed": "825f55970c20686de3f28e2c66df4d74e9d4db47",
+   "language": "python",
+   "kind": "PROCESS_EXEC",
+   "sites": [
+    {
+     "file": "ai/src/ai/offline_common/eval.py",
+     "function": "EvalRunner.check_type_checkable",
+     "sink": "subprocess.run",
+     "line_at_vulnerable": 166,
+     "line": "subprocess.run("
+    },
+    {
+     "file": "ai/src/ai/offline_common/eval_lib.py",
+     "function": "check_file_types",
+     "sink": "subprocess.run",
+     "line_at_vulnerable": 58,
+     "line": "subprocess.run("
+    }
+   ],
+   "fix_message": "Remove ai package and related fine-tuning infrastructure (#1362)"
   },
   {
    "id": "PYSEC-2026-1854",
@@ -1241,9 +1795,46 @@
      "sink": "os.system",
      "line_at_vulnerable": 907,
      "line": "os.system(\"hg clone --quiet %s %s\" % (url, filename))"
+    },
+    {
+     "file": "setuptools/package_index.py",
+     "function": "PackageIndex._download_hg",
+     "sink": "os.system",
+     "line_at_vulnerable": 911,
+     "line": "os.system("
     }
    ],
    "fix_message": "Merge pull request #4332 from pypa/debt/package-index-vcs"
+  },
+  {
+   "id": "PYSEC-2026-2257",
+   "aliases": [
+    "CVE-2026-55798",
+    "GHSA-4x4j-2g7c-83w6"
+   ],
+   "package": "pillow",
+   "repo": "https://github.com/python-pillow/Pillow",
+   "vulnerable": "87e788339e8746e7ceb8e901df9b0c7fda55e975",
+   "fixed": "8404ea5fe5df40fc34aa1e51403dd6fce0778b8a",
+   "language": "python",
+   "kind": "FILE_IO",
+   "sites": [
+    {
+     "file": "src/PIL/ImageShow.py",
+     "function": "WindowsViewer.show_file",
+     "sink": "subprocess.Popen",
+     "line_at_vulnerable": 146,
+     "line": "subprocess.Popen("
+    },
+    {
+     "file": "src/PIL/ImageShow.py",
+     "function": "MacViewer.show_file",
+     "sink": "subprocess.Popen",
+     "line_at_vulnerable": 182,
+     "line": "subprocess.Popen("
+    }
+   ],
+   "fix_message": "Use os.startfile in WindowsViewer show_file"
   },
   {
    "id": "PYSEC-2026-3919",
@@ -1340,32 +1931,39 @@
      "sink": "pickle.loads",
      "line_at_vulnerable": 134,
      "line": "recap_dict = pickle.loads(content)"
+    },
+    {
+     "file": "tendenci/apps/imports/views.py",
+     "function": "user_upload_recap",
+     "sink": "pickle.loads",
+     "line_at_vulnerable": 199,
+     "line": "recap_dict = pickle.loads(content)"
     }
    ],
    "fix_message": "replace pickle with json"
   },
   {
-   "id": "PYSEC-2026-963",
+   "id": "PYSEC-2021-789",
    "aliases": [
-    "CVE-2022-29216",
-    "GHSA-75c9-jrh4-79mc"
+    "CVE-2021-37678",
+    "GHSA-r6jx-9g48-2r5r"
    ],
    "package": "tensorflow-gpu",
    "repo": "https://github.com/tensorflow/tensorflow",
-   "vulnerable": "349172cf0ac29ba1346d244a40dc4761b4600f2e",
-   "fixed": "8b202f08d52e8206af2bdb2112a62fafbc546ec7",
+   "vulnerable": "e1ec21ffbd969144d7cae7c71561faa970673d76",
+   "fixed": "23d6383eb6c14084a8fc3bdf164043b974818012",
    "language": "python",
-   "kind": "PROCESS_EXEC",
+   "kind": "DESERIALIZATION",
    "sites": [
     {
-     "file": "tensorflow/python/tools/saved_model_cli.py",
-     "function": "preprocess_input_exprs_arg_string",
-     "sink": "builtins.eval",
-     "line_at_vulnerable": 549,
-     "line": "input_dict[input_key] = eval(expr)  # pylint: disable=eval-used"
+     "file": "tensorflow/python/keras/saving/model_config.py",
+     "function": "model_from_yaml",
+     "sink": "yaml.load",
+     "line_at_vulnerable": 98,
+     "line": "config = yaml.load(yaml_string)"
     }
    ],
-   "fix_message": "Remove use of `eval` when evaluating the input example."
+   "fix_message": "Use the safer `safe_load` function instead of `unsafe_load` when possible"
   },
   {
    "id": "PYSEC-2021-376",
@@ -1457,6 +2055,13 @@
    "kind": "FILE_IO",
    "sites": [
     {
+     "file": "crawl4ai/async_crawler_strategy.back.py",
+     "function": "AsyncPlaywrightCrawlerStrategy.crawl",
+     "sink": "builtins.open",
+     "line_at_vulnerable": 455,
+     "line": "with open(local_file_path, \"r\", encoding=\"utf-8\") as f:"
+    },
+    {
      "file": "deploy/docker/utils.py",
      "function": "write_output_file",
      "sink": "os.open",
@@ -1541,6 +2146,3121 @@
     }
    ],
    "fix_message": "[core] Prevent RCE when using `--exec` with `%q` (CVE-2023-40581)"
+  }
+ ],
+ "guard_only_fixes": [
+  {
+   "id": "PYSEC-2023-127",
+   "repo": "9001/copyparty",
+   "fix": "043e3c7dd683113e2b1c15cacb9c8e68f76513ff",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1778",
+   "repo": "Aiven-Open/pghoard",
+   "fix": "fe9947642cc73bcacf6d19b93eb98f442223fb47",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2380",
+   "repo": "AstrBotDevs/AstrBot",
+   "fix": "aaec41e5054569ceaa1113593a34da7568e2d211",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3081",
+   "repo": "Avaiga/taipy",
+   "fix": "129fd407ffca49ee4ab853772c88d0c873e038dd",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1640",
+   "repo": "B-Step62/mlflow",
+   "fix": "2e02bc7bb70df243e6eb792689d9b8eba0013161",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3477",
+   "repo": "BerriAI/litellm",
+   "fix": "6a15adcd64137d37f73dee76dfe7481f8c2d9196",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3861",
+   "repo": "BerriAI/litellm",
+   "fix": "d910a95661fce3cdd36f3b06c03ecf9c46c6457c",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3811",
+   "repo": "Chainlit/chainlit",
+   "fix": "0565fd0eccb915fce159929598b053ed79f6e0c9",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1194",
+   "repo": "CybercentreCanada/assemblyline-service-client",
+   "fix": "351414e7e96cc1f5640ae71ae51b939e8ba30900",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2022-42993",
+   "repo": "DataDog/guarddog",
+   "fix": "37c7d0767ba28f4df46117d478f97652594c491c",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1430",
+   "repo": "DataDog/guarddog",
+   "fix": "9aa6a725b2c71d537d3c18d1c15621395ebb879c",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2022-42994",
+   "repo": "DataDog/guarddog",
+   "fix": "a56aff58264cb6b7855d71b00dc10c39a5dbd306",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2024-54",
+   "repo": "Ericsson/codechecker",
+   "fix": "46bada41e32f3ba0f6011d5c556b579f6dddf07a",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2148",
+   "repo": "GOVCERT-LU/eml_parser",
+   "fix": "99af03a09a90aaaaadd0ed2ffb5eea46d1ea2cc9",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2023-15",
+   "repo": "GeoNode/geonode",
+   "fix": "2fdfe919f299b21f1609bf898f9dcfde58770ac0",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1539",
+   "repo": "HKUDS/LightRAG",
+   "fix": "60777d535b719631680bcf5d0969bdef79ca4eaf",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4064",
+   "repo": "HKUDS/LightRAG",
+   "fix": "9207e7fd10cf6df3cf26e3dd1921490b34a2f132",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4064",
+   "repo": "HKUDS/LightRAG",
+   "fix": "a25862177a9b00e0edb870778a42b4155924de09",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4064",
+   "repo": "HKUDS/LightRAG",
+   "fix": "c598545aa0084a427bcb19a84ade5e0ec31fa673",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1506",
+   "repo": "HumanSignal/label-studio-sdk",
+   "fix": "4a9715c6b0b619371e89c09ea8d1c86ce5c880df",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1504",
+   "repo": "HumanSignal/label-studio",
+   "fix": "8cf6958e1e27ef6a03ed287e674470975d340885",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4079",
+   "repo": "InternLM/lmdeploy",
+   "fix": "d86046a0e6b02ecaaf7cdb74346d0477130221c2",
+   "kinds": [
+    "DESERIALIZATION"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1578",
+   "repo": "InternLM/lmdeploy",
+   "fix": "eb04b4281c5784a5cff5ea639c8f96b33b3ae5ee",
+   "kinds": [
+    "DESERIALIZATION",
+    "PROCESS_EXEC",
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2093",
+   "repo": "Josh-XT/AGiXT",
+   "fix": "2079ea5a88fa671a921bf0b5eba887a5a1b73d5f",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1852",
+   "repo": "Kludex/python-multipart",
+   "fix": "9433f4bbc9652bdde82bbe380984e32f8cfc89c4",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4311",
+   "repo": "Kozea/WeasyPrint",
+   "fix": "39cd37ce1610bd890388e26591c569db1cbab542",
+   "kinds": [
+    "PROCESS_EXEC",
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3490",
+   "repo": "Labs64/NetLicensing-MCP",
+   "fix": "fbbb1d5ff88eb5400ec933a84e75601ebee48927",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3682",
+   "repo": "Linuxfabrik/lib",
+   "fix": "d665042c55fae83a295ebc0023e8b77f6c473a28",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1841",
+   "repo": "Mayuri-Chan/pyrofork",
+   "fix": "2f2d515575cc9c360bd74340a61a1d2b1e1f1f95",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4258",
+   "repo": "MervinPraison/PraisonAI",
+   "fix": "1620b49f36945d8cc8ee5635b906c960df5097a0",
+   "kinds": [
+    "PROCESS_EXEC",
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4247",
+   "repo": "MervinPraison/PraisonAI",
+   "fix": "2a855c470077c7d2e2479a575f7ef7f548d51c33",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3888",
+   "repo": "MervinPraison/PraisonAI",
+   "fix": "2f9677abb2ea68eab864ee8b6a828fd0141612e1",
+   "kinds": [
+    "PROCESS_EXEC",
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-473",
+   "repo": "MervinPraison/PraisonAI",
+   "fix": "47bff65413beaa3c21bf633c1fae4e684348368c",
+   "kinds": [
+    "PROCESS_EXEC",
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4247",
+   "repo": "MervinPraison/PraisonAI",
+   "fix": "846568c7a5d8ce9e71e56e4c213f027c04909753",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3689",
+   "repo": "MobSF/Mobile-Security-Framework-MobSF",
+   "fix": "62563ca429a75b3e5d47a13b958e1d2e7d5e2bbf",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1670",
+   "repo": "MobSF/Mobile-Security-Framework-MobSF",
+   "fix": "7f3bc086c028c1b50889cab8a15f7b59b7abdaf9",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-318",
+   "repo": "Netflix/consoleme",
+   "fix": "2795a2bd553938a21c0643b37452971625ce67f5",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2243",
+   "repo": "OpenC3/cosmos",
+   "fix": "9957a9fa460c0c0cf5cdbf6a5931bbdd025246a5",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2243",
+   "repo": "OpenC3/cosmos",
+   "fix": "e6efccbd148ba0e3361c5891027f2373aa140d42",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-442",
+   "repo": "PaddlePaddle/Paddle",
+   "fix": "5c50d1a8b97b310cbc36560ec36d8377d6f29d7c",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1754",
+   "repo": "PaddlePaddle/Paddle",
+   "fix": "bdf6234fdc22e6ee7948950d271cbbe1d27edc93",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3031",
+   "repo": "ParzivalHack/PySpector",
+   "fix": "4e279e078c53d760fd321ff9b698d683c65ccb8e",
+   "kinds": [
+    "PROCESS_EXEC",
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-338",
+   "repo": "PrefectHQ/fastmcp",
+   "fix": "40bdfb6b1de0ce30609ee9ba5bb95ecd04a9fb71",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1678",
+   "repo": "Project-MONAI/MONAI",
+   "fix": "4014c8475626f20f158921ae0cf98ed259ae4d59",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1840",
+   "repo": "Pylons/pyramid",
+   "fix": "347d7750da6f45c7436dd0c31468885cc9343c85",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2857",
+   "repo": "Q00/ouroboros",
+   "fix": "4e70b760b4eb157469b58645339ba831f6513d37",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3915",
+   "repo": "QWED-AI/qwed-mcp",
+   "fix": "362e61892052e250c56cb1ee852024d6f98c467b",
+   "kinds": [
+    "PROCESS_EXEC",
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3914",
+   "repo": "QWED-AI/qwed-verification",
+   "fix": "6066b68c0c4f4cc2c3771824822aaa864d082ef8",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3914",
+   "repo": "QWED-AI/qwed-verification",
+   "fix": "dc9d4db72ca4b4ae3f96d0e6a0c27a9e38a06f61",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1858",
+   "repo": "Qiskit/qiskit-ibm-runtime",
+   "fix": "b78fca114133051805d00043a404b25a33835f4d",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1294",
+   "repo": "RyanDFIR/unfurl",
+   "fix": "7cc711a65b106742a21080b755f81c17b5725aa8",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-544",
+   "repo": "SepineTam/mcp-for-stata",
+   "fix": "e6f945941ae0c7cf5e74a428e0b3dc82b396382f",
+   "kinds": [
+    "PROCESS_EXEC",
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-558",
+   "repo": "Unstructured-IO/unstructured",
+   "fix": "b01d35b2373fd087d2e15162b9c021663c97155d",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-559",
+   "repo": "Upsonic/Upsonic",
+   "fix": "855053fce0662227d9246268ff4a0844b481a305",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-330",
+   "repo": "WaterFutures/EPyT-Flow",
+   "fix": "3fff9151494c7dbc72073830b734f0a7e550e385",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-526",
+   "repo": "abersheeran/rpc.py",
+   "fix": "491e7a841ed9a754796d6ab047a9fb16e23bf8bd",
+   "kinds": [
+    "DESERIALIZATION"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-392",
+   "repo": "abetlen/llama-cpp-python",
+   "fix": "b454f40a9a1787b2b5659cd2cb00819d983185df",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-329",
+   "repo": "adamghill/django-unicorn",
+   "fix": "17614200f27174f789d4af54cc3a1f2b0df7870c",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1314",
+   "repo": "adfinis/document-merge-service",
+   "fix": "a1edd39d33d1bdf75c31ea01c317547be90ca074",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4023",
+   "repo": "agronholm/anyio",
+   "fix": "eb562e6462ee46b1904e50b02ce00a858cdeb200",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4203",
+   "repo": "ahujasid/blender-mcp",
+   "fix": "30a3308446cd8f81a9446e5a2ed657c0d8d86072",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2024-24",
+   "repo": "aio-libs/aiohttp",
+   "fix": "1c335944d6a8b1298baf179b7c0b3069f10c514b",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1108",
+   "repo": "aio-libs/aiohttp",
+   "fix": "ce2e9758814527589b10759a20783fb03b98339f",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1097",
+   "repo": "aio-libs/aiohttp",
+   "fix": "f2a86fd5ac0383000d1715afddfa704413f0711e",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-302",
+   "repo": "aliasrobotics/cai",
+   "fix": "09ccb6e0baccf56c40e6cb429c698750843a999c",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-303",
+   "repo": "aliasrobotics/cai",
+   "fix": "e22a1220f764e2d7cf9da6d6144926f53ca01cde",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1118",
+   "repo": "ankitects/anki",
+   "fix": "06f7aa393d21d7d5dd8039e15d543b73c3346932",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1120",
+   "repo": "ansible/ansible",
+   "fix": "1e930684bc0a76ec3d094cd326738ad26416541c",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1127",
+   "repo": "ansys/pyansys-geometry",
+   "fix": "f82346b9432b06532e84f3278125f5879b4e9f3f",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-267",
+   "repo": "apache/airflow",
+   "fix": "1d4fd5c6eacab0b88f8660f9d780174434393f1a",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1199",
+   "repo": "astropy/astropy",
+   "fix": "22057d37b1313f5f5a9b5783df0a091d978dccb5",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2398",
+   "repo": "bentoml/BentoML",
+   "fix": "4e0eb007765ac04c7924220d643f264715cc9670",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2399",
+   "repo": "bentoml/BentoML",
+   "fix": "5fb7cd41f92e2a56b45391284cf15b9ac9963a1f",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1218",
+   "repo": "bentoml/BentoML",
+   "fix": "84d08cfeb40c5f2ce71b3d3444bbaa0fb16b5ca4",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-294",
+   "repo": "bentoml/BentoML",
+   "fix": "b35f4f4fcc53a8c3fe8ed9c18a013fe0a728e194",
+   "kinds": [
+    "DESERIALIZATION",
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-296",
+   "repo": "bentoml/bentoml",
+   "fix": "fd70379733c57c6368cc022ac1f841b7b426db7b",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1541",
+   "repo": "berriai/litellm",
+   "fix": "441c7275ed2715f47650a7c2e525055c804073a9",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-293",
+   "repo": "blacklanternsecurity/bbot",
+   "fix": "0ede97fa887de33fcfd1378b4213a09c21dc6140",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-292",
+   "repo": "blacklanternsecurity/bbot",
+   "fix": "6325f2f4f8f6f4545703e4c9b8004e69f71bec82",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3606",
+   "repo": "brightio/penelope",
+   "fix": "a040afb5db32c7e80b5e8a2f9b2164cf911cfa62",
+   "kinds": [
+    "PROCESS_EXEC",
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1226",
+   "repo": "bugsink/bugsink",
+   "fix": "1001726f4389e982c486cdd5fa81941cb46cfc33",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1226",
+   "repo": "bugsink/bugsink",
+   "fix": "211ddf76758c808c095b5f836c363f148d934d21",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1226",
+   "repo": "bugsink/bugsink",
+   "fix": "2c41fbe3881bdea83399a7f9fdc8cff198ae089f",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1226",
+   "repo": "bugsink/bugsink",
+   "fix": "53cf1a17a3e96f7c83c7451fd56f980a09d0c9b0",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1226",
+   "repo": "bugsink/bugsink",
+   "fix": "55a155003d0b416ea008c5e7dcde85130ad21d9b",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1226",
+   "repo": "bugsink/bugsink",
+   "fix": "b94aa8a5c96ce8cdd9711b6beb4e518264993ac2",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1226",
+   "repo": "bugsink/bugsink",
+   "fix": "c341687bd655543730c812db35c29199f788be6b",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1226",
+   "repo": "bugsink/bugsink",
+   "fix": "c87217bd565122ba70af90436e3ab2cd9bee658f",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1753",
+   "repo": "canonical/operator",
+   "fix": "fea6d2072435a62170d4c01272572f1a7e916e61",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1255",
+   "repo": "clearml/clearml",
+   "fix": "64fb2bcbdbb87a74af90dd723d5ef4a99fceeb73",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1258",
+   "repo": "clearml/clearml",
+   "fix": "831c1394da0d99cc65b0fe060a6dfff13816efab",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-749",
+   "repo": "clinical-genomics/scout",
+   "fix": "952a2e2319af2d95d22b017a561730feac086ff1",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-436",
+   "repo": "cmusatyalab/opendiamond",
+   "fix": "398049c187ee644beabab44d6fece82251c1ea56",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-314",
+   "repo": "cobbler/cobbler",
+   "fix": "4b20397425a5d42a2d8927233654f4d7435bd4c2",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-797",
+   "repo": "cobbler/cobbler",
+   "fix": "8232c0e88ec7382d3f8d3bf48c81a4a91ac4325d",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-797",
+   "repo": "cobbler/cobbler",
+   "fix": "f757e3096fcd32397609ca38efb01f19d16dd634",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2022-204",
+   "repo": "cookiecutter/cookiecutter",
+   "fix": "fdffddb31fd2b46344dfa317531ff155e7999f77",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2134",
+   "repo": "copier-org/copier",
+   "fix": "cb80a3ffc9c3787de3ed837e04ca29a0ff8ca3df",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1293",
+   "repo": "cyanomiko/dcnnt-py",
+   "fix": "b4021d784a97e25151a5353aa763a741e9a148f5",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3467",
+   "repo": "cyberjunky/python-garminconnect",
+   "fix": "77a3837f1f79d486663c9646438e70e8319e1a48",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3467",
+   "repo": "cyberjunky/python-garminconnect",
+   "fix": "f74174a5647e1af78eca1f8f3a0aa5dc5a899947",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1287",
+   "repo": "dagster-io/dagster",
+   "fix": "dbb064c2ddda74265b8174edd9775e1302ca6ba0",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2274",
+   "repo": "danielgatis/rembg",
+   "fix": "7c76d3cdc5757ffbda6a76664b24cfbecdb80273",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4205",
+   "repo": "datamodel-code-generator/datamodel-code-generator",
+   "fix": "5e94b8f4203198798ec66b8e48217f70af69a0dc",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2440",
+   "repo": "dbt-labs/dbt-common",
+   "fix": "e547954a48bac9394ef6eb98432e429dce9a7709",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2017-99",
+   "repo": "devsnd/cherrymusic",
+   "fix": "62dec34a1ea0741400dd6b6c660d303dcd651e86",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-327",
+   "repo": "dgilland/pydash",
+   "fix": "2015f0a4bcdbc3a5b27652e38fe97b3ee13ac15f",
+   "kinds": [
+    "DESERIALIZATION",
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2023-179",
+   "repo": "dgilland/pydash",
+   "fix": "6ff0831ad285fff937cafd2a853f20cc9ae92021",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2129",
+   "repo": "dgtlmoon/changedetection.io",
+   "fix": "1d7d812eb0faab37042246e2fbce04f29bb1b3aa",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1239",
+   "repo": "dgtlmoon/changedetection.io",
+   "fix": "49bc982c697169c98b79698889fb9d26f6b3317f",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1242",
+   "repo": "dgtlmoon/changedetection.io",
+   "fix": "f7e9846c9b40a229813d19cdb66bf60fbe5e6a2a",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1296",
+   "repo": "django/django",
+   "fix": "924a0c092e65fa2d0953fd1855d2dc8786d94de2",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-630",
+   "repo": "django/django",
+   "fix": "a132d411c6986418ee6c0edc331080aa792fee6e",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4215",
+   "repo": "docling-project/docling",
+   "fix": "1612b8875b0937447ce3122536fb5360a7102a0a",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4216",
+   "repo": "docling-project/docling",
+   "fix": "38b6fa0a465d46fdacbbec333f50fa19c4f6b342",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-322",
+   "repo": "eosphoros-ai/DB-GPT",
+   "fix": "295cdb8723663d5b0954d5d1dfb4f02b7223b8ff",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-324",
+   "repo": "eosphoros-ai/DB-GPT",
+   "fix": "780ce803e325b87f4ddfbe5824451e379aeee56c",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3834",
+   "repo": "esphome/device-builder",
+   "fix": "b6387db3f8bf1d3df5771f40e9856b959ae4f6a1",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1328",
+   "repo": "esphome/esphome",
+   "fix": "d814ed1d4adc71fde47c4df41215bee449884513",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2023-107",
+   "repo": "ethyca/fides",
+   "fix": "f526d9ffb176006d701493c9d0eff6b4884e811f",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1824",
+   "repo": "facelessuser/pymdown-extensions",
+   "fix": "b7bb4878d6017c03c8dc97c42d8d3bb6ee81db9d",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3609",
+   "repo": "facelessuser/pymdown-extensions",
+   "fix": "edce35586d11a1ef78bb187bc60497fe6dbf3b64",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3568",
+   "repo": "flytohub/flyto-core",
+   "fix": "d5f89d71303e3c1e6418d347c5c55fcd173cc8cc",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1389",
+   "repo": "fonttools/fonttools",
+   "fix": "a696d5ba93270d5954f98e7cab5ddca8a02c1e32",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1399",
+   "repo": "fugue-project/fugue",
+   "fix": "6f25326779fd1f528198098d6287c5a863176fc0",
+   "kinds": [
+    "DESERIALIZATION"
+   ]
+  },
+  {
+   "id": "PYSEC-2024-319",
+   "repo": "gaizhenbiao/chuanhuchatgpt",
+   "fix": "526c615c437377ee9c71f866fd0f19011910f705",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2022-225",
+   "repo": "ganga-devs/ganga",
+   "fix": "730e7aba192407d35eb37dd7938d49071124be8c",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2023-86",
+   "repo": "geopython/OWSLib",
+   "fix": "b92687702be9576c0681bb11cad21eb631b9122f",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2985",
+   "repo": "geopython/pygeoapi",
+   "fix": "bf25b8695edbdd5476eeffc102b633d1d3e45f52",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1917",
+   "repo": "getsentry/sentry-python",
+   "fix": "763e40aa4cb57ecced467f48f78f335c87e9bdff",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3837",
+   "repo": "gitpython-developers/GitPython",
+   "fix": "1b0d2d9b91575f7db44ef4ff58ac37fc9335e5f6",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3836",
+   "repo": "gitpython-developers/GitPython",
+   "fix": "56806080c1348749b07daa4a2024ce47b3cad285",
+   "kinds": [
+    "PROCESS_EXEC",
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3839",
+   "repo": "gitpython-developers/GitPython",
+   "fix": "701ce32fe5ba8cb622c0e0342a376a6beb47d738",
+   "kinds": [
+    "PROCESS_EXEC",
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3842",
+   "repo": "gitpython-developers/GitPython",
+   "fix": "8ac5a30519b6f4af85398b9b9d7064ff4d452da2",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3843",
+   "repo": "gitpython-developers/GitPython",
+   "fix": "96a888f4d782cb2f80452148e48e60ce4af6d541",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3841",
+   "repo": "gitpython-developers/GitPython",
+   "fix": "f2550b65bf60ca087190981e2c7b6865e201f40c",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1415",
+   "repo": "gradio-app/gradio",
+   "fix": "24a583688046867ca8b8b02959c441818bdb34a2",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2179",
+   "repo": "gradio-app/gradio",
+   "fix": "97d541f3d5fd05b2587a69ecc94b68fe5d2d7004",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-346",
+   "repo": "gramps-project/gramps-web-api",
+   "fix": "3ed4342711e3ec849552df09b1fe2fbf2ca5c29a",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2020-173",
+   "repo": "gzpan123/pip",
+   "fix": "a4c735b14a62f9cb864533808ac63936704f2ace",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3429",
+   "repo": "hanxi/xiaomusic",
+   "fix": "88404da7a283f2c0a796a4cd16bbb6e6aa1f4722",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-331",
+   "repo": "haris-musa/excel-mcp-server",
+   "fix": "f51340ecd5778952405044b203d3a2d4c8a46833",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1574",
+   "repo": "hiyouga/LLaMA-Factory",
+   "fix": "2989d39239d2f46e584c1e1180ba46b9768afb2a",
+   "kinds": [
+    "PROCESS_EXEC",
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1575",
+   "repo": "hiyouga/LLaMA-Factory",
+   "fix": "b3aa80d54a67da45e9e237e349486fb9c162b2ac",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1576",
+   "repo": "hiyouga/LLaMA-Factory",
+   "fix": "bb7bf51554d4ba8432333c35a5e3b52705955ede",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3669",
+   "repo": "home-assistant/core",
+   "fix": "567fe858289876b68b8162a77bd46e1e1af79752",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2020-158",
+   "repo": "horazont/xmpp-http-upload",
+   "fix": "82056540191e89f0cd697c81f57714c00962ed75",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3716",
+   "repo": "huggingface/datasets",
+   "fix": "f989ef9b4cc6c0039a7a82458eebca49e2b58b4b",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3929",
+   "repo": "huggingface/transformers",
+   "fix": "eaaaf8494dd5386634ae37d1d122212fdc315be5",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4222",
+   "repo": "hydra-ecosystem/hydra",
+   "fix": "0dd18084589a3d3e577d1f1a8a48fb485c94a5e6",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4223",
+   "repo": "hydra-ecosystem/hydra",
+   "fix": "2c82bbb3f39603b336cb852461739fdf7a38798a",
+   "kinds": [
+    "DESERIALIZATION"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4222",
+   "repo": "hydra-ecosystem/hydra",
+   "fix": "4720dfca2bde27fa140ec287a05709668fbdf168",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4223",
+   "repo": "hydra-ecosystem/hydra",
+   "fix": "f462811117b5ecfd2ed652ed52d6b4e3771bd943",
+   "kinds": [
+    "DESERIALIZATION"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2057",
+   "repo": "ietf-tools/xml2rfc",
+   "fix": "73fb1c91fc62ac540bb6bd24f982f2becf84c1b0",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2058",
+   "repo": "ietf-tools/xml2rfc",
+   "fix": "f2b245bc0aeeac0667c8f74e976c466c5991f0e4",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2022-302",
+   "repo": "ikus060/rdiffweb",
+   "fix": "323383d1db656f1b1291be529947bd943a6b0e99",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4163",
+   "repo": "issdandavis/SCBE-AETHERMOORE",
+   "fix": "ca833795e01eab060e92572e5f667c0c136b8c1e",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4163",
+   "repo": "issdandavis/SCBE-AETHERMOORE",
+   "fix": "de7779b722c501dbcf4eae95dd51bb3984506fb1",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1469",
+   "repo": "jaraco/jaraco.context",
+   "fix": "7b26a42b525735e4085d2e994e13802ea339d5f9",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2463",
+   "repo": "jelmer/dulwich",
+   "fix": "57efc4aa1581e038915a0fd79365be53b150f4a9",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2464",
+   "repo": "jelmer/dulwich",
+   "fix": "e3331b3b3a122fc313460182f928f59723580b7b",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-357",
+   "repo": "jjjake/internetarchive",
+   "fix": "cba2d459e10a9489fb35caeba0b03e80f5f5d7c2",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2022-43016",
+   "repo": "jrspruitt/ubi_reader",
+   "fix": "d5d68e6b1b9f7070c29df5f67fc060f579ae9139",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-341",
+   "repo": "jugmac00/flask-reuploaded",
+   "fix": "d64c6b2f71cb73734fc38baa0e3e156926361288",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2545",
+   "repo": "kedro-org/kedro-plugins",
+   "fix": "65115f76b872217317734b6bde8927170c98fc4b",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2324",
+   "repo": "keras-team/keras",
+   "fix": "2465b6657b02c8eed308759b7e800e295ae01888",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1486",
+   "repo": "keras-team/keras",
+   "fix": "47fcb397ee4caffd5a75efd1fa3067559594e951",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3630",
+   "repo": "keras-team/keras",
+   "fix": "9867df45c456dd1077a6243bb56219f66e288150",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3630",
+   "repo": "keras-team/keras",
+   "fix": "d338a45204bdc787c8b3c4a9b82c1911cd52dedf",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3632",
+   "repo": "keras-team/keras",
+   "fix": "d8caeb58cc9e61ea092445dc7a20908ca8d693e2",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3562",
+   "repo": "koxudaxi/datamodel-code-generator",
+   "fix": "2c93c9b712f43391dcfa975a1e4aa0b7c93ccbba",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3558",
+   "repo": "koxudaxi/datamodel-code-generator",
+   "fix": "2ff4a72b4550a2b2069754c5b075b1655067e5fb",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3557",
+   "repo": "koxudaxi/datamodel-code-generator",
+   "fix": "577d49569c2254c371a97e495020ae2238a73b84",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3556",
+   "repo": "koxudaxi/datamodel-code-generator",
+   "fix": "d2d5cecd9fd3a2a6dbf148bf0740b83a11fc6820",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2193",
+   "repo": "langchain-ai/langchain",
+   "fix": "27add913474e01e33bededf4096151130ba0d47c",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1514",
+   "repo": "langchain-ai/langchain",
+   "fix": "604dfe2d99246b0c09f047c604f0c63eafba31e7",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1514",
+   "repo": "langchain-ai/langchain",
+   "fix": "77209f315efd13442ec51c67719ba37dfaa44511",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1510",
+   "repo": "langchain-ai/langchain",
+   "fix": "aad3d8bd47d7f5598156ff2bdcc8f736f24a7412",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2556",
+   "repo": "langchain-ai/langchain",
+   "fix": "dcaf7795a3e6590af55c3ff7bda6add6355e9ea6",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1527",
+   "repo": "langchain-ai/langgraph",
+   "fix": "c5744f583b11745cd406f3059903e17bbcdcc8ac",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2574",
+   "repo": "langchain-ai/langgraph",
+   "fix": "f91d79d0c86932ded6e3b9f195d5a0bbd5aef99c",
+   "kinds": [
+    "DESERIALIZATION"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4235",
+   "repo": "langflow-ai/langflow",
+   "fix": "094694d3f20c1da499f4d8dbac15c510609e3026",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4231",
+   "repo": "langflow-ai/langflow",
+   "fix": "2754c84aad1306f463db1c3bbb3e8ffbe85da77d",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-379",
+   "repo": "langflow-ai/langflow",
+   "fix": "73b6612e3ef25fdae0a752d75b0fabd47328d4f0",
+   "kinds": [
+    "PROCESS_EXEC",
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4230",
+   "repo": "langflow-ai/langflow",
+   "fix": "b8fe970493fd5fb2e1fc71dfccc79f90b76058fa",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4233",
+   "repo": "langflow-ai/langflow",
+   "fix": "cb6f7508dda83ead9c3e4417e96e4b5bd9a260c3",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-376",
+   "repo": "langflow-ai/langflow",
+   "fix": "d8c6480daa17b2f2af0b5470cdf5c3d28dc9e508",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4239",
+   "repo": "langflow-ai/langflow",
+   "fix": "eba285edf1dd4a33bf23a9cb8113c991fcdf3d1d",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4239",
+   "repo": "langflow-ai/langflow",
+   "fix": "efbc4a16e639409d938a4883463d27ef0bc637a0",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4230",
+   "repo": "langflow-ai/langflow",
+   "fix": "f0fd436fe9829192ee550e6cb46961a01dd37032",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4238",
+   "repo": "langflow-ai/langflow",
+   "fix": "fb3d6ec90b1e4d52eaa40915a64b1f86b6542f55",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2580",
+   "repo": "langroid/langroid",
+   "fix": "00b7dd7b79c5d03c94be284cf3459d98195ebfba",
+   "kinds": [
+    "PROCESS_EXEC",
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-383",
+   "repo": "langroid/langroid",
+   "fix": "30abbc1a854dee22fbd2f8b2f575dfdabdb603ea",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2578",
+   "repo": "langroid/langroid",
+   "fix": "56e2756ecab70a70a7e6edbee2f2187b8484683e",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-426",
+   "repo": "laowantong/mocodo",
+   "fix": "f9368df28518b6c4a92fd207c260f1978ec34d6e",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2605",
+   "repo": "litestar-org/litestar",
+   "fix": "57e706e7effdc182fc9a2af5981bc88afb21851b",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2605",
+   "repo": "litestar-org/litestar",
+   "fix": "a07b79b84d8717bec5ac4d4674c1e4920ba9c813",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1195",
+   "repo": "lmfit/asteval",
+   "fix": "45bb47533f7abb5479618ae7f6a809215700dcb2",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3807",
+   "repo": "lmfit/asteval",
+   "fix": "a3e56e7f8ed567a4817684d94213b290359077b4",
+   "kinds": [
+    "PROCESS_EXEC",
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3810",
+   "repo": "masci/banks",
+   "fix": "a215f6d779966945c56e0af5abed1ae5916fd9d3",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-411",
+   "repo": "mesop-dev/mesop",
+   "fix": "c6b382f363b73ac32c402a2db3aadc7784f66a5b",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2378",
+   "repo": "microsoft/apm",
+   "fix": "77d1dda8303c8d7ccb6148788a6274fdece98499",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3538",
+   "repo": "microsoft/prompty",
+   "fix": "88ac9948d7d37995edbb2f6d36913436626c39e1",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3944",
+   "repo": "microsoft/winml-cli",
+   "fix": "f4073e0ef4700a25b623487e7e45c421ca0b9993",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2205",
+   "repo": "mindsdb/mindsdb",
+   "fix": "87a44bdb2b97f963e18f10a068e1a1e2690505ef",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2023-309",
+   "repo": "mlflow/mlflow",
+   "fix": "1c6309f884798fbf56017a3cc808016869ee8de4",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2023-253",
+   "repo": "mlflow/mlflow",
+   "fix": "1da75dfcecd4d169e34809ade55748384e8af6c1",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2655",
+   "repo": "mlflow/mlflow",
+   "fix": "1dcbb0c2fbd1f446c328830e601ca13a28219b8a",
+   "kinds": [
+    "DESERIALIZATION"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-424",
+   "repo": "mlflow/mlflow",
+   "fix": "202fac4c83ccc8544c087c142b80196d0e60695c",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-423",
+   "repo": "mlflow/mlflow",
+   "fix": "361b6f620adf98385c6721e384fb5ef9a30bb05e",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-425",
+   "repo": "mlflow/mlflow",
+   "fix": "3bf6d81ac4d38654c8ff012dbd0c3e9f17e7e346",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2024-239",
+   "repo": "mlflow/mlflow",
+   "fix": "400c226953b4568f4361bc0a0c223511652c2b9d",
+   "kinds": [
+    "PROCESS_EXEC",
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1662",
+   "repo": "mlflow/mlflow",
+   "fix": "5044878da0c1851ccfdd5c0a867157ed9a502fbc",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1652",
+   "repo": "mlflow/mlflow",
+   "fix": "5139b1087d686fa52e2b087e09da66aff86297b1",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2658",
+   "repo": "mlflow/mlflow",
+   "fix": "5bf2ec2bd4222a18d78631183ac7f6b752afe8a4",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1640",
+   "repo": "mlflow/mlflow",
+   "fix": "5f98ff98659dddb188591ecf6b10a4e276a0dba7",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2023-28",
+   "repo": "mlflow/mlflow",
+   "fix": "63ef72aa4334a6473ce7f889573c92fcae0b3c0d",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2023-280",
+   "repo": "mlflow/mlflow",
+   "fix": "6dde93758d42455cb90ef324407919ed67668b9b",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2023-29",
+   "repo": "mlflow/mlflow",
+   "fix": "7162a50c654792c21f3e4a160eb1a0e6a34f6e6e",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1638",
+   "repo": "mlflow/mlflow",
+   "fix": "7791b8cdd595f21b5f179c7b17e4b5eb5cbbe654",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2024-242",
+   "repo": "mlflow/mlflow",
+   "fix": "96f0b573a73d8eedd6735a2ce26e08859527be07",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-423",
+   "repo": "mlflow/mlflow",
+   "fix": "a22ce7157f646bdce4c95106fc38ccc9ca289205",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1652",
+   "repo": "mlflow/mlflow",
+   "fix": "a98a341a7222f894b7735db575ad9311ecaba4e3",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-422",
+   "repo": "mlflow/mlflow",
+   "fix": "b9ab9ed77e1deda9697fe472fb1079fd428149ee",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1640",
+   "repo": "mlflow/mlflow",
+   "fix": "e7dc0574fa3459e0003cfeb68d4e4a625491f03d",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2023-68",
+   "repo": "mlflow/mlflow",
+   "fix": "f73147496e05c09a8b83d95fb4f1bf86696c6342",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2024-244",
+   "repo": "mlflow/mlflow",
+   "fix": "f8d51e21523238280ebcfdb378612afd7844eca8",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2023-69",
+   "repo": "mlflow/mlflow",
+   "fix": "fae77a525dd908c56d6204a4cef1c1c75b4e9857",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1789",
+   "repo": "mmaitre314/picklescan",
+   "fix": "173c8f2a869ea9b69b543477525ec70611c3c6f4",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1792",
+   "repo": "mmaitre314/picklescan",
+   "fix": "1931c2d04eaca8d20597705ff39cab78ba364e4b",
+   "kinds": [
+    "DESERIALIZATION"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1788",
+   "repo": "mmaitre314/picklescan",
+   "fix": "58983e1c20973ac42f2df7ff15d7c8cd32f9b688",
+   "kinds": [
+    "DESERIALIZATION",
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1790",
+   "repo": "mmaitre314/picklescan",
+   "fix": "70c1c6c31beb6baaf52c8db1b6c3c0e84a6f9dab",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4136",
+   "repo": "mmaitre314/picklescan",
+   "fix": "7f994d62084fe43f1cffdef2f9bae6923344ef53",
+   "kinds": [
+    "DESERIALIZATION"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1787",
+   "repo": "mmaitre314/picklescan",
+   "fix": "a01c58d5dd7960db557b849817c0ab83ab111ef1",
+   "kinds": [
+    "DESERIALIZATION",
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4132",
+   "repo": "mmaitre314/picklescan",
+   "fix": "aecd11be98702caa9ba9b12189d91ad596a36114",
+   "kinds": [
+    "DESERIALIZATION"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2873",
+   "repo": "mmaitre314/picklescan",
+   "fix": "b9997634683a4f4bd0c7e3701e7ce7e90fe70e8c",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4134",
+   "repo": "mmaitre314/picklescan",
+   "fix": "bf26452ae2e3204429762c2bb1aa9eacd40436bb",
+   "kinds": [
+    "DESERIALIZATION",
+    "PROCESS_EXEC",
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2630",
+   "repo": "modelcontextprotocol/servers",
+   "fix": "862e717ff714987bd5577318df09858e14883863",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-254",
+   "repo": "modelscope/agentscope",
+   "fix": "7d285e862f86fa1d96ed04c4cd40a5f1b8f9189a",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2223",
+   "repo": "modoboa/modoboa",
+   "fix": "27a7aa133d3608fe8c25ae39125d1012c333cbfa",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1904",
+   "repo": "nexB/scancode.io",
+   "fix": "07ec0de1964b14bf085a1c9a27ece2b61ab6105c",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3665",
+   "repo": "nicolargo/glances",
+   "fix": "5c07c0d96423e9d5b9de71dd92e3717c66f504bd",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2167",
+   "repo": "nicolargo/glances",
+   "fix": "6f4ec53d967478e69917078e6f73f448001bf107",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3668",
+   "repo": "nicolargo/glances",
+   "fix": "9c280eae5419da680827024b60f6265956e31994",
+   "kinds": [
+    "PROCESS_EXEC",
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3666",
+   "repo": "nicolargo/glances",
+   "fix": "ea4cf2f54f0d961e24aa0b24fff9584bab39db93",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2237",
+   "repo": "nltk/nltk",
+   "fix": "89fe2ec2c6bae6e2e7a46dad65cc34231976ed8a",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2021-97",
+   "repo": "nvbn/thefuck",
+   "fix": "e343c577cd7da4d304b837d4a07ab4df1e023092",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4113",
+   "repo": "oauthlib/oauthlib",
+   "fix": "c888359f3c42bec235b2c5caab2069c9ed62457c",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3872",
+   "repo": "omnigent-ai/omnigent",
+   "fix": "1f3f398f41cbf97b905133c21e848621c21da6e0",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3874",
+   "repo": "omnigent-ai/omnigent",
+   "fix": "25a22dc9e6da4648d23749f0a589e47e6aed991b",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3585",
+   "repo": "onionshare/onionshare",
+   "fix": "48f31cfac077fcc9c04c67c2a6dbf87d956f5eec",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3586",
+   "repo": "onionshare/onionshare",
+   "fix": "a090e97193efc91fbeac9dace7793ea568b83cf5",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2024-222",
+   "repo": "onnx/onnx",
+   "fix": "66b7fb630903fdcf3e83b6b6d56d82e904264a20",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3597",
+   "repo": "open-webui/open-webui",
+   "fix": "05098d25a58d03738e01c4e85e8852c3b4ad849c",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3592",
+   "repo": "open-webui/open-webui",
+   "fix": "386ac958144dbbbf0aa6e268070d72b681a318aa",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2764",
+   "repo": "open-webui/open-webui",
+   "fix": "387225eb8b3906909436004f84fff1b012e067d4",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1731",
+   "repo": "open-webui/open-webui",
+   "fix": "613a087387c094e71ee91d29c015195ef401e160",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1729",
+   "repo": "open-webui/open-webui",
+   "fix": "8af6a4cf21b756a66cd58378a01c60f74c39b7ca",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-815",
+   "repo": "openstack/glance",
+   "fix": "5191ed1879c5fd5b2694f922bcedec232f461088",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-815",
+   "repo": "openstack/glance",
+   "fix": "7d3a1db33ccbd25b9fc7326ce3468eabd2a41a99",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-815",
+   "repo": "openstack/glance",
+   "fix": "a2d986b976e9325a272e2d422465165315d19fe6",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-430",
+   "repo": "openstack/murano",
+   "fix": "28de8c36c9dbe4aaf4d062e6fb6099afd437f49b",
+   "kinds": [
+    "DESERIALIZATION"
+   ]
+  },
+  {
+   "id": "PYSEC-2012-38",
+   "repo": "openstack/nova",
+   "fix": "2427d4a99bed35baefd8f17ba422cb7aae8dcca7",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-881",
+   "repo": "openstack/nova",
+   "fix": "76363226bd8533256f7795bba358d7f4b8a6c9e6",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-881",
+   "repo": "openstack/nova",
+   "fix": "ad3241929ea00569c74505ed002208ce360c667e",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2012-38",
+   "repo": "openstack/nova",
+   "fix": "b0feaffdb2b1c51182b8dce41b367f3449af5dd9",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3061",
+   "repo": "oraios/serena",
+   "fix": "016ccbe1c095a3eed7967737ac1d4df2754f5d96",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3817",
+   "repo": "oscal-compass/compliance-trestle",
+   "fix": "0f82d19bd42f9cc0f1b3acd7fc3f6dafe3b6ae10",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2425",
+   "repo": "oscal-compass/compliance-trestle",
+   "fix": "247fcce289f60103f3d8e28d8ec51a6986b94fb6",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4030",
+   "repo": "oscal-compass/compliance-trestle",
+   "fix": "37ed44f5f2e074202c8eb7c2f203c05d19461cdc",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4030",
+   "repo": "oscal-compass/compliance-trestle",
+   "fix": "5335ff873a2a68eb7de43df029bea09cadff22fd",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2427",
+   "repo": "oscal-compass/compliance-trestle",
+   "fix": "53de5e75332888ea54f5da41d4c7859bb1d608e1",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2426",
+   "repo": "oscal-compass/compliance-trestle",
+   "fix": "5c65c5926fe7ca908b9c1d281f904e7d97ba8310",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2425",
+   "repo": "oscal-compass/compliance-trestle",
+   "fix": "7d107b3ac53caca7bde97a6278b23cd739d94525",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2424",
+   "repo": "oscal-compass/compliance-trestle",
+   "fix": "89f4e53d159e8ff901da4d7c3b51c9556bd32ec0",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2424",
+   "repo": "oscal-compass/compliance-trestle",
+   "fix": "9abc492329fcc8d0557182317de9bde854385da3",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2426",
+   "repo": "oscal-compass/compliance-trestle",
+   "fix": "d00a0c2f702c24f7016009fbd626036f5c46f47b",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2644",
+   "repo": "paipeline/MetaGPT",
+   "fix": "d04ffc8dc67903e8b327f78ec121df5e190ffc7b",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1761",
+   "repo": "pdfminer/pdfminer.six",
+   "fix": "b808ee05dd7f0c8ea8ec34bdf394d40e63501086",
+   "kinds": [
+    "DESERIALIZATION",
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-729",
+   "repo": "pgadmin-org/pgadmin4",
+   "fix": "dccd4f0bbaafa783d9f0360c7592b128d5cc3928",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1776",
+   "repo": "pgadmin-org/pgadmin4",
+   "fix": "e374edc69239b3e02ecde895e27d9f9e488b87ee",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3485",
+   "repo": "pipeboard-co/meta-ads-mcp",
+   "fix": "7d9926336bbdac6285a988d043c4ccfe126c94c5",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2877",
+   "repo": "pipecat-ai/pipecat",
+   "fix": "7519c26ac5508573c35fa3a9c4717b013993d129",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4138",
+   "repo": "plone/plone.app.portlets",
+   "fix": "1d9cacacfad9ed08b890dadc6e75741e295dc151",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4138",
+   "repo": "plone/plone.app.portlets",
+   "fix": "8a0641dc4054a2b13834bba00c67cd9a2fd189e1",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4138",
+   "repo": "plone/plone.app.portlets",
+   "fix": "fb979f01b57dd2fc06c90ee6577eb5eb285da8f1",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4300",
+   "repo": "posit-dev/py-shiny",
+   "fix": "1d8ecb46cbc9621b7dc8812111d26692e086b376",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2023-41",
+   "repo": "pretalx/pretalx",
+   "fix": "60722c43cf975f319e94102e6bff320723776890",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4139",
+   "repo": "psd-tools/psd-tools",
+   "fix": "a3d9a53ad51e667b5772a4f636ca6f2e16f4b271",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3019",
+   "repo": "py-pdf/pypdf",
+   "fix": "3c550b3196adeba1506a26e57c09c09fac75e9aa",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2266",
+   "repo": "pydicom/pydicom",
+   "fix": "6414f01a053dff925578799f5a7208d2ae585e82",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-493",
+   "repo": "pyload/pyload",
+   "fix": "70a44fe02c03bce92337b5d370d2a45caa4de3d4",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2267",
+   "repo": "pyload/pyload",
+   "fix": "c4cf995a2803bdbe388addfc2b0f323277efc0e1",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2996",
+   "repo": "pyload/pyload",
+   "fix": "f5e284fcdfeaf08436bb03e5fcf697aaac659d8b",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1823",
+   "repo": "pyload/pyload",
+   "fix": "fc4b136e9c4e7dcbb8e467ae802cb2c3f70a71b0",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1796",
+   "repo": "pypa/pip",
+   "fix": "8e227a9be4faa9594e05d02ca05a413a2a4e7735",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2025-49",
+   "repo": "pypa/setuptools",
+   "fix": "250a6d17978f9f6ac3ac887091f2d32886fbbb0b",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4014",
+   "repo": "pypa/virtualenv",
+   "fix": "d721ff140ce4afdc2a9b76751e4584e25d9fbea6",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2047",
+   "repo": "pypa/wheel",
+   "fix": "7a7d2de96b22a9adf9208afcc9547e1001569fef",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2047",
+   "repo": "pypa/wheel",
+   "fix": "934fe177ff912c8e03d5ae951d3805e1fd90ba5e",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3452",
+   "repo": "python-pillow/Pillow",
+   "fix": "03992618118b4a76b6163cd72ab5ecd684133b83",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4341",
+   "repo": "python-pillow/Pillow",
+   "fix": "19b695fdcc5eddc37374e2b1645fc4185edaf71d",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4335",
+   "repo": "python-pillow/Pillow",
+   "fix": "2852a3e3d568997ddec745fc800991f138878f4b",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-457",
+   "repo": "python-pillow/Pillow",
+   "fix": "45c726fd4daa63236a8f3653530f297dc87b160a",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4338",
+   "repo": "python-pillow/Pillow",
+   "fix": "7cb0e02389d8aac2a60896a490f572db0b07b841",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2257",
+   "repo": "python-pillow/Pillow",
+   "fix": "88194166691b7b603529b8b036ab3ab9cedd2de4",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2257",
+   "repo": "python-pillow/Pillow",
+   "fix": "b0e06caa64c1405aa3da0bb1d2bd9a77ca22de7f",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3494",
+   "repo": "python-pillow/Pillow",
+   "fix": "eada3cbd7fb9963ee90673fb7b5270124a0d5f4b",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4337",
+   "repo": "python-pillow/Pillow",
+   "fix": "f1acfc54c53502948d0d14121872061df931db48",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2445",
+   "repo": "qlustered/deepdiff",
+   "fix": "0d07ec21d12b46ef4e489383b363eadc22d990fb",
+   "kinds": [
+    "DESERIALIZATION"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2296",
+   "repo": "ray-project/ray",
+   "fix": "c02bd31ae31996805868baa446a131a8d304525f",
+   "kinds": [
+    "DESERIALIZATION"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3809",
+   "repo": "ronf/asyncssh",
+   "fix": "3d515ba9ba0cd9990d248bdf62bcf05d51261a88",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3808",
+   "repo": "ronf/asyncssh",
+   "fix": "d730803b8e4e94c20c7580d90f94d1e05f9f58de",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2025-248",
+   "repo": "run-llama/llama_index",
+   "fix": "0008041e8dde8e519621388e5d6f558bde6ef42e",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1568",
+   "repo": "run-llama/llama_index",
+   "fix": "266eb3b3a61f158112726d75a5f5f0b90e34ded0",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-396",
+   "repo": "run-llama/llama_index",
+   "fix": "2c92e88838a5f481d50840240b1dd3180066c6f5",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-396",
+   "repo": "run-llama/llama_index",
+   "fix": "5fbcb5a8b9f20f81b791c7fc8849e352613ab475",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2025-249",
+   "repo": "run-llama/llama_index",
+   "fix": "702e4340623092fac4cf2fe95eb9465034856da3",
+   "kinds": [
+    "DESERIALIZATION"
+   ]
+  },
+  {
+   "id": "PYSEC-2025-252",
+   "repo": "run-llama/llama_index",
+   "fix": "a86c96ae0e662492eeb471b658ae849a93f628ff",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2025-246",
+   "repo": "run-llama/llama_index",
+   "fix": "b57e76738c53ca82d88658b82f2d82d1c7839c7d",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2025-65",
+   "repo": "run-llama/llama_index",
+   "fix": "cdeaab91a204d1c3527f177dac37390327aef274",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1901",
+   "repo": "saltstack/salt",
+   "fix": "4b30218edf1a979855ea191d72b30c89f4a5a582",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2017-36",
+   "repo": "saltstack/salt",
+   "fix": "80d90307b07b3703428ecbb7c8bb468e28a9ae6d",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1898",
+   "repo": "saltstack/salt",
+   "fix": "9445f496fed61b15dc4364818007e5b765b0746f",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-529",
+   "repo": "saltstack/salt",
+   "fix": "c4ad23f0f3132d8d8a88f19fa537dc42cf21b215",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1891",
+   "repo": "saltstack/salt",
+   "fix": "e0cdb80b55123f4a024759ffcf2b3f0e0788e7ab",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2277",
+   "repo": "scitokens/scitokens",
+   "fix": "2d1cc9e42bc944fe0bbc429b85d166e7156d53f9",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3919",
+   "repo": "senaite/senaite.core",
+   "fix": "ef4b6d73575b0fbc0edc6114e5e025089aaf9eb7",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-327",
+   "repo": "seperman/deepdiff",
+   "fix": "c69c06c13f75e849c770ade3f556cd16209fd183",
+   "kinds": [
+    "DESERIALIZATION",
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1926",
+   "repo": "skops-dev/skops",
+   "fix": "0aeca055509dfb48c1506870aabdd9e247adf603",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2023-88",
+   "repo": "snowflakedb/snowflake-connector-python",
+   "fix": "1cdbd3b1403c5ef520d7f4d9614fe35165e101ac",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-408",
+   "repo": "sooperset/mcp-atlassian",
+   "fix": "52b9b0997681e87244b20d58034deae89c91631e",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2024-159",
+   "repo": "spotify/luigi",
+   "fix": "b5d1b965ead7d9f777a3216369b5baf23ec08999",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4243",
+   "repo": "sqlalchemy/mako",
+   "fix": "000ed85e4e48771eff460bf4fc721fb43de80e08",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2617",
+   "repo": "sqlalchemy/mako",
+   "fix": "72e10c573ca0fbcbddd4455abca8ce92a61780d7",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2024-153",
+   "repo": "streamlit/streamlit",
+   "fix": "3a639859cfdfba2187c81897d44a3e33825eb0a3",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2022-248",
+   "repo": "streamlit/streamlit",
+   "fix": "80d9979d5f4a00217743d607078a1d867fad8acf",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1947",
+   "repo": "swingmx/swingmusic",
+   "fix": "9a915ca62af1502b9550722df82f5d432cb73de3",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2021-116",
+   "repo": "tabatkins/bikeshed",
+   "fix": "b2f668fca204260b1cad28d5078e93471cb6b2dd",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1950",
+   "repo": "tendenci/tendenci",
+   "fix": "23d9fd85ab7654e9c83cfc86cb4175c0bd7a77f1",
+   "kinds": [
+    "DESERIALIZATION"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-963",
+   "repo": "tensorflow/tensorflow",
+   "fix": "c5da7af048611aa29e9382371f0aed5018516cac",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3607",
+   "repo": "termux/proot-distro",
+   "fix": "98aff324b7d8500ff75a8ca9ac087ee636be4716",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3608",
+   "repo": "termux/proot-distro",
+   "fix": "a96d7a9667f38e45d812614852ee3915d1c0ae45",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2025-64",
+   "repo": "themanojdesai/python-a2a",
+   "fix": "f486b53625698b7d03561d176dfe98f5d1528276",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3618",
+   "repo": "thumbor/thumbor",
+   "fix": "3b986d13677b30fe6651c8c72ebb25957ac0a40d",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1374",
+   "repo": "tox-dev/filelock",
+   "fix": "255ed068bc85d1ef406e50a135e1459170dd1bf0",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1374",
+   "repo": "tox-dev/filelock",
+   "fix": "41b42dd2c72aecf7da83dbda5903b8087dddc4d5",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1375",
+   "repo": "tox-dev/filelock",
+   "fix": "4724d7f8c3393ec1f048c93933e6e3e6ec321f0e",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1372",
+   "repo": "trailofbits/fickling",
+   "fix": "29d5545e74b07766892c1f0461b801afccee4f91",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2150",
+   "repo": "trailofbits/fickling",
+   "fix": "41ce7cb01edd97072994039574a2301ebb3f463d",
+   "kinds": [
+    "DESERIALIZATION"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1368",
+   "repo": "trailofbits/fickling",
+   "fix": "4e34561301bda1450268d1d7b0b2b151de33b913",
+   "kinds": [
+    "DESERIALIZATION"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1373",
+   "repo": "trailofbits/fickling",
+   "fix": "9a2b3f89bd0598b528d62c10a64c1986fcb09f66",
+   "kinds": [
+    "DESERIALIZATION",
+    "PROCESS_EXEC",
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1370",
+   "repo": "trailofbits/fickling",
+   "fix": "9f309ab834797f280cb5143a2f6f987579fa7cdf",
+   "kinds": [
+    "PROCESS_EXEC",
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1369",
+   "repo": "trailofbits/fickling",
+   "fix": "b793563e60a5e039c5837b09d7f4f6b92e6040d1",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1371",
+   "repo": "trailofbits/fickling",
+   "fix": "dc8ae12966edee27a78fe05c5745171a2b138d43",
+   "kinds": [
+    "DESERIALIZATION",
+    "PROCESS_EXEC",
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2149",
+   "repo": "trailofbits/fickling",
+   "fix": "e8408615b63adf034f891f653692ab9b51f0f5af",
+   "kinds": [
+    "DESERIALIZATION",
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1372",
+   "repo": "trailofbits/fickling",
+   "fix": "eb299b453342f1931c787bcb3bc33f3a03a173f9",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2020-70",
+   "repo": "triaxtec/openapi-python-client",
+   "fix": "3e7dfae5d0b3685abf1ede1bc6c086a116ac4746",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1967",
+   "repo": "ulab-uiuc/tiny-scientist",
+   "fix": "7fd42873603012acb8c55a4fc3eaac9ab18e6559",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1537",
+   "repo": "vemonet/libre-chat",
+   "fix": "dbb8e3400e5258112179783d74c9cc54310cb72b",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-567",
+   "repo": "vllm-project/vllm",
+   "fix": "0d6e187e88874c39cda7409cf673f9e6546893e7",
+   "kinds": [
+    "DESERIALIZATION",
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4178",
+   "repo": "vllm-project/vllm",
+   "fix": "283893c72292ede38d277e3cd2b9b64c3e4f1dda",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2014",
+   "repo": "vllm-project/vllm",
+   "fix": "4594fc3b281713bd3d7634405b4a1393af40d294",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3934",
+   "repo": "vllm-project/vllm",
+   "fix": "54503ecec0f3ac31e5ecfc5f28652e4cc42307b5",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3936",
+   "repo": "vllm-project/vllm",
+   "fix": "8e61b646e2d157f9b93451fa048f9c8530c8a67b",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-4178",
+   "repo": "vllm-project/vllm",
+   "fix": "ba22152096b2484faa3579624a253d54804d876d",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2025-58",
+   "repo": "vllm-project/vllm",
+   "fix": "d3d6bb13fb62da3234addf6574922a4ec0513d04",
+   "kinds": [
+    "DESERIALIZATION"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2856",
+   "repo": "volcengine/OpenViking",
+   "fix": "46b3e76e28b9b3eee73693720c9ec48820228b72",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1316",
+   "repo": "webcomics/dosage",
+   "fix": "336a9684191604bc49eed7296b74bd582151181e",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1933",
+   "repo": "widgetti/solara",
+   "fix": "df2fd66a7f4e8ffd36e8678697a8a4f76760dc54",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2158",
+   "repo": "wkentaro/gdown",
+   "fix": "af569fc6ed300b7974dee66dc51e9f01b57b4dff",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3432",
+   "repo": "yt-dlp/yt-dlp",
+   "fix": "1fbbe29b99dc61375bf6d786f824d9fcf6ea9c1a",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3433",
+   "repo": "yt-dlp/yt-dlp",
+   "fix": "25056f0d2d47adbd235a8d422fa62d68d0be2bc2",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2065",
+   "repo": "yt-dlp/yt-dlp",
+   "fix": "5ce582448ececb8d9c30c8c31f58330090ced03a",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3622",
+   "repo": "yt-dlp/yt-dlp",
+   "fix": "6fc85f617a5850307fd5b258477070e6ee177796",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3622",
+   "repo": "yt-dlp/yt-dlp",
+   "fix": "b6590aaa1e3808155d69c9a79a797ae484163789",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2066",
+   "repo": "yt-dlp/yt-dlp",
+   "fix": "ff07792676f404ffff6ee61b5638c9dc1a33a37a",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2065",
+   "repo": "ytdl-org/youtube-dl",
+   "fix": "d42a222ed541b96649396ef00e19552aef0f09ec",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2232",
+   "repo": "zauberzeug/nicegui",
+   "fix": "1861f59cc374ca0dc9d970b157ef3774720f8dbf",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-1700",
+   "repo": "zauberzeug/nicegui",
+   "fix": "a1b89e2a24e1911a40389ace2153a37f4eea92a9",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2234",
+   "repo": "zauberzeug/nicegui",
+   "fix": "d38a702e3af2da5b0708f689be8d71413fc77056",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2024-247",
+   "repo": "zenml-io/zenml",
+   "fix": "00e934f33a243a554f5f65b80eefd5ea5117367b",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2071",
+   "repo": "zenml-io/zenml",
+   "fix": "5d22a48d7bf6c7f10b748577c2be79cc7969d398",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-2794",
+   "repo": "zhongyu09/openchatbi",
+   "fix": "372a7e861da5159c3106d64d6f6edf8284db8c75",
+   "kinds": [
+    "FILE_IO"
+   ]
+  },
+  {
+   "id": "PYSEC-2026-3917",
+   "repo": "zopefoundation/RestrictedPython",
+   "fix": "3737596ec9f28c34a073cc845bd2f4c0a80cb671",
+   "kinds": [
+    "PROCESS_EXEC"
+   ]
   }
  ]
 }

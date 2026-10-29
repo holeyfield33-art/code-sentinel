@@ -1,5 +1,7 @@
 """Turn fetched fix diffs into scoreable pairs, with no hand-picking.
 
+Usage: select_pairs.py candidates.json DIFF_DIR OUT_MANIFEST.json ADVISORY_DB_COMMIT
+
 A pair qualifies when its fix commit, in a non-test .py file, removes or rewrites
 a line calling one of Sentinel-Zero's modeled Python sinks (a "sink-line fix",
 such as yaml.load -> yaml.safe_load or shell=True -> an argument list). The
@@ -80,7 +82,8 @@ for f in sorted(diffs.glob("*.json")):
     if "error" in d or not d.get("parents") or c is None:
         skipped["fetch_error_or_root"] += 1; continue
     src = [x for x in d["files"] if not x["test_file"] and not re.search(r"(^|/)tests?/|(^|/)test_[^/]*$|_tests?\.py$|(^|/)conftest\.py$", x["file"])]
-    changed = [(x["file"], line) for x in src for line in x["removed_sinks"] if sink_of(line)]
+    changed = [(x["file"], rem["text"], rem["old_lineno"]) for x in src for rem in x["removed_sinks"]
+               if sink_of(rem["text"])]
     if not changed:
         if src:
             guard_only.append({"id": c["id"], "repo": f"{o}/{r}", "fix": sha, "kinds": c["kinds"]})
@@ -91,23 +94,23 @@ for f in sorted(diffs.glob("*.json")):
     if count > MAX_PY_FILES:
         skipped["repo_too_large"] += 1; continue
     sites = []
-    for path, line in changed:
+    for path, line, i in changed:
         text = git(g, "show", f"{parent}:{path}")
         if text is None: continue
         try: tree = ast.parse(text)
         except SyntaxError: continue
         lines = text.splitlines()
-        for i, l in enumerate(lines, 1):
-            if l.strip() == line.strip():
-                func = enclosing(tree, i)
-                ident = sink_of(line)
-                family = "DESERIALIZATION" if ident.startswith(("yaml", "pickle")) else (
-                    "FILE_IO" if ident in ("builtins.open", "os.open") else "PROCESS_EXEC")
-                if func and real_call(tree, i, ident) and family in c["kinds"] and not re.search(r"Test", func.split(".")[0]):
-                    site = {"file": path, "function": func, "sink": sink_of(line), "line_at_vulnerable": i,
-                            "line": line.strip()[:160]}
-                    if site not in sites: sites.append(site)
-                break
+        # Locate the removed call by its position in the parent file, never by text search:
+        # the same call text can appear in several functions.
+        if not 1 <= i <= len(lines) or lines[i - 1].strip()[:200] != line:
+            skipped["diff_position_mismatch"] += 1; continue
+        func = enclosing(tree, i)
+        ident = sink_of(line)
+        family = "DESERIALIZATION" if ident.startswith(("yaml", "pickle")) else (
+            "FILE_IO" if ident in ("builtins.open", "os.open") else "PROCESS_EXEC")
+        if func and real_call(tree, i, ident) and family in c["kinds"] and not re.search(r"Test", func.split(".")[0]):
+            site = {"file": path, "function": func, "sink": ident, "line_at_vulnerable": i, "line": line.strip()[:160]}
+            if site not in sites: sites.append(site)
     if not sites:
         skipped["site_not_in_a_function"] += 1; continue
     key = (o.lower(), r.lower())
@@ -120,5 +123,21 @@ for f in sorted(diffs.glob("*.json")):
                   ("DESERIALIZATION" if any(s["sink"].startswith(("yaml", "pickle")) for s in sites) else
                    "FILE_IO" if any("open" in s["sink"] for s in sites) else "PROCESS_EXEC"),
                   "py_files": count, "sites": sites, "fix_message": d.get("msg", "")})
-json.dump({"pairs": pairs, "guard_only_fixes": guard_only}, open(sys.argv[3], "w"), indent=1)
+advisory_commit = sys.argv[4] if len(sys.argv) > 4 else "unknown"
+fix_commits = len(list(diffs.glob("*.json")))
+fetched = sum("error" not in json.loads(p.read_text()) for p in diffs.glob("*.json"))
+manifest = {
+    "schema": "sentinel-cve-pairs-v1",
+    "source": {"database": "https://github.com/pypa/advisory-database", "commit": advisory_commit,
+               "selection": "calibration/cve_tools/ (scan_advisories.py -> fetch_diffs.py -> select_pairs.py); no hand-picking",
+               "rule": "fix commit removes or rewrites a call to a modeled Python sink in non-test source; site = the "
+                       "enclosing function of that call, located by its line in the parent commit; sink family must "
+                       "match the advisory text; one pair per repository; repos up to 3000 .py files"},
+    "inventory": {"advisories_matched_by_text": len(cands), "fix_commits": fix_commits, "fix_commits_fetched": fetched,
+                  "pairs": len(pairs), "guard_only_fixes_not_scored": len(guard_only)},
+    "pairs": [{k: p[k] for k in ("id", "aliases", "package", "repo", "vulnerable", "fixed", "language", "kind",
+                                 "sites", "fix_message")} for p in pairs],
+    "guard_only_fixes": guard_only,
+}
+json.dump(manifest, open(sys.argv[3], "w"), indent=1)
 print(len(pairs), "pairs;", Counter(p["kind"] for p in pairs), "| guard-only fixes:", len(guard_only), "| skipped:", dict(skipped))

@@ -1,10 +1,12 @@
-"""For each candidate fix commit, fetch the commit via the GitHub REST API (gh) and
-record which modeled sink calls appear in removed/added Python lines, plus the
-lines immediately around them. Cached per commit in diffs/."""
-import json, re, subprocess, sys, concurrent.futures as cf
+"""For each candidate fix commit, shallow-fetch the commit and its parent with git and
+record which modeled sink calls appear in removed/added Python lines. Removed lines
+keep their line number in the parent file. Cached per commit in the given directory."""
+import json, os, re, subprocess, sys, concurrent.futures as cf
 from pathlib import Path
 cands = json.load(open(sys.argv[1])); cache = Path(sys.argv[2]); cache.mkdir(exist_ok=True)
 SINK = re.compile(r"\b(yaml\.load|yaml\.unsafe_load|pickle\.loads?|os\.system|subprocess\.(run|call|check_call|check_output|Popen)|(?<![\w.])eval|(?<![\w.])exec|(?<![\w.])open|os\.open)\s*\(")
+# Overridable so tests can point at a local repository; real runs use GitHub.
+GIT_BASE = os.environ.get("SZ_GIT_BASE", "https://github.com").rstrip("/")
 jobs = {}
 for c in cands:
     for o, r, sha, _t in c["fix_refs"]:
@@ -20,7 +22,7 @@ def fetch(key):
     def git(*a, **k): return subprocess.run(["git", "-C", str(g), *a], capture_output=True, text=True, timeout=180, **k)
     try:
         if not g.exists():
-            g.mkdir(parents=True); git("init", "-q"); git("remote", "add", "origin", f"https://github.com/{o}/{r}.git")
+            g.mkdir(parents=True); git("init", "-q"); git("remote", "add", "origin", f"{GIT_BASE}/{o}/{r}.git")
         f = git("fetch", "-q", "--depth=2", "--filter=blob:none", "origin", sha)
         if f.returncode: raise RuntimeError(f.stderr.strip()[-200:])
         full = git("rev-parse", "FETCH_HEAD").stdout.strip()
@@ -29,14 +31,26 @@ def fetch(key):
         files = []
         if parents:
             d = git("diff", "--unified=0", parents[0], full, "--", "*.py")
-            cur = None
+            cur, old_no, old_path = None, 0, None
+            hunk = re.compile(r"^@@ -(\d+)(?:,\d+)? \+\d+(?:,\d+)? @@")
             for line in d.stdout.splitlines():
-                if line.startswith("+++ "):
-                    cur = {"file": line[6:], "removed_sinks": [], "added_sinks": [], "adds": 0, "dels": 0}
-                    cur["test_file"] = bool(re.search(r"(^|/)tests?/|test_", cur["file"])); files.append(cur)
-                elif cur and line.startswith("-") and not line.startswith("---"):
+                if line.startswith(("--- a/", "--- /dev/null")):
+                    # The vulnerable site lives at the parent, so keep the OLD path.
+                    old_path = line[6:] if line.startswith("--- a/") else None
+                elif line.startswith(("+++ b/", "+++ /dev/null")):
+                    path = old_path or line[6:]
+                    cur = {"file": path, "removed_sinks": [], "added_sinks": [], "adds": 0, "dels": 0,
+                           "test_file": bool(re.search(r"(^|/)tests?/|test_", path))}
+                    files.append(cur)
+                elif cur and line.startswith("@@"):
+                    m = hunk.match(line)
+                    old_no = int(m.group(1)) if m else 0
+                elif cur and line.startswith("-"):
                     cur["dels"] += 1
-                    if SINK.search(line): cur["removed_sinks"].append(line[1:].strip()[:200])
+                    if SINK.search(line):
+                        # Position in the parent file, so the site is located exactly, not by text search.
+                        cur["removed_sinks"].append({"text": line[1:].strip()[:200], "old_lineno": old_no})
+                    old_no += 1
                 elif cur and line.startswith("+"):
                     cur["adds"] += 1
                     if SINK.search(line): cur["added_sinks"].append(line[1:].strip()[:200])

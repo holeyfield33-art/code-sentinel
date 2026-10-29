@@ -47,10 +47,39 @@ def test_outcome_classes():
 
 
 def test_summary_excludes_errored_pairs():
-    rows = [{"id": "A", "sites": [{"vulnerable": "detected", "fixed": "gone"}, {"vulnerable": "missed", "fixed": "still-flagged"}]},
+    rows = [{"id": "A", "sites": [
+                {"vulnerable": "detected", "fixed": "gone", "lines": [3], "calls_detected": 1},
+                {"vulnerable": "missed", "fixed": "still-flagged", "lines": [7, 9], "calls_detected": 1}]},
             {"id": "B", "error": "clone failed", "sites": []}]
     s = cve.summarize(rows)
-    assert s["sites"] == 2 and s["recall"] == 0.5 and s["quiet_on_fix"] == 0.5 and s["pairs_errored"] == ["B"]
+    assert (s["groups"], s["calls"], s["recall"], s["call_recall"], s["quiet_on_fix"], s["pairs_errored"]) == \
+        (2, 3, 0.5, 0.6667, 0.5, ["B"])
+
+
+# --- Codex review on #23: one detected call must not hide another ---------
+
+def test_calls_are_matched_by_exact_line():
+    tree = Path("/r")
+    ledger = {"plans": [plan("/r/k.py", 125, "os.system", "k.R.kill_task", True),
+                        plan("/r/k.py", 127, "os.system", "k.R.kill_task", False)]}
+    group = {"file": "k.py", "function": "R.kill_task", "sink": "os.system"}
+    assert len(cve.site_plans(ledger, tree, group, 125)) == 1
+    assert len(cve.site_plans(ledger, tree, group, 129)) == 0
+    assert len(cve.site_plans(ledger, tree, group)) == 2
+
+
+def test_group_detected_only_if_every_call_is_priority():
+    p, n = {"triage": {"priority": True}}, {"triage": {"priority": False}}
+    assert cve.classify_vulnerable([[p], [p]]) == "detected"
+    assert cve.classify_vulnerable([[p], [n]]) == "under-ranked"
+    assert cve.classify_vulnerable([[p], []]) == "missed"
+
+
+def test_sites_group_by_file_function_and_sink():
+    sites = [{"file": "k.py", "function": "R.kill", "sink": "os.system", "line_at_vulnerable": l} for l in (125, 127)]
+    sites.append({"file": "k.py", "function": "R.kill", "sink": "builtins.eval", "line_at_vulnerable": 130})
+    groups = cve.group_sites(sites)
+    assert [(g["sink"], g["lines"]) for g in groups] == [("os.system", [125, 127]), ("builtins.eval", [130])]
 
 
 def test_manifest_is_well_formed():
@@ -62,4 +91,4 @@ def test_manifest_is_well_formed():
         assert len(p["vulnerable"]) == 40 and len(p["fixed"]) == 40 and p["vulnerable"] != p["fixed"]
         assert p["repo"].startswith("https://github.com/") and p["sites"]
         for s in p["sites"]:
-            assert {"file", "function", "sink"} <= set(s)
+            assert {"file", "function", "sink", "line_at_vulnerable"} <= set(s)
