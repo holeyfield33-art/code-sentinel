@@ -201,3 +201,26 @@ def test_a_raising_check_called_for_effect_still_guards(tmp_path):
     ledger, _ = _scan(tmp_path, {"app.py": _BUILDER + "def run(name):\n    build(name)\n    os.system(name)\n"}, fmt="json")
     tag = ledger["plans"][0]["triage"]
     assert tag["guarded_by"] == "app.build" and tag["priority"] is False
+
+
+def test_constant_through_a_local_variable_is_constant(tmp_path):
+    # Vulnerable-Flask-App: command = "cat restapi.log"; check_output(command, shell=True).
+    ledger, _ = _scan(tmp_path, {"app.py": "import subprocess\ndef logs():\n    command = 'cat restapi.log'\n"
+                                           "    return subprocess.check_output(command, shell=True)\n"}, fmt="json")
+    tag = ledger["plans"][0]["triage"]
+    assert tag["constant_arguments"] is True and tag["priority"] is False
+
+
+@pytest.mark.parametrize("body", [
+    "    cmd = 'ls'\n    if x:\n        cmd = x\n    subprocess.run(cmd, shell=True)\n",       # rebound in a branch
+    "    cmd = x\n    if x:\n        cmd = 'ls'\n    subprocess.run(cmd, shell=True)\n",       # constant only on one path
+    "    cmd = 'ls '\n    cmd += x\n    subprocess.run(cmd, shell=True)\n",                   # augmented
+    "    for cmd in x:\n        pass\n    cmd = 'ls'\n    subprocess.run(cmd, shell=True)\n",  # loop binding
+    "    global cmd\n    cmd = 'ls'\n    subprocess.run(cmd, shell=True)\n",                  # module-global
+    "    cmd = 'ls'\n    def f():\n        nonlocal cmd\n        cmd = x\n    f()\n    subprocess.run(cmd, shell=True)\n",
+    "    cmd = f'ls {x}'\n    subprocess.run(cmd, shell=True)\n",                              # not a constant
+])
+def test_a_local_that_is_not_always_the_same_constant_stays_priority(tmp_path, body):
+    ledger, _ = _scan(tmp_path, {"app.py": f"import subprocess\ndef run(x):\n{body}"}, fmt="json")
+    tag = [p for p in ledger["plans"] if p["hypothesis"]["sink_node"] == "subprocess.run"][0]["triage"]
+    assert tag["constant_arguments"] is False and tag["priority"] is True

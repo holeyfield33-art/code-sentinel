@@ -14,6 +14,8 @@
   "const-env-call": "sha256:146ca87691782cddaa1e2950e96db45ed0ace32e4f284550ed2ed72caaab0b20",
   "const-kwarg-user": "sha256:3329dcef0f2ea7f3ad00f5ace352a4c91207a254ba146d224fa519fcd1142896",
   "const-literal": "sha256:35ac359fa9595092da66e3baf635998e390f0d92bc04f2a5870033ec4bcf58f4",
+  "const-local-rebound": "sha256:b4718147efe4d4252eeb71f9cf1791b44c76a48108b24e57c02adf9a1f6f4091",
+  "const-local-variable": "sha256:5f505a39e0027204f78b6845c6546aa95e2602086d3621b2b234a3c97ab99fd8",
   "const-module-constant": "sha256:cf2efb20ce10fc6cf2ef7c62428e1d7740a9e3d8acef1a9fe562a5ffae126756",
   "const-param": "sha256:1880387a2254fb1b2f6dfcf517964a16e205e880692e700c5bd10151dd7033bb",
   "ctx-examples": "sha256:1729863ad19d35c21b4e658d38525a48faf009e4b2c492c4351318d4d913da3e",

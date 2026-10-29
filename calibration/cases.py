@@ -133,6 +133,13 @@ CASES: list[Case] = [
     Case("const-literal", "near_miss", "constant-args", "subprocess.run",
          app("def status():\n    return subprocess.run(['git', 'status'])\n"),
          pair="const-param", expect_constant=True),
+    Case("const-local-variable", "near_miss", "constant-args", "subprocess.run",
+         app("def logs():\n    command = 'cat app.log'\n    return subprocess.run(command, shell=True)\n"),
+         pair="const-local-rebound", expect_constant=True),
+    Case("const-local-rebound", "reachable", "constant-args", "subprocess.run",
+         app("def logs(path):\n    command = 'cat app.log'\n    if path:\n        command = 'cat ' + path\n"
+             "    return subprocess.run(command, shell=True)\n"),
+         pair="const-local-variable", expect_constant=False, note="constant on only one path"),
     Case("const-param", "reachable", "constant-args", "subprocess.run",
          app("def run(args):\n    return subprocess.run(args)\n"),
          pair="const-literal", expect_constant=False),

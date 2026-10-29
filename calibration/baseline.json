@@ -1,15 +1,15 @@
 {
   "summary": {
-    "cases": 42,
-    "correct": 33,
-    "reachable_priority_rate": 0.96,
-    "near_miss_priority_rate": 0.1,
-    "near_miss_downgrade_rate": 0.9,
-    "youden": 0.86,
-    "priority_precision": 0.96,
+    "cases": 44,
+    "correct": 35,
+    "reachable_priority_rate": 0.9615,
+    "near_miss_priority_rate": 0.0909,
+    "near_miss_downgrade_rate": 0.9091,
+    "youden": 0.8706,
+    "priority_precision": 0.9615,
     "near_miss_not_detected": [],
     "guard_evidence_accuracy": 0.9231,
-    "constant_accuracy": 0.8333,
+    "constant_accuracy": 0.875,
     "coverage_gaps": {
       "detected": [],
       "resolved-not-sink": [
@@ -31,7 +31,7 @@
       "callee-guard": "3/3",
       "caller-guard": "9/10",
       "code-context": "4/4",
-      "constant-args": "5/6",
+      "constant-args": "7/8",
       "dynamic-dispatch": "0/2",
       "signal": "1/1",
       "sink-family:file-ops": "0/1",
@@ -391,6 +391,42 @@
       "guarded_by": [],
       "constant": [
         true
+      ],
+      "outcome": "correct",
+      "checks": {
+        "constant": true
+      },
+      "correct": true
+    },
+    {
+      "id": "const-local-variable",
+      "family": "near_miss",
+      "dimension": "constant-args",
+      "sink": "subprocess.run",
+      "plans": 1,
+      "priority": false,
+      "unresolved": 0,
+      "guarded_by": [],
+      "constant": [
+        true
+      ],
+      "outcome": "correct",
+      "checks": {
+        "constant": true
+      },
+      "correct": true
+    },
+    {
+      "id": "const-local-rebound",
+      "family": "reachable",
+      "dimension": "constant-args",
+      "sink": "subprocess.run",
+      "plans": 1,
+      "priority": true,
+      "unresolved": 0,
+      "guarded_by": [],
+      "constant": [
+        false
       ],
       "outcome": "correct",
       "checks": {
