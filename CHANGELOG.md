@@ -31,6 +31,13 @@ and historical version tags are not inferred from development commits.
 
 ### Analysis
 
+- Add a vulnerable-lab calibration layer (`calibration/lab_truth.py`) scored
+  against an independently built answer key for six labs (pygoat, DSVW,
+  Vulnerable-Flask-App, dvws-node, NovaTrust bank, Juice Shop). 24 of 25
+  direct sites ranked priority; 90% same-sink base rate, so this shows
+  coverage, not ranking. Found a silent JS gap (calls in functions declared
+  inside callbacks) and a missed local-variable constant.
+
 - Add a real-CVE calibration layer (`calibration/cve_pairs.py`, not in
   `pytest` because it clones repositories). 55 vulnerable/fixed pairs (97
   function/sink groups, 109 calls), selected by rule from the PyPA advisory
