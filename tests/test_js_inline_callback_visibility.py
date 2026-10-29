@@ -269,3 +269,28 @@ def test_a_named_concise_body_arrows_own_direct_sink_call_is_also_recorded():
         assert len(sink_calls) == 1
         assert sink_calls[0].caller == "mod.runIt"
         assert sink_calls[0].arg_taint == ("parameter",)
+
+
+@pytest.mark.parametrize("inner_body, expected_caller", [
+    ("    return fs.readFileSync(v);\n", "m.outer.<locals>.inner"),
+    ("    return v.replace(/x/g, (m) => fs.readFileSync(m));\n", "m.outer.<locals>.inner.<callback:L4C27>"),
+])
+def test_a_function_declared_inside_a_function_is_walked(tmp_path, inner_body, expected_caller):
+    """dvws-node src/utils/vulnerable-xml.js (lab calibration): `function
+    expand(...)` declared inside parseVulnerableXml reads files through
+    fs.readFileSync in a .replace() callback. Discovery stopped at every
+    nested FunctionDeclaration, so neither its own calls nor its callbacks
+    were recorded: a silent gap, not even Unresolved."""
+    (tmp_path / "m.js").write_text(
+        "const fs = require('fs');\n"
+        "function outer(p) {\n"
+        "  function inner(v) {\n"
+        f"{inner_body}"
+        "  }\n"
+        "  return inner(p);\n"
+        "}\n"
+    )
+    graph = build_project_graph(tmp_path)
+    sink_calls = [c for c in graph.all_calls() if c.target == Symbol("fs.readFileSync")]
+    assert [c.caller for c in sink_calls] == [expected_caller]
+    assert sink_calls[0].arg_taint == ("parameter",)
