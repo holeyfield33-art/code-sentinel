@@ -219,6 +219,12 @@ def test_constant_through_a_local_variable_is_constant(tmp_path):
     "    global cmd\n    cmd = 'ls'\n    subprocess.run(cmd, shell=True)\n",                  # module-global
     "    cmd = 'ls'\n    def f():\n        nonlocal cmd\n        cmd = x\n    f()\n    subprocess.run(cmd, shell=True)\n",
     "    cmd = f'ls {x}'\n    subprocess.run(cmd, shell=True)\n",                              # not a constant
+    # Codex review on #26: a walrus in a comprehension binds the enclosing local.
+    "    cmd = 'ls'\n    [cmd := v for v in x]\n    subprocess.run(cmd, shell=True)\n",
+    # Codex review on #26: a literal container can be mutated without rebinding.
+    "    cmd = ['echo']\n    cmd[0] = x\n    subprocess.run(cmd)\n",
+    "    cmd = ['echo']\n    cmd.append(x)\n    subprocess.run(cmd)\n",
+    "    cmd = {'a': 'ls'}\n    cmd.update(x)\n    subprocess.run(cmd['a'], shell=True)\n",
 ])
 def test_a_local_that_is_not_always_the_same_constant_stays_priority(tmp_path, body):
     ledger, _ = _scan(tmp_path, {"app.py": f"import subprocess\ndef run(x):\n{body}"}, fmt="json")

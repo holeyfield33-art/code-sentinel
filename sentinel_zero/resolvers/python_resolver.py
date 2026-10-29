@@ -502,10 +502,30 @@ def _combine_taint(classifications: list[str]) -> str:
     return "literal"
 
 
+def _is_immutable_constant(node: ast.expr) -> bool:
+    """A value built only from immutable constants (str, bytes, numbers,
+    None, f-strings and tuples of them). A literal list, set or dict can be
+    mutated in place without rebinding its name (`cmd.append(x)`), so it
+    never counts."""
+    if isinstance(node, ast.Constant):
+        return True
+    if isinstance(node, ast.JoinedStr):
+        return all(_is_immutable_constant(v) for v in node.values)
+    if isinstance(node, ast.FormattedValue):
+        return _is_immutable_constant(node.value)
+    if isinstance(node, ast.Tuple):
+        return all(_is_immutable_constant(e) for e in node.elts)
+    if isinstance(node, ast.BinOp):
+        return _is_immutable_constant(node.left) and _is_immutable_constant(node.right)
+    if isinstance(node, ast.UnaryOp):
+        return _is_immutable_constant(node.operand)
+    return False
+
+
 def _constant_locals(fn_node: ast.FunctionDef | ast.AsyncFunctionDef, param_names: frozenset[str]) -> frozenset[str]:
     """Local names that hold the same constant wherever they are read: every
     binding of the name in this scope is a plain `name = <constant>` (or an
-    annotated one), it is not a parameter, and nothing declares it global or
+    annotated one) with an immutable value, it is not a parameter, and nothing declares it global or
     nonlocal, here or in a nested scope. Any other binding (augmented, loop,
     `with ... as`, walrus, import, def, except, match capture) disqualifies it,
     so a constant on only some paths never counts. Module-level constants are
@@ -518,8 +538,7 @@ def _constant_locals(fn_node: ast.FunctionDef | ast.AsyncFunctionDef, param_name
             target, value = node.targets[0], node.value
         elif isinstance(node, ast.AnnAssign):
             target, value = node.target, node.value
-        if (isinstance(target, ast.Name) and value is not None
-                and _classify_arg_taint(value, frozenset(), allow_call_unwrap=False) == "literal"):
+        if isinstance(target, ast.Name) and value is not None and _is_immutable_constant(value):
             literal_stores[target.id] = literal_stores.get(target.id, 0) + 1
     stores: dict[str, int] = {}
     other: set[str] = set()
@@ -539,6 +558,11 @@ def _constant_locals(fn_node: ast.FunctionDef | ast.AsyncFunctionDef, param_name
     for node in ast.walk(fn_node):  # nested scopes too: `nonlocal x` rebinds ours
         if isinstance(node, (ast.Global, ast.Nonlocal)):
             other.update(node.names)
+        # A walrus inside a comprehension binds the enclosing function's name,
+        # and _scope_nodes skips comprehension bodies. Any walrus target,
+        # wherever it sits, disqualifies the name (conservative).
+        elif isinstance(node, ast.NamedExpr) and isinstance(node.target, ast.Name):
+            other.add(node.target.id)
     return frozenset(name for name, count in literal_stores.items()
                      if stores.get(name) == count and name not in other and name not in param_names)
 
