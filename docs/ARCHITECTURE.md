@@ -35,6 +35,7 @@ an empty plan list.
 | --- | --- |
 | `graph.py` | Language-neutral `ProjectGraph`, symbols, unresolved targets, call sites, functions, and wrapper relationships |
 | `resolvers/python_resolver.py` | Python AST indexing, lexical bindings, nested scopes, method receivers, call evidence, and bounded branch paths |
+| `source_inputs.py` | Contained regular-file source reads with an 8 MB byte cap; not a parser execution sandbox |
 | `resolvers/js_resolver.py` and `resolvers/js/extract_graph.js` | Node AST extraction for JS/TS and translation into the same graph model |
 | `callgraph.py` | Cycle-safe delegation, external-package reachability, and competing sink-site counts |
 | `catalog_loader.py` | Typed catalog document validation, including IDs/aliases and metadata shape |
@@ -95,15 +96,23 @@ eligibility is considered. [Security](SECURITY.md) documents the full boundary.
 
 `verification_ledger.json` contains repository identity, probe mode, summary
 counts, finding plans, wrapper information, external dependency counts,
-parse errors, and catalog provenance. Each plan includes hypothesis,
+parse errors, `analyzed_files`, coverage, and catalog provenance. Each plan includes hypothesis,
 verification method, execution gate, disposition, per-run `plan_id`, and
 stable `finding_uid`.
 
-`graph.json` contains `target_repository`, node/edge counts, `nodes`, and
-`edges`. Module/function nodes and call edges carry finding plan IDs,
+`graph.json` has `schema_version: 2`, `target_repository`, node/edge counts,
+`nodes`, and `edges`. Module/function node IDs use `module:` and `function:`
+prefixes while `qualified_name` preserves the original symbol. Resolved call
+edges retain `target_symbol` and `target_kind`; external endpoints use
+`external:` IDs rather than aliasing a project node. Module ownership is
+derived from physical source files, including methods and nested functions.
+Module/function nodes and call edges carry finding plan IDs,
 finding UIDs, and their worst attached disposition. Unresolved call edges
 retain a reason. This export is a serialization of the analyzed graph and
 plans, not a second classifier. The viewer consumes this graph, not the ledger.
+It validates required consumer types, unique IDs and endpoint consistency
+before replacing the displayed graph. Unambiguous historical schema 1 graphs
+remain readable; duplicate legacy identities require a fresh export.
 
 Artifacts are written individually; failed later writes are not an atomic
 rollback of earlier files. Parse errors and failed diagnostics can be

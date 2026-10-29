@@ -146,6 +146,7 @@ from sentinel_zero.callgraph import (
     build_direct_external_index,
     build_direct_sink_call_counts,
     external_packages_reached,
+    functions_reaching_deferred_bodies,
     transitively_guard_shaped,
     transitive_sink_symbol_counts,
 )
@@ -496,6 +497,7 @@ def find_finding_plans(
     sink_table = _SINK_TABLES[language]
     plans = []
     callee_index = build_direct_callee_index(graph)
+    deferred_guard_targets = functions_reaching_deferred_bodies(graph, callee_index)
     external_index = build_direct_external_index(graph)
     direct_sink_counts = build_direct_sink_call_counts(graph, sink_table)
     for module in graph.modules.values():
@@ -530,10 +532,14 @@ def find_finding_plans(
                 # findings if it drove triage.
                 relevant_guard = None
                 for earlier in calls:
+                    if not earlier.guard_eligible:
+                        continue  # conditionally evaluated/deferred calls are not guaranteed gates
                     if earlier.order >= call.order:
                         continue
                     if not isinstance(earlier.target, Symbol):
                         continue
+                    if earlier.target.qualified_name in deferred_guard_targets:
+                        continue  # coroutine/generator return values do not prove synchronous validation
                     if not dominates(earlier.branch_path, call.branch_path):
                         continue  # guard is not on EVERY path that reaches this sink
                     if earlier.result_names & call.arg_names:
@@ -604,28 +610,20 @@ def find_finding_plans(
                     set_disposition(
                         plan,
                         "UNRESOLVED_INCONCLUSIVE",
-                        reason=f"a resolved call to {guard_hit} genuinely dominates this sink in the same "
-                               f"function -- Milestone 19's real CFG dominance check (python_resolver.dominates) "
-                               f"confirms {guard_hit} executes on EVERY control-flow path that can reach this "
-                               f"sink, not just an approximation of call order, and {guard_hit} raises (directly, "
-                               "or through a bounded delegation chain) on an early-exit condition -- Milestone 12 "
-                               "tightened this to require an actual `raise`, not a plain `return`, specifically "
-                               "because a return-shaped delegate's early exit only ends ITS OWN body and does "
-                               "nothing to stop this function's next statement. Still bounded, still stated "
-                               "plainly: dominance proves the guard CALL runs before the sink on every path -- it "
-                               "does not, and cannot from static structure alone, prove the guard's own internal "
-                               "condition corresponds to attacker-controlled input, so this is still never "
-                               "promoted to VERIFIED_FALSE." + _taint_note(call.arg_taint),
-                        residual_uncertainty="Medium: a raise-shaped guard call is now CONFIRMED to dominate the "
-                        "sink (every path to the sink passes through it), but the triggering condition's "
-                        "relationship to attacker-controlled input is still not verified.",
+                        reason=f"a resolved call to {guard_hit} precedes this sink and dominates its modeled "
+                               "branch paths. The callee has a raise-shaped guard, directly or through bounded "
+                               "delegation. This is structural evidence under the resolver's coverage limits; "
+                               "it does not prove the check rejects attacker-controlled input or covers "
+                               "unsupported runtime behavior. The finding remains inconclusive." + _taint_note(call.arg_taint),
+                        residual_uncertainty="Medium: a raise-shaped guard precedes the sink in the modeled "
+                        "control flow; runtime execution and input validation are not independently verified.",
                     )
                 elif caller_guard_hit:
                     set_disposition(
                         plan,
                         "UNRESOLVED_INCONCLUSIVE",
                         reason=f"this function checks {caller_guard_hit} in an `if` whose branch exits "
-                               "(raise/return/continue/break) before this sink, on every path that reaches it. "
+                               "(raise/return/continue/break) before this sink in the modeled branch paths. "
                                f"{caller_guard_hit} is project code, so it is treated as a deliberate gate. "
                                "Whether its condition actually covers the input that reaches this sink is not "
                                "verified, so this is never promoted to VERIFIED_FALSE." + _taint_note(call.arg_taint),
@@ -834,6 +832,9 @@ def run(
         ],
         "external_dependencies": _dependency_summary(graph),
         "parse_errors": graph.parse_errors,
+        # Calibration must distinguish an absent sink from a file whose
+        # source never reached analysis. Counts alone cannot establish that.
+        "analyzed_files": sorted({module.file_path for module in graph.modules.values()}),
         "coverage": graph.coverage,
         "triage_summary": triage_summary,
         "catalog": {

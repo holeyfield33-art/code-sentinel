@@ -19,6 +19,13 @@ historical demonstration. Choose **Load graph.json** and select the graph
 from your own [CLI scan](../README.md#run-a-scan). Select `graph.json`,
 not `verification_ledger.json`.
 
+Current exports use graph schema 2: module/function IDs occupy separate
+namespaces and the inspector displays the original qualified symbol.
+Unambiguous older graphs remain readable and comparable. Duplicate historical
+IDs cannot be repaired reliably by the viewer; regenerate those exports.
+Malformed records, annotation arrays and endpoint references are refused
+before replacing the displayed graph.
+
 Uploaded files are read locally with the browser File API; the viewer
 does not send them to an analysis server. The initial sample is fetched
 from the local viewer server. Report data can contain sensitive paths

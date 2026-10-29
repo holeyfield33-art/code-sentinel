@@ -76,7 +76,7 @@ function showInspector(node) {
   }
 
   inspectorEl.innerHTML =
-    `<h2>${escapeHtml(node.id)}</h2><dl>` +
+    `<h2>${escapeHtml(node.qualified_name ?? node.id)}</h2><dl>` +
     rows.map(([label, value]) => `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(String(value))}</dd>`).join("") +
     `</dl>`;
 }
@@ -145,6 +145,10 @@ function renderCompareSummary({ baselineName, newCount, changedCount, unchangedC
 }
 
 async function renderGraphDocument(doc) {
+  // Prepare the validated replacement before changing the displayed state.
+  const layout = new ForceLayout3D(doc.nodes, doc.edges);
+  layout.settle();
+  scene.render(doc, layout);
   emptyStateEl.classList.add("hidden");
   currentGraph = doc;
   diffMode = false;
@@ -153,9 +157,6 @@ async function renderGraphDocument(doc) {
   clearCompareBtn.style.display = "none";
   compareSummaryEl.innerHTML = "";
 
-  const layout = new ForceLayout3D(doc.nodes, doc.edges);
-  layout.settle();
-  scene.render(doc, layout);
   setStats(doc, doc.targetRepository);
   renderLegend();
 }

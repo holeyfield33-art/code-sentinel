@@ -25,6 +25,13 @@ necessarily stop analysis of other files. Unresolved calls remain graph
 edges, but only supported resolved sinks generate plans. Always inspect
 both coverage indicators before interpreting a zero-plan result.
 
+Both resolvers enforce an 8,000,000-byte source-file limit and refuse
+escaping/dangling source-file links and nonregular files. Contained regular
+file links are supported. `analyzed_files` in the ledger names the files
+represented in the analyzed graph. Python coverage records collected/parsed
+counts and parse/collision warnings. These input checks do not provide a
+static parser CPU/memory sandbox; see [security](SECURITY.md).
+
 JS/TS `coverage` records collected/parsed counts, skipped directories,
 excluded declarations and recognized unsupported source extensions.
 Warnings expose parse failures, unreadable directories, unresolved local
@@ -34,13 +41,16 @@ Named/default declarations and named re-exports are modeled; star
 re-exports, TypeScript path aliases and package export maps are not complete.
 Colliding legacy dotted module names receive distinct encoded file identities;
 adding a collision can change identifiers used in graph comparisons.
+Python also disambiguates physical module/package paths and keeps their
+import namespace separate; collision warnings identify the selected import
+target without dropping the other files from analysis.
 
 ## Supported sink families
 
 | Kind | Python | JavaScript/TypeScript |
 | --- | --- | --- |
 | Process execution | `os.system`, subprocess run/call/check/Popen functions, `eval`, `exec` | child_process exec/execFile/spawn/fork variants, `eval`, `Function`, selected `vm` APIs |
-| File I/O | `builtins.open`, `os.open` | fs readFile/writeFile sync and callback variants |
+| File I/O | `builtins.open`, `os.open`, `io.open`, `codecs.open` | fs readFile/writeFile sync and callback variants |
 | Deserialization | json and pickle load/loads, `yaml.load` | `JSON.parse` |
 
 The exact registries are `_SINK_KIND_BY_NAME` and `_JS_SINK_KIND_BY_NAME`
@@ -54,7 +64,8 @@ Classification names come from the loaded ASI catalog.
   receivers are resolved structurally. Dynamic imports, reflection,
   `getattr` dispatch, and arbitrary runtime rebinding are not complete.
 - Python nested definitions and forward sibling references are indexed
-  lexically, including supported control-flow suites. This does not
+  lexically, including definitions in module-level control-flow suites
+  and supported class method suites. This does not
   prove a conditional definition executes or simulate closure timing.
 - Python lambda bodies are not modeled as independent caller scopes.
 - JS/TS supports selected direct inline function/arrow callback arguments.
@@ -71,6 +82,17 @@ bypassed by another application entry point, or covers every loop and
 exception path. Python loop bodies receive a coarse branch tag, not
 iteration-sensitive control-flow modeling; language resolvers have
 different supported control-flow shapes.
+
+Python calls that may be skipped by short-circuit or conditional expressions
+or chained comparisons,
+deferred calls in lambdas/comprehensions, and calls inside assertions cannot
+establish unconditional guard credit. They remain visible as modeled call
+sites. This is conservative evidence handling, not expression-level runtime
+execution or complete control-flow analysis.
+Async/generator function bodies do not execute synchronously on a call.
+They and their modeled delegation paths cannot earn synchronous guard credit.
+Even correctly awaited async guards remain uncredited until asynchronous
+execution is modeled; their sink call sites remain indexed.
 
 Argument evidence follows parameters, literals, and selected one-hop
 expressions. It is not whole-program taint tracking. A parameter can be

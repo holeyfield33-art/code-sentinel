@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import hashlib
 import io
 import json
 import subprocess
@@ -69,6 +70,22 @@ def checkout(cache: Path, repo_url: str, commit: str) -> Path:
         git(base, "worktree", "add", "-q", "--detach", str(tree), commit)
     if git(tree, "rev-parse", "HEAD") != commit:
         raise RuntimeError(f"{tree} is not at {commit}")
+    # Git status intentionally trusts these index flags and can hide changed
+    # tracked bytes. A calibration cache must not use that optimization.
+    flagged = [entry[2:] for entry in git(tree, "ls-files", "-v", "-z").split("\0")
+               if entry and (entry[0].islower() or entry[0] == "S")]
+    if flagged:
+        raise RuntimeError(f"{tree} has assume-unchanged or skip-worktree index flags: {flagged[:8]}; "
+                           "use a fresh frozen checkout; nothing was reset.")
+    # A matching HEAD is not evidence of matching scanned bytes. Include
+    # ignored files too: a project's .gitignore can hide source that the
+    # static resolver still collects. Preserve changes instead of resetting.
+    dirty = git(tree, "status", "--porcelain=v1", "--untracked-files=all", "--ignored=matching")
+    if dirty:
+        raise RuntimeError(
+            f"{tree} is not a clean frozen checkout (modified, untracked or ignored files): "
+            f"{dirty[:400]}. Preserve the changes and use a fresh cache; nothing was reset."
+        )
     return tree
 
 
@@ -79,6 +96,52 @@ def scan(tree: Path, language: str) -> dict:
         if code != 0:
             raise RuntimeError(f"scan of {tree.name} exited {code}: {err.getvalue()[-600:]}")
         return json.loads((Path(out) / "verification_ledger.json").read_text(encoding="utf-8"))
+
+
+def validate_scored_files(ledger: dict, tree: Path, files: list[str], *, allow_deleted: bool = False) -> None:
+    """Require evidence that every scored source file was actually analyzed.
+
+    A deleted fixed-side file can legitimately make the old site disappear.
+    A present but excluded/unreadable/unparseable file cannot. Unrelated
+    parse failures are retained in scan evidence and do not certify a site.
+    """
+    root = tree.resolve()
+    analyzed = {Path(p).resolve() for p in ledger.get("analyzed_files", [])}
+    failed = {Path(e["file_path"]).resolve(): e.get("error", "analysis failed")
+              for e in ledger.get("parse_errors", [])}
+    for relative in sorted(set(files)):
+        path = root / relative
+        resolved = path.resolve()
+        if Path(relative).is_absolute() or root not in resolved.parents:
+            raise RuntimeError(f"scored source escapes checkout: {relative!r}")
+        if not path.exists() and not path.is_symlink() and allow_deleted:
+            continue
+        if resolved in failed:
+            raise RuntimeError(f"analysis_failed for scored file {relative}: {failed[resolved]}")
+        if not path.is_file() or resolved not in analyzed:
+            raise RuntimeError(f"analysis_failed: scored file {relative} was not analyzed")
+
+
+def scan_identity(ledger: dict, tree: Path) -> dict:
+    """Bind retained metrics to source bytes and the scanner implementation."""
+    source = hashlib.sha256()
+    root = tree.resolve()
+    files = sorted({Path(p).resolve() for p in ledger.get("analyzed_files", [])})
+    for path in files:
+        relative = path.relative_to(root).as_posix()
+        source.update(relative.encode("utf-8") + b"\0")
+        source.update(hashlib.sha256(path.read_bytes()).digest())
+    scanner = hashlib.sha256()
+    package = HERE.parent / "sentinel_zero"
+    for path in sorted(package.rglob("*")):
+        if not path.is_file() or any(part in {"node_modules", "__pycache__"} for part in path.parts):
+            continue
+        if path.suffix not in {".py", ".js", ".json"}:
+            continue
+        scanner.update(path.relative_to(package).as_posix().encode("utf-8") + b"\0")
+        scanner.update(hashlib.sha256(path.read_bytes()).digest())
+    return {"commit": git(tree, "rev-parse", "HEAD"), "analyzed_file_count": len(files),
+            "analyzed_source_sha256": source.hexdigest(), "scanner_source_sha256": scanner.hexdigest()}
 
 
 def site_plans(ledger: dict, tree: Path, site: dict, line: int | None = None) -> list[dict]:
@@ -126,14 +189,30 @@ def classify(plans: list[dict], vulnerable: bool) -> str:
 
 
 def score_pair(pair: dict, cache: Path) -> dict:
-    row = {"id": pair["id"], "repo": pair["repo"], "kind": pair["kind"], "sites": []}
+    expected = group_sites(pair["sites"])
+    row = {"id": pair["id"], "repo": pair["repo"], "kind": pair["kind"], "sites": [],
+           "groups_expected": len(expected), "calls_expected": sum(len(g["lines"]) for g in expected)}
     try:
         trees = {k: checkout(cache, pair["repo"], pair[k]) for k in ("vulnerable", "fixed")}
         ledgers = {k: scan(t, pair.get("language", "python")) for k, t in trees.items()}
+        row["scan_diagnostics"] = {
+            side: {"parse_errors": ledgers[side].get("parse_errors", []),
+                   "coverage_warnings": ledgers[side].get("coverage", {}).get("warnings", [])}
+            for side in ("vulnerable", "fixed")
+        }
+        files = [s["file"] for s in pair["sites"]]
+        for side in ("vulnerable", "fixed"):
+            validate_scored_files(ledgers[side], trees[side], files, allow_deleted=side == "fixed")
+        row["scan_evidence"] = {
+            side: {**scan_identity(ledgers[side], trees[side]),
+                   "parse_errors": ledgers[side].get("parse_errors", []),
+                   "coverage_warnings": ledgers[side].get("coverage", {}).get("warnings", [])}
+            for side in ("vulnerable", "fixed")
+        }
     except (RuntimeError, subprocess.TimeoutExpired, OSError) as exc:
         row["error"] = str(exc)[-600:]
         return row
-    for group in group_sites(pair["sites"]):
+    for group in expected:
         per_call = [site_plans(ledgers["vulnerable"], trees["vulnerable"], group, line) for line in group["lines"]]
         after = site_plans(ledgers["fixed"], trees["fixed"], group)
         row["sites"].append({
@@ -159,14 +238,22 @@ def summarize(rows: list[dict]) -> dict:
         return round(n / count, 4) if count else None
 
     calls = sum(len(s.get("lines", [])) for s in sites)
-    return {
-        "pairs": len(rows),
-        "pairs_errored": [r["id"] for r in rows if "error" in r],
-        "groups": count,
-        "calls": calls,
+    errors = [r for r in rows if "error" in r]
+    scored_rates = {
         "call_recall": round(sum(s.get("calls_detected", 0) for s in sites) / calls, 4) if calls else None,
         "recall": rate(sum(s["vulnerable"] == "detected" for s in sites)),
         "quiet_on_fix": rate(sum(s["fixed"] in ("gone", "downgraded") for s in sites)),
+    }
+    return {
+        "pairs": len(rows),
+        "complete": not errors,
+        "pairs_errored": [r["id"] for r in errors],
+        "groups": count,
+        "groups_unscored": sum(r.get("groups_expected", 0) for r in errors),
+        "calls_unscored": sum(r.get("calls_expected", 0) for r in errors),
+        "calls": calls,
+        **{key: None if errors else value for key, value in scored_rates.items()},
+        "scored_only_rates": scored_rates,
         "vulnerable_outcomes": {k: sum(s["vulnerable"] == k for s in sites) for k in ("detected", "under-ranked", "missed")},
         "fixed_outcomes": {k: sum(s["fixed"] == k for s in sites) for k in ("gone", "downgraded", "still-flagged")},
     }
@@ -190,11 +277,11 @@ def main(argv: list[str] | None = None) -> int:
         for s in row.get("sites", []):
             print(f"{row['id']}: {s['sink']} in {s['file']}:{s['function']} lines={s['lines']} -> "
                   f"vulnerable={s['vulnerable']} fixed={s['fixed']}", flush=True)
-    result = {"summary": summarize(rows), "rows": rows}
+    result = {"schema": "sentinel-cve-calibration-v2", "summary": summarize(rows), "rows": rows}
     print(json.dumps(result["summary"], indent=2))
     if args.out:
         args.out.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
-    return 0
+    return 1 if result["summary"]["pairs_errored"] else 0
 
 
 if __name__ == "__main__":

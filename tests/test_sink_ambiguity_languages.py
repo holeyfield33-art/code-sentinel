@@ -1,4 +1,5 @@
 """Probe evidence must identify one resolved source site in either language."""
+import os
 import shutil
 from pathlib import Path
 from unittest.mock import patch
@@ -9,6 +10,7 @@ from sentinel_zero.callgraph import transitive_sink_symbol_counts
 from sentinel_zero.catalog_loader import bundled_snapshot_path
 from sentinel_zero.disposition import load_catalog
 from sentinel_zero.dogfood_scan import find_finding_plans
+from sentinel_zero.probes.container_runner import docker_available, image_available
 from sentinel_zero.resolvers.js_resolver import build_project_graph as build_js_graph
 from sentinel_zero.resolvers.python_resolver import build_project_graph as build_python_graph
 
@@ -49,7 +51,18 @@ def test_direct_duplicates_never_run_a_probe(tmp_path, language):
 
 
 @pytest.mark.parametrize("cross_file", [False, True])
+@pytest.mark.docker_integration
 def test_delegated_dead_site_is_unprobed_but_helper_has_a_report(tmp_path, language, cross_file):
+    available, detail = docker_available()
+    if not available:
+        pytest.skip(f"real Docker integration unavailable: {detail}")
+    present, detail = image_available(language)
+    if not present:
+        pytest.skip(detail)
+    if os.name != "nt":
+        # This newly created synthetic source root is mounted directly at
+        # /repo and must be traversable by the fixed non-root worker UID.
+        tmp_path.chmod(0o755)
     if language == "python":
         helper = "import os\ndef helper():\n    os.system('live')\n"
         runner = "def run_it():\n    helper()\n    return\n    os.system('dead')\n"

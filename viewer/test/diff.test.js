@@ -60,3 +60,23 @@ test("identical graphs produce zero new/changed/removed", () => {
   assert.equal(removedNodes.length, 0);
   assert.equal(unchangedCount, 2);
 });
+
+test("namespaced exports compare to historical baselines by kind and original symbol", () => {
+  const oldGraph = { nodes: [node("pkg.foo", "UNRESOLVED_INCONCLUSIVE", ["uid1"])] };
+  const current = { ...oldGraph.nodes[0], id: "function:pkg.foo", qualified_name: "pkg.foo" };
+  const newGraph = { nodes: [current, { id: "module:pkg.foo", qualified_name: "pkg.foo", kind: "module" }] };
+  const result = diffGraphs(newGraph, oldGraph);
+  assert.equal(result.diffByNodeId.get("function:pkg.foo").classification, "unchanged");
+  assert.equal(result.diffByNodeId.get("module:pkg.foo").classification, "new");
+  assert.equal(result.removedNodes.length, 0);
+  assert.equal(result.unchangedCount, 1);
+  assert.equal(result.newCount, 1);
+});
+
+test("a node kind change cannot alias a historical symbol", () => {
+  const oldGraph = { nodes: [{ id: "pkg.foo", kind: "module" }] };
+  const newGraph = { nodes: [{ id: "function:pkg.foo", qualified_name: "pkg.foo", kind: "function" }] };
+  const result = diffGraphs(newGraph, oldGraph);
+  assert.equal(result.newCount, 1);
+  assert.equal(result.removedNodes.length, 1);
+});

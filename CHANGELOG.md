@@ -7,6 +7,10 @@ and historical version tags are not inferred from development commits.
 
 ### Security and behavior changes
 
+- Refuse escaping/dangling source-file links, nonregular source entries and
+  files over 8,000,000 bytes in both static resolvers. Contained file links
+  remain supported; refusals appear as per-file errors. This does not add
+  a parser CPU/memory sandbox or an immutable source snapshot.
 - Default CLI, library, and MCP scans to static analysis. Target execution
   requires the explicit `diagnostic` probe mode.
 - Reject `VERIFIED_TRUE` and `VERIFIED_FALSE` authorization at disposition
@@ -31,6 +35,18 @@ and historical version tags are not inferred from development commits.
 
 ### Analysis
 
+- Preserve Python definitions declared inside module-level control-flow
+  suites and class method suites. Keep colliding physical source files
+  distinct, expose collision warnings and parsed-file accounting, and retain
+  package/import namespace resolution separately from file identity.
+- Withhold unconditional Python guard credit from conditionally evaluated,
+  deferred and assertion calls while retaining their call sites for review.
+  Include short-circuit comparisons and async/generator delegation; awaited
+  async guards remain conservatively uncredited until async execution is modeled.
+- Require CVE/lab scored files to have actual analysis evidence. Refuse dirty
+  frozen-source caches, including ignored extra files; record source/scanner
+  digests. An incomplete CVE run retains unscored counts, withholds headline
+  rates and exits nonzero instead of crediting failed analysis as a fix.
 - Fix the five triage and coverage defects the calibration layers found, each
   with a regression test: nested `doc/` packages are product code;
   `codecs.open` and `io.open` are file sinks; a call that builds the sink's
@@ -94,6 +110,12 @@ and historical version tags are not inferred from development commits.
 
 ### Reports and packaging
 
+- Add `analyzed_files` to ledgers for exact scored-file coverage checks.
+- Version graph exports as schema 2 with separate module/function/external
+  ID namespaces and original `qualified_name` / `target_symbol` fields.
+  The viewer validates both schema 2 and unambiguous historical graphs;
+  malformed values and duplicate identities produce a validation error.
+  Comparisons retain symbol identity across the two schemas.
 - Send scanner progress summaries to stderr so MCP stdout contains only
   protocol messages; retain the CLI's artifact-path output.
 - Keep JSON ledger, graph, and optional Markdown output on the shared scanner
@@ -104,6 +126,9 @@ and historical version tags are not inferred from development commits.
 
 ### Viewer and development
 
+- Mark live delegated-site Docker scenarios as integration tests and mock
+  executable discovery in the two synthetic parent-lifecycle tests so the
+  non-Docker selection does not depend on an installed Docker executable.
 - Pin Vite 7.3.7 and Playwright 1.64.1; the viewer lockfile resolves esbuild
   0.28.2. Declare the viewer's Node engine requirement.
 - Add real Chromium E2E coverage for rendering, uploads, filtering, inspection,

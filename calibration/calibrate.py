@@ -75,7 +75,7 @@ def gap_outcome(case: Case, graph: dict) -> str:
     silent:            neither; the call left no trace.
     """
     calls = [e for e in graph.get("edges", []) if e.get("kind") == "calls"]
-    if any(e.get("resolved") and e.get("target") == case.sink for e in calls):
+    if any(e.get("resolved") and e.get("target_symbol", e.get("target")) == case.sink for e in calls):
         return "resolved-not-sink"
     attribute = case.sink.rsplit(".", 1)[-1]
     lines = {rel: text.splitlines() for rel, text in case.files.items()}

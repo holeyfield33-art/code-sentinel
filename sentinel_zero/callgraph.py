@@ -142,7 +142,7 @@ def transitively_guard_shaped(
     check is still the right one for a DIFFERENT use (a wrapper's own
     dispatch method checking itself before forwarding, same function)."""
     fn = graph.functions.get(name)
-    if fn is None:
+    if fn is None or fn.body_is_deferred:
         return False
     if fn.raises_on_guard:
         return True
@@ -153,6 +153,31 @@ def transitively_guard_shaped(
         transitively_guard_shaped(callee, graph, callee_index, next_visited, _depth + 1)
         for callee in callee_index.get(name, ())
     )
+
+
+def functions_reaching_deferred_bodies(
+    graph: ProjectGraph, callee_index: dict[str, set[str]],
+) -> frozenset[str]:
+    """Conservatively withhold guard credit across deferred execution.
+
+    A synchronous wrapper may return an unawaited coroutine/generator to a
+    caller-side check. Without tracking await/iteration and return values,
+    neither that wrapper nor its delegators certify synchronous validation.
+    This can withhold credit from correctly awaited code; sink indexing is
+    unaffected. Reverse reachability handles cycles without a depth guess.
+    """
+    reverse: dict[str, set[str]] = {}
+    for caller, callees in callee_index.items():
+        for callee in callees:
+            reverse.setdefault(callee, set()).add(caller)
+    deferred = {name for name, fn in graph.functions.items() if fn.body_is_deferred}
+    pending = list(deferred)
+    while pending:
+        for caller in reverse.get(pending.pop(), ()):
+            if caller not in deferred:
+                deferred.add(caller)
+                pending.append(caller)
+    return frozenset(deferred)
 
 
 def build_direct_sink_call_counts(graph: ProjectGraph, sink_table: dict[str, str]) -> dict[str, dict[str, int]]:

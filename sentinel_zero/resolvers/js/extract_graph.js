@@ -68,6 +68,8 @@ const coverage = { collected_files: 0, parsed_files: 0, skipped_directories: [],
 const moduleIds = new Map();
 const exportAliases = new Map();
 const localModuleIds = new Set();
+// Input validation for a stable checkout, not a parser resource sandbox.
+const MAX_SOURCE_BYTES = 8_000_000;
 
 function resolveExportAlias(name, seen = new Set()) {
   if (seen.has(name)) return name;
@@ -657,10 +659,43 @@ function backfillRanges(node) {
 // TS-only node types (TSInterfaceDeclaration, PropertyDefinition's type
 // annotations, Decorator) simply fall through the existing type checks
 // unrecognized, the same way an unrelated ESTree node always has.
-function parseFile(filePath) {
+function readSourceText(filePath, root) {
+  const realRoot = fs.realpathSync(root);
+  const target = fs.realpathSync(filePath);
+  const relative = path.relative(realRoot, target);
+  if (relative === '..' || relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative)) {
+    throw new Error('source path escapes the repository');
+  }
+  // In-root file symlinks are supported by opening the resolved target.
+  // Refuse FIFOs/devices before opening; nonblocking open plus fstat also
+  // prevents a replacement special file from blocking the scan.
+  if (!fs.statSync(target).isFile()) throw new Error('source path is not a regular file');
+  const flags = fs.constants.O_RDONLY | (fs.constants.O_NONBLOCK || 0) | (fs.constants.O_NOFOLLOW || 0);
+  const descriptor = fs.openSync(target, flags);
+  try {
+    const metadata = fs.fstatSync(descriptor);
+    if (!metadata.isFile()) throw new Error('source path is not a regular file');
+    if (metadata.size > MAX_SOURCE_BYTES) throw new Error(`source file exceeds the ${MAX_SOURCE_BYTES}-byte limit`);
+    const chunks = [];
+    let total = 0;
+    while (total <= MAX_SOURCE_BYTES) {
+      const chunk = Buffer.alloc(Math.min(65536, MAX_SOURCE_BYTES + 1 - total));
+      const count = fs.readSync(descriptor, chunk, 0, chunk.length, null);
+      if (count === 0) break;
+      chunks.push(chunk.subarray(0, count));
+      total += count;
+    }
+    if (total > MAX_SOURCE_BYTES) throw new Error(`source file exceeds the ${MAX_SOURCE_BYTES}-byte limit`);
+    return Buffer.concat(chunks, total).toString('utf8');
+  } finally {
+    fs.closeSync(descriptor);
+  }
+}
+
+function parseFile(filePath, root) {
   let source;
   try {
-    source = fs.readFileSync(filePath, 'utf8');
+    source = readSourceText(filePath, root);
   } catch (e) {
     return { error: `could not read file: ${e.message}` };
   }
@@ -1124,7 +1159,7 @@ function main() {
 
   const parsed = []; // {filePath, modQ, program, source, bindings}
   for (const filePath of files) {
-    const result = parseFile(filePath);
+    const result = parseFile(filePath, root);
     if (result.error) {
       errors.push({ file_path: filePath, error: result.error });
       continue;
