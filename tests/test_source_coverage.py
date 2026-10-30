@@ -81,6 +81,20 @@ def test_node_builtin_scheme_has_the_same_sink_identity(tmp_path: Path) -> None:
     assert Symbol("child_process.exec") in targets
 
 
+def test_adding_a_collision_changes_only_affected_module_identities(tmp_path: Path) -> None:
+    write(tmp_path, "foo.js", "export function run(){}")
+    write(tmp_path, "stable.js", "export function run(){}")
+    before = build_project_graph(tmp_path)
+    write(tmp_path, "foo.ts", "export function run(){}")
+    after = build_project_graph(tmp_path)
+    repeated = build_project_graph(tmp_path)
+    assert set(before.modules) == {"foo", "stable"}
+    assert set(after.modules) == {"file://foo.js", "file://foo.ts", "stable"}
+    assert set(after.functions) == set(repeated.functions)
+    assert "stable.run" in before.functions and "stable.run" in after.functions
+    assert any(w["kind"] == "module_identity_disambiguated" for w in after.coverage["warnings"])
+
+
 def test_coverage_reaches_ledger_markdown_and_graph(tmp_path: Path) -> None:
     import json
     from sentinel_zero.catalog_loader import bundled_snapshot_path

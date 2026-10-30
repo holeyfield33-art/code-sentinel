@@ -5,6 +5,18 @@ and historical version tags are not inferred from development commits.
 
 ## Unreleased
 
+### Graph Studio first milestone
+
+- Preserve source coverage in the viewer and expose missing-endpoint limitations.
+- Replace random force layout with deterministic directory/module clusters;
+  render containment, resolved directional calls and reversible module collapse.
+- Add bounded investigation, connection navigation, separate visible/source
+  counts, camera framing, and explicit collision identity comparison warnings.
+- Distinguish tool failures from reported confirmed findings and state when
+  independent evidence is unavailable.
+- Add a paired synthetic path traversal regression with an independent HTTP
+  observer and patched/benign controls. Scanner and Docker backend logic are unchanged.
+
 ### Security and behavior changes
 
 - Default CLI, library, and MCP scans to static analysis. Target execution

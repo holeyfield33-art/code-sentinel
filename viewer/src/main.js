@@ -3,6 +3,7 @@ import { ForceLayout3D } from "./layout.js";
 import { GraphScene } from "./scene.js";
 import { diffGraphs } from "./diff.js";
 import { STATUS_COLOR, DIFF_COLOR } from "./colors.js";
+import { architecture, MAX_RENDER_NODES } from './studioModel.js';
 
 const container = document.getElementById("scene-container");
 const statsEl = document.getElementById("stats");
@@ -17,15 +18,10 @@ const compareInput = document.getElementById("compare-input");
 const compareSummaryEl = document.getElementById("compare-summary");
 const clearCompareBtn = document.getElementById("clear-compare-btn");
 
-// Milestone 22 legend/filter definitions. Each row is one visual swatch
-// in the HUD; its `categories` are the GraphScene.categoryOf() values it
-// covers -- VERIFIED_TRUE and TOOL_FAILURE share one row because they
-// share one color (colors.js's STATUS_COLOR, the single source of truth
-// also used by scene.js's 3D rendering -- a code-review finding caught
-// these two files each hardcoding their own copy of the same colors),
-// and toggling the row toggles both together.
+// Reported disposition colors are separate from independently supported evidence.
 const NORMAL_LEGEND = [
-  { label: "VERIFIED_TRUE / TOOL_FAILURE", color: STATUS_COLOR.VERIFIED_TRUE, categories: ["VERIFIED_TRUE", "TOOL_FAILURE"] },
+  { label: "VERIFIED_TRUE (reported status)", color: STATUS_COLOR.VERIFIED_TRUE, categories: ["VERIFIED_TRUE"] },
+  { label: "TOOL_FAILURE", color: STATUS_COLOR.TOOL_FAILURE, categories: ["TOOL_FAILURE"] },
   { label: "UNRESOLVED_INCONCLUSIVE", color: STATUS_COLOR.UNRESOLVED_INCONCLUSIVE, categories: ["UNRESOLVED_INCONCLUSIVE"] },
   { label: "VERIFIED_FALSE", color: STATUS_COLOR.VERIFIED_FALSE, categories: ["VERIFIED_FALSE"] },
   { label: "no finding attached", color: STATUS_COLOR.none, categories: ["none"] },
@@ -61,7 +57,7 @@ function showInspector(node) {
   inspectorEl.style.display = "block";
   const rows = [
     ["Kind", node.kind],
-    ["File", node.file_path ?? "—"],
+    ["File (common source root removed)", architecture(currentGraph).relativePath(node)],
   ];
   if (node.kind === "function") {
     rows.push(["Line", node.lineno ?? "—"]);
@@ -70,6 +66,10 @@ function showInspector(node) {
   }
   rows.push(["Worst disposition", node.worst_disposition ?? "(no finding attached)"]);
   rows.push(["Finding plan IDs", (node.finding_plan_ids ?? []).join(", ") || "—"]);
+  rows.push(["Finding UIDs", (node.finding_uids ?? []).join(', ') || 'none attached']);
+  rows.push(["Evidence", 'Evidence unavailable: no independent verification evidence is attached to this graph. A status or proximity alone is not proof.']);
+  rows.push(["Resolved call connectivity", (node.kind === 'module' ? architecture(currentGraph).moduleDegree : architecture(currentGraph).degree).get(node.id) ?? 0]);
+  if (node.kind === 'function') rows.push(['Containing module', architecture(currentGraph).parent.get(node.id) ?? 'Unresolved: containment relationship unavailable']);
   if (diffMode) {
     const d = scene.diffByNodeId?.get(node.id);
     if (d) rows.push(["vs. baseline", `${d.classification} (${d.oldStatus ?? "—"} → ${d.newStatus ?? "—"})`]);
@@ -79,6 +79,27 @@ function showInspector(node) {
     `<h2>${escapeHtml(node.id)}</h2><dl>` +
     rows.map(([label, value]) => `<dt>${escapeHtml(label)}</dt><dd>${escapeHtml(String(value))}</dd>`).join("") +
     `</dl>`;
+  if (node.kind === 'module') {
+    const button = document.createElement('button'); button.className = 'btn';
+    button.textContent = scene.collapsed.has(node.id) ? 'Expand module' : 'Collapse module';
+    button.onclick = () => { scene.toggleModule(node.id); showInspector(node); };
+    inspectorEl.append(button);
+  }
+  for (const [label, edges] of [
+    ['Incoming', currentGraph.edges.filter(e => e.kind === 'calls' && e.target === node.id)],
+    ['Outgoing', currentGraph.edges.filter(e => e.kind === 'calls' && e.source === node.id)],
+  ]) {
+    const title = document.createElement('h3'); title.textContent = label; inspectorEl.append(title);
+    if (!edges.length) { const p = document.createElement('p'); p.textContent = 'No recorded calls'; inspectorEl.append(p); }
+    edges.forEach(e => {
+      const id = e.source === node.id ? e.target : e.source;
+      const link = document.createElement('button'); link.className = 'btn small';
+      link.textContent = `${id ?? '(unresolved)'} · ${e.resolved ? 'resolved' : 'UNRESOLVED'} · line ${e.lineno ?? '?'} · edge #${currentGraph.edges.indexOf(e)}`;
+      link.title = JSON.stringify(e);
+      link.disabled = !e.resolved || !currentGraph.nodes.some(n => n.id === id);
+      link.onclick = () => scene.select(id); inspectorEl.append(link);
+    });
+  }
 }
 
 function setStats(graph, repoName) {
@@ -90,9 +111,39 @@ function setStats(graph, repoName) {
   const lines = [
     `<strong>${escapeHtml(repoName)}</strong>`,
     `${graph.nodes.length} nodes, ${graph.edges.length} edges`,
+    `Visible: ${scene.nodeMeshes.length} nodes, ${scene.renderedEdges?.length ?? 0} edges (including display aggregates)`,
+    `Display-only aggregates: ${scene.renderedEdges?.filter(e => e.displayOnly).length ?? 0}`,
     ...Object.entries(dispositionCounts).map(([k, v]) => `${k}: ${v}`),
   ];
   statsEl.innerHTML = lines.join("<br/>");
+}
+scene.onViewChange = () => { if (currentGraph) setStats(currentGraph, currentGraph.targetRepository); };
+
+function renderCoverage(doc) {
+  const el = document.getElementById('coverage');
+  el.replaceChildren();
+  const summary = document.createElement('p');
+  const c = doc.coverage;
+  summary.textContent = c && Object.keys(c).length ? `Source coverage: ${c.parsed_files ?? '?'} parsed / ${c.collected_files ?? '?'} collected. Unsupported: ${c.unsupported_files?.length ?? '?'}. Excluded declarations: ${c.excluded_declarations?.length ?? '?'}. Skipped directories: ${c.skipped_directories?.length ?? '?'}.` : 'Coverage unavailable in this export; absence of warnings is not full coverage.';
+  el.append(summary);
+  for (const warning of c?.warnings ?? []) {
+    const p = document.createElement('p'); p.textContent = `${warning.kind}: ${warning.detail ?? ''} ${warning.path ?? ''}`; el.append(p);
+  }
+  if (doc.validationWarnings?.length) {
+    const p = document.createElement('p');
+    p.textContent = `${doc.validationWarnings.length} graph selection limitations: containment endpoints are missing. Original edges are retained as stubs; they do not establish connected paths.`; el.append(p);
+    const details = document.createElement('details'), summary = document.createElement('summary'); summary.textContent = 'Missing relationship details'; details.append(summary);
+    for (const message of doc.validationWarnings) { const row = document.createElement('p'); row.textContent = message; details.append(row); }
+    el.append(details);
+  }
+  const note = document.createElement('p');
+  note.textContent = 'Independently verified findings with attached proof: 0. Evidence unavailable. Graph finding counts are not independently verified vulnerability counts.'; el.append(note);
+  const modules = document.getElementById('modules'); modules.replaceChildren();
+  for (const [dir, ids] of [...architecture(doc).groups].sort(([a],[b]) => a < b ? -1 : 1)) {
+    const group = document.createElement('details'), title = document.createElement('summary'); title.textContent = `${dir} (${ids.length})`; group.append(title);
+    ids.sort().forEach(id => { const button = document.createElement('button'); button.className = 'btn small'; button.textContent = id; button.onclick = () => scene.select(id); group.append(button); });
+    modules.append(group);
+  }
 }
 
 function activeLegendDefs() {
@@ -134,7 +185,7 @@ function applyFilter() {
   renderLegend();
 }
 
-function renderCompareSummary({ baselineName, newCount, changedCount, unchangedCount, removedNodes }) {
+function renderCompareSummary({ baselineName, newCount, changedCount, unchangedCount, removedNodes, identityWarnings = [] }) {
   compareSummaryEl.innerHTML =
     `<div>vs. <strong>${escapeHtml(baselineName)}</strong></div>` +
     `<div>${newCount} new · ${changedCount} changed · ${unchangedCount} unchanged</div>` +
@@ -142,14 +193,23 @@ function renderCompareSummary({ baselineName, newCount, changedCount, unchangedC
     (removedNodes.length
       ? `<div class="removed-list">${removedNodes.map((n) => escapeHtml(n.id)).join("<br/>")}</div>`
       : "");
+  if (identityWarnings.length) {
+    const p = document.createElement('p');
+    p.textContent = 'Identity migration warning: collision disambiguation can make existing files appear added/removed. IDs are preserved exactly; this comparison does not imply new vulnerabilities.';
+    compareSummaryEl.prepend(p);
+  }
 }
 
 async function renderGraphDocument(doc) {
+  if (doc.nodes.length > MAX_RENDER_NODES) throw new GraphValidationError(`Graph has ${doc.nodes.length} nodes; default render limit is ${MAX_RENDER_NODES}. Load an explicitly selected focus graph; no nodes were silently sampled.`);
   emptyStateEl.classList.add("hidden");
   currentGraph = doc;
   diffMode = false;
   activeCategories = null;
   searchInput.value = "";
+  inspectorEl.style.display = 'none';
+  document.getElementById('view-mode').value = 'architecture';
+  scene.investigation = false;
   clearCompareBtn.style.display = "none";
   compareSummaryEl.innerHTML = "";
 
@@ -158,7 +218,12 @@ async function renderGraphDocument(doc) {
   scene.render(doc, layout);
   setStats(doc, doc.targetRepository);
   renderLegend();
+  renderCoverage(doc);
 }
+
+document.getElementById('view-mode').onchange = e => scene.setMode(e.target.value === 'investigation', Number(document.getElementById('hops').value));
+document.getElementById('hops').onchange = e => scene.setMode(document.getElementById('view-mode').value === 'investigation', Number(e.target.value));
+document.getElementById('frame-btn').onclick = () => scene.frame();
 
 fileInput.addEventListener("change", async (ev) => {
   const file = ev.target.files?.[0];
@@ -198,14 +263,15 @@ compareInput.addEventListener("change", async (ev) => {
   }
   try {
     const baseline = await loadGraphFromFile(file);
-    const { diffByNodeId, removedNodes, newCount, changedCount, unchangedCount } = diffGraphs(currentGraph, baseline);
+    const { diffByNodeId, removedNodes, newCount, changedCount, unchangedCount, identityWarnings } = diffGraphs(currentGraph, baseline);
     diffMode = true;
     activeCategories = null;
     searchInput.value = "";
     scene.setDiff(diffByNodeId);
+    scene.setFilter(null, '');
     clearCompareBtn.style.display = "inline-block";
     renderLegend();
-    renderCompareSummary({ baselineName: file.name, newCount, changedCount, unchangedCount, removedNodes });
+    renderCompareSummary({ baselineName: file.name, newCount, changedCount, unchangedCount, removedNodes, identityWarnings });
   } catch (e) {
     if (e instanceof GraphValidationError) alert(`Could not load baseline '${file.name}':\n\n${e.message}`);
     else throw e;
@@ -216,6 +282,8 @@ clearCompareBtn.addEventListener("click", () => {
   scene.clearDiff();
   diffMode = false;
   activeCategories = null;
+  searchInput.value = '';
+  scene.setFilter(null, '');
   clearCompareBtn.style.display = "none";
   compareSummaryEl.innerHTML = "";
   renderLegend();

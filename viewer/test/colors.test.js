@@ -28,8 +28,8 @@ test("toThreeHex('#ff5c5c') is the known literal 0xff5c5c", () => {
   assert.equal(toThreeHex("#ff5c5c"), 0xff5c5c);
 });
 
-test("VERIFIED_TRUE and TOOL_FAILURE share one color (the legend groups them into one swatch)", () => {
-  assert.equal(STATUS_COLOR.VERIFIED_TRUE, STATUS_COLOR.TOOL_FAILURE);
+test("tool failure and confirmed finding have distinct colors", () => {
+  assert.notEqual(STATUS_COLOR.VERIFIED_TRUE, STATUS_COLOR.TOOL_FAILURE);
 });
 
 test("diff 'unchanged' reuses the same color as 'no finding attached' by design", () => {

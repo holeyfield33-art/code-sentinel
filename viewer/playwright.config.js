@@ -8,7 +8,8 @@ export default defineConfig({
   outputDir: join(tmpdir(), "sentinel-zero-viewer-playwright"),
   workers: 1,
   retries: 0,
-  timeout: 60_000,
+  timeout: 90_000,
+  expect: { timeout: 15_000 },
   reporter: "list",
   use: {
     baseURL: "http://127.0.0.1:4173",

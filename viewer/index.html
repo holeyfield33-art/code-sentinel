@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sentinel-Zero — Graph Viewer</title>
+  <title>Sentinel Graph Studio v0</title>
   <style>
     :root {
       --bg: #0b0e14;
@@ -29,6 +29,7 @@
       background: #1b2230; border: 1px solid var(--panel-border); cursor: pointer; color: var(--text);
     }
     .btn:hover { border-color: var(--accent); }
+    select { color: var(--text); background: #1b2230; border: 1px solid var(--panel-border); border-radius: 4px; padding: 4px; margin-bottom: 4px; max-width: 100%; }
     .btn.small { font-size: 12px; padding: 5px 10px; }
     #file-input, #compare-input { display: none; }
     #stats { margin-top: 10px; font-size: 12px; color: var(--text-dim); line-height: 1.5; }
@@ -76,11 +77,18 @@
   </div>
 
   <div id="hud">
-    <h1>Sentinel-Zero — Graph Viewer</h1>
-    <p class="sub">Standalone 3D view of a scan's node/edge export.</p>
+    <h1>Sentinel Graph Studio v0</h1>
+    <p class="sub">Architecture and recorded call relationships. Proximity is not security evidence.</p>
     <label class="btn" id="file-input-label" for="file-input">Load graph.json…</label>
     <input id="file-input" type="file" accept="application/json,.json" />
     <div id="stats"></div>
+    <h3>Explore</h3>
+    <select id="view-mode" aria-label="View mode"><option value="architecture">Architecture</option><option value="investigation">Investigation (select a node)</option></select>
+    <select id="hops" aria-label="Investigation depth"><option value="1">One hop</option><option value="2">Two hops</option></select>
+    <button class="btn small" id="frame-btn">Frame visible graph</button>
+    <p class="sub">Teal: contains · blue: resolved call → · red stub: unresolved/external · purple: display-only aggregate</p>
+    <h3>Source coverage</h3><details><summary>Coverage and limitations</summary><div id="coverage"></div></details>
+    <h3>Modules by source directory</h3><div id="modules" style="max-height:160px;overflow:auto"></div>
 
     <h3>Filter</h3>
     <input id="search-input" type="text" placeholder="Filter by name…" />

@@ -58,5 +58,7 @@ export function diffGraphs(newGraph, oldGraph) {
 
   const removedNodes = oldGraph.nodes.filter((n) => !newIds.has(n.id));
 
-  return { diffByNodeId, removedNodes, newCount, changedCount, unchangedCount };
+  const identityWarnings = [...(newGraph.coverage?.warnings ?? []), ...(oldGraph.coverage?.warnings ?? [])]
+    .filter(w => w.kind === 'module_identity_disambiguated');
+  return { diffByNodeId, removedNodes, newCount, changedCount, unchangedCount, identityWarnings };
 }

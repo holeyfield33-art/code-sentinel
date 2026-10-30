@@ -14,7 +14,7 @@
  * attached at all (worst_disposition === null/undefined). */
 export const STATUS_COLOR = {
   VERIFIED_TRUE: "#ff5c5c",
-  TOOL_FAILURE: "#ff5c5c",
+  TOOL_FAILURE: "#b29aff",
   UNRESOLVED_INCONCLUSIVE: "#f5c84c",
   VERIFIED_FALSE: "#5ad1a0",
   none: "#3c4a63",
