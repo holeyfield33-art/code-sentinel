@@ -11,6 +11,8 @@ Review the results as JSON, Markdown, or an interactive 3D call graph.
 code and record untrusted observations. Current scans do not grant
 `VERIFIED_TRUE` or `VERIFIED_FALSE`; an inconclusive result needs review.
 
+**For coding agents and maintainers:** start at [AGENTS.md](AGENTS.md), the [single current project status](docs/STATUS.md), and [repository maintenance](docs/DEVELOPMENT.md#repository-maintenance--owasp-informed-risk-adaptive). The existing [verification ledger](VERIFICATION_LEDGER.md) indexes test coverage; past reports are not current release evidence.
+
 ## What you can do
 
 - Find supported process-execution, file-I/O, and deserialization calls by
