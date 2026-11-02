@@ -26,6 +26,8 @@ Test filenames above are under `tests/` unless another path is shown.
 Coverage is not a claim that the current hosted workflow or every platform
 has passed; consult the actual run and its artifacts.
 
+**Maintenance note (2026-11-01):** JSX/TSX/MTS/CTS collection is present in the current resolver and listed in [analysis coverage](isbg-limits.md); it is no longer a future-work item. This corrects the roadmap text only, not a new feature or an end-to-end support guarantee. For up-to-date execution/release state see [STATUS.md](STATUS.md).
+
 ## Remaining work
 
 ### Independent runtime proof authority
@@ -46,7 +48,7 @@ is currently created by the diagnostic runner.
 
 ### Broader analysis coverage
 
-JSX/TSX, richer dynamic/higher-order dispatch, Python lambda caller scopes,
+Richer dynamic/higher-order dispatch, Python lambda caller scopes,
 more complete loop/exception modeling, broader sink coverage, and deeper
 dataflow remain bounded or unsupported. Each extension needs semantic
 fixtures and explicit uncertainty; it must not turn absent evidence into
